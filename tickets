@@ -1,0 +1,349 @@
+1. "Context" view contains current bubble defaults [STATUS: COMPLETE]
+Users should be able to see the default for bubbles currently in the project. This means that they should see the types of bubbles listed as well as the default parameters for each bubble, including: Border color, border width, name of the bubble type (e.g. "opportunity"). Users should be able to change these parameters here, too (only border color and border width), and once changed, these should be the new default parameters in the current project. Even for bubble that have already been populated, the new parameters should take effect immediately in the visualisation. For the bubble color you can have a bunch (perhaps 16) standard colors; and for additional ones -- if easy to implement -- a color picker dialog (custom colors).
+
+It is not necessary to have the visual changes accessible via cli/api/mcp. UI is sufficient. But of course you are free to implement this using these interfaces if it makes sense.
+
+--- DIARY (Ticket #1) ---
+Implementation:
+- Backend: bubble_defaults JSON column on ProjectRow, BubbleTypeDefault Pydantic model, GET/PUT API endpoints, 11 new tests (195 total passing)
+- Frontend: Bubble Type Defaults section in ContextPanel with color picker (28 standard colors + custom hex), border width slider (1-6), preview swatches. OSTNode uses dynamic inline border styles from bubbleDefaults. TreeCanvas passes defaults through to nodes, legend, MiniMap.
+- Added "Reset to defaults" link, compact textareas (max-h-[80px]), prominent width display
+
+Review cycles:
+- Cycle 1: No P0/P1. 5x P2 items (bubble defaults below fold, no reset button, small width display)
+- Cycle 2: Fixed P2s. Found textarea auto-expansion issue (field-sizing-content CSS)
+- Cycle 3: Fixed textarea max-height. PASS — no P0/P1
+- Cycle 4: STABLE — all 7 checks pass, 0 bugs. Color change → canvas update → reset all confirmed end-to-end.
+
+Files changed (16): ContextPanel.tsx, OSTNode.tsx, TreeCanvas.tsx, use-tree.ts, api-client.ts, colors.ts, types.ts, schema.py, repository.py, engine.py, project.py, __init__.py, projects.py, test_tree_service.py, test_api.py, CLAUDE.md
+--- END DIARY ---
+
+2. Custom bubble type [STATUS: COMPLETE]
+Users should be able to create bubble types in the "Context" dialog ("Add custom bubble"). This means they should be able to define a new bubble type name, border color and border width. When creating these bubbles, they should present in the usual way like the other bubbles (with name, description, assumption, evidence, focus view, child node dialog etc -- consistent with all other bubbles)
+
+--- DIARY (Ticket #2) ---
+Implementation:
+- Backend: Opened NodeType from enum to free-form string. Added custom_bubble_types JSON column on ProjectRow. API endpoints for CRUD on custom types + reset to defaults. Updated node creation/validation to accept any string node_type.
+- Frontend: Dynamic type system in ContextPanel (Add Custom Bubble Type form with label, auto-slug, color picker). Custom types appear in legend, right-click context menus, NodeDetail Add Child dropdown, and all node rendering. "custom" badge marks custom types in the Context panel. Delete confirmation shows node count warning ("N nodes will show as gray"). Gray fallback (border_color: #94a3b8, border_width: 2) for nodes whose custom type has been deleted.
+- Tests: TypeScript passes (npx tsc --noEmit), Python tests pass (195 total).
+
+Review Cycle 1 (PM + Designer via Playwright):
+- Found 2x P0: (1) Deleting custom type with existing nodes crashed app (missing fallback in OSTNode.tsx), (2) "Reset to defaults" caused same crash.
+- Fixes: Added gray fallback styling in OSTNode.tsx, delete confirmation now shows node count warning.
+
+Review Cycle 2 (PM + Designer via Playwright - this session):
+- Regression Test: Delete custom type with nodes -- PASS (no crash, gray fallback renders correctly, warning "1 node will show as gray" shown)
+- Regression Test: Reset to defaults -- PASS (no crash, custom types removed, only 5 standard types remain)
+- Full Feature Test (Steps 8-16): All PASS
+  - Add custom types (Epic #3b82f6, Theme #22c55e) -- PASS
+  - Legend shows custom types with colored dots -- PASS
+  - Right-click context menu shows custom types in add-child submenu -- PASS
+  - Node creation via context menu (New Epic) -- PASS
+  - NodeDetail panel shows Epic badge, description, Focus View, Add Child with Epic option -- PASS
+  - Add assumption to Epic node -- PASS
+  - Multiple custom types coexist -- PASS
+  - Clean delete of type with 0 nodes (Theme) -- PASS
+  - Duplicate type prevention ("Type already exists" error, Add button disabled) -- PASS
+- UX Review (Steps 17-19):
+  - Form intuitiveness: PASS -- clear placeholder, real-time slug auto-generation, Add button disabled until valid, duplicate detection
+  - Visual distinguishability: PASS (P2 note: similar blue tones for Epic #3b82f6 vs Outcome #93c5fd could be confused at a glance; no color-proximity warning exists)
+  - Delete confirmation UX: PASS -- inline confirmation, node count warning, Cancel button, clean behavior for 0-node types
+
+Review Cycle 3 (OST Expert + QA - edge cases):
+- Slug validation: "Outcome" → "Conflicts with standard type" error -- PASS
+- Slug validation: "Epic" (duplicate) → "Type already exists" error -- PASS
+- P0 found: React hooks ordering bug in NodeDetailPanel — useBubbleDefaults() called after early return, causing "Rendered more hooks than during previous render" crash when switching between no-node-selected and node-selected states. FIXED by moving hook above early return.
+- Orphaned custom type nodes (type deleted, nodes remain): Render with gray fallback border, NodeDetail panel works correctly -- PASS
+- Custom type context menus: All types offered as children for custom type nodes -- PASS
+
+Review Cycle 4 (Final stability):
+- Right-click context menu on standard node (Outcome): Shows Opportunity + Epic (custom) -- PASS
+- Right-click context menu on custom node (Epic): Shows all types as valid children -- PASS
+- NodeDetail panel for custom type: Badge, description, focus view, assumptions, add child all work -- PASS
+- No console errors throughout entire session -- PASS
+
+Final verdict: 0 P0, 0 P1, 1 P2 (color proximity warning is a nice-to-have enhancement)
+STABLE -- 4 review cycles complete, all P0 bugs fixed and verified, all scenarios working end-to-end.
+
+Files changed (23): node.py, project.py, __init__.py, repository.py, tree_service.py, rules.py, server.py (MCP), main.py (CLI), chat.py, types.ts, colors.ts, ContextPanel.tsx, TreeCanvas.tsx, NodeDetailPanel.tsx, AddChildForm.tsx, MiniTreeDiagram.tsx, OSTNode.tsx, conftest.py, test_models.py, test_repository.py, test_tree_service.py, test_validation.py, test_mcp_tools.py, test_cli.py
+--- END DIARY ---
+
+3. Any bubble type should be allowed to be the child of any other bubble type -- it is clear that this does not always make sense, but the responsibility lies with the user to build up sensible OST trees. There are currently some restrictions that should be removed.  [STATUS: COMPLETE]
+
+--- DIARY (Ticket #3) ---
+Implementation:
+- Removed VALID_CHILD_TYPES enforcement from tree_service.py (add_node, update_node, move_subtree)
+- Validation rule check_type_constraints now returns empty list (no-op)
+- Frontend context menus and Add Child forms always list all types (standard + custom)
+- Only constraint kept: root node must be outcome type
+- Updated 5 tests that expected type constraint errors to now expect success
+- 195 tests passing, TypeScript clean
+
+Verification:
+- Right-click on Experiment node → shows all 6 types (Outcome, Opportunity, Child Opportunity, Solution, Experiment, Epic) in Add Child menu
+- NodeDetail Add Child dropdown also lists all types
+- No console errors
+
+Files changed (7): tree_service.py, rules.py, TreeCanvas.tsx, NodeDetailPanel.tsx, test_tree_service.py, test_validation.py, test_api.py
+--- END DIARY ---
+
+4. For a specific node the user should be able to override any project defaults are present, by right-clicking on the node. Overrides that should be available: Border color, border width and fill color and fill style. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #4) ---
+Implementation:
+- Backend: Added 4 nullable columns to NodeRow (override_border_color, override_border_width, override_fill_color, override_fill_style). Updated Node/NodeCreate/NodeUpdate Pydantic models. Repository maps overrides in add_node, update_node, _node_from_row, restore_snapshot. Empty string "" clears override to NULL.
+- Frontend: Added FillStyle type. Created fill-patterns.ts utility (CSS gradients for none/solid/dots/lines_right/lines_left/crosshatch). Extracted shared ColorPicker component from ContextPanel. Created NodeStyleDialog modal with preview, color pickers, width slider, fill style grid, "Reset to defaults" button. Updated OSTNode to apply overrides with fallback to type defaults. Added "Style Override" to right-click context menu. Added useUpdateNode hook.
+- Migration: Added startup migration in engine.py for existing SQLite databases.
+- Tests: 5 new backend tests (200 total passing), TypeScript clean.
+
+Review Cycles (5 total):
+- Cycle 1 (PM + Designer): P0 found — missing DB migration for existing databases. Fixed with ALTER TABLE in _migrate_add_columns. All dialog features verified working (color picker, slider, fill styles, preview, save, persist).
+- Cycle 2 (Designer edge cases): 9 test cases all PASS. Multiple fill styles visually distinct. Reset to defaults works. Cancel discards changes. Custom bubble type overrides work. Node deletion cleanup works. Individual field clear links work. Zero bugs.
+- Cycle 3 (API/MCP/CLI sync): API end-to-end PASS (GET/PATCH/clear). MCP reads overrides, CLI export includes them. Write access not exposed (visual-only, acceptable per CLAUDE.md). Zero bugs.
+- Cycle 4 (Snapshot persistence): Overrides survive snapshot/restore. Deleted-then-restored nodes retain overrides. Zero bugs.
+- Cycle 5 (Final stress test): All 6 fill styles render correctly. Rapid cancel/reopen no state leaks. Root node overrides work. Node features (title, tags, collapse, assumptions) intact with overrides. ALL CLEAR.
+
+Final verdict: 0 P0 (after migration fix), 0 P1, 0 P2. STABLE — 5 review cycles, last 4 clean.
+
+Files changed (13): node.py, schema.py, repository.py, engine.py, types.ts, fill-patterns.ts (new), ColorPicker.tsx (new), NodeStyleDialog.tsx (new), OSTNode.tsx, TreeCanvas.tsx, ContextPanel.tsx, use-tree.ts, test_repository.py
+--- END DIARY ---
+
+5. Better tag dialog in the "Context" view. Tags should now be associable with a color. For tag "tag" the user should be able to select, in the "Context" view, a color / clear should also be an option. This color should then be used as default fill color for boxes with that tag. The Context view should still provide an overview of each tag and chosen color. Ideally, also allow fill style to change: small dots, right leaning lines, left leaning lines, "schraffiert", and solid fill. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #5) ---
+Implementation:
+- Backend: Added color (str) and fill_style (str|null) columns to ProjectTagRow. Added VALID_FILL_STYLES and HEX_COLOR_RE validators to TagCreate/TagUpdate Pydantic models. Repository update_tag maps "none" to NULL for fill_style. Snapshot save/restore preserves tag color and fill_style. 9 new tests (209 total passing).
+- API: Tag endpoints (create/update/list/delete) fully support color and fill_style fields. Server-side validation rejects invalid fill_style values and malformed hex colors.
+- MCP: create_tag and update_tag tools support color/fill_style params with docstrings listing valid values.
+- CLI: `ost tag list` and `ost tag update` support --color and --fill-style flags.
+- Frontend: ContextPanel tag section redesigned with circular preview swatches showing fill pattern+color, inline ColorPicker for tag color, fill style dropdown (None/Solid/Dots/Lines ////,Lines \\\\,Crosshatch). TreeCanvas applies first-alphabetical-tag fill to nodes. OSTNode renders tag fill with proper cascade (node override > tag fill > white). Tag filter buttons in legend show tag colors. Tag chips on nodes use tag color.
+- ColorPicker improvements: Scroll/resize repositioning via useLayoutEffect + event listeners. Aria-labels on all swatch buttons. Custom hex input with validation (disables Set for invalid hex).
+
+Review Cycles (5 total):
+- Cycle 1 (Implementation + initial fixes): Built full feature across backend/frontend/API/MCP/CLI.
+- Cycle 2 (Designer via Playwright): P1-1 legend inactive tag colors (later confirmed working — gray tags are gray because their color IS gray), P1-2 multi-tag fill precedence (alphabetical rule, documented). P2s on tag name truncation, preview size, selected indicator.
+- Cycle 3 (API/CLI/MCP sync QA): 7/7 scenarios PASS. P2: no server-side fill_style validation (FIXED — added Pydantic validators), stale "lines_forward" data, CLI null display.
+- Cycle 4 (Code quality review): P0-1 ColorPicker scroll position (FIXED — added scroll/resize listeners), P0-2 no hex validation (FIXED — added HEX_COLOR_RE validator), P0-3 native color picker interaction. P1s on alpha concat fragility, none/null inconsistency, useUpdateTag invalidation scope (FIXED — scoped to treeId), aria-labels (FIXED).
+- Cycle 5 (3 parallel reviews, ALL CLEAN):
+  - Snapshot persistence: 11/11 tests PASS including color/fill round-trip through snapshot/restore
+  - PM+Designer visual: 12/12 scenarios PASS including validation, color propagation, filter toggle
+  - Multi-tag fill cascade: All 5 multi-tag nodes correctly apply alphabetical precedence. Per-node override > tag fill > white cascade verified end-to-end via API and UI dialog.
+
+Final verdict: 0 P0 (all fixed), 0 P1 (all fixed), P2s remaining are cosmetic. STABLE — 5 review cycles, last 3 fully clean.
+
+Files changed (8): tag.py, __init__.py (models), repository.py, ContextPanel.tsx, ColorPicker.tsx, TreeCanvas.tsx, use-tree.ts, CLAUDE.md
+--- END DIARY ---
+
+6. By right-clicking on an edge should be able to change the thickness of that edge. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #6) ---
+Implementation:
+- Backend: Added edge_thickness (nullable integer) column to NodeRow. Stores thickness of the edge connecting child to parent. Updated Node/NodeCreate/NodeUpdate Pydantic models. Repository maps edge_thickness in add_node, update_node, _node_from_row, restore_snapshot. Value of 0 clears to NULL.
+- Migration: Added startup migration in engine.py for existing SQLite databases.
+- Frontend: Edge context menu with 6 thickness options (1-6px) with visual preview bars. Currently selected thickness highlighted in blue. Right-click on any edge (with or without hypotheses) triggers the menu. Menu positioned with viewport clamping to avoid clipping.
+- Architecture decision: Moved thickness from EdgeHypothesisRow to NodeRow. This ensures thickness works on ALL edges (even those without hypothesis records), since most parent-child connections don't have hypotheses.
+- API: Standard node PATCH endpoint handles edge_thickness. CLI export includes field. Snapshot save/restore preserves value.
+
+Key P0 fix (Cycle 2): Edge thickness silently failed on edges without hypotheses — the original implementation stored thickness on EdgeHypothesisRow, but most edges lack hypothesis records. Moved to NodeRow to fix.
+Key P1-1 fix (Cycle 2): Node and edge context menus didn't dismiss each other — added mutual dismissal calls.
+
+Review cycles: 5 total. Cycles 3-5 all clean (0 P0, 0 P1).
+Files changed: schema.py, node.py, repository.py, engine.py, types.ts, TreeCanvas.tsx, HypothesisEdge.tsx, use-tree.ts
+--- END DIARY ---
+
+7. The geometry of node-children should be improved. Sometimes one child gets pushed way to the side so that child 1 has a small normal looking connection, but child 2 is way off sideways and has a much longer connection. Children should be symmetrical wrt their parent, if possible. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #7) ---
+Implementation:
+- Replaced dagre layout engine with custom symmetric layout algorithm in TreeCanvas.tsx.
+- Algorithm: Bottom-up width calculation → top-down positioning. Each subtree's width = sum of children widths + gaps. Parent centered above its children's span.
+- Children are always symmetrically placed under their parent node.
+- Consistent horizontal gap (40px) and vertical gap (100px) between nodes.
+- Layout respects sort_order for sibling ordering (works with Ticket #8 move left/right).
+- FitView on load ensures entire tree is visible regardless of size.
+
+Review cycles: 5 total. Cycles 3-5 all clean (0 P0, 0 P1).
+P2 note: Very wide trees (34+ nodes) require significant zoom-out, but minimap helps navigation.
+Files changed: TreeCanvas.tsx (layout algorithm)
+--- END DIARY ---
+
+8. Nodes at a given level should be able to be "moved" right or left, by right-clicking on it and selecting "move left" or "move left". Then the relevant node should move across neighbouring nodes of the same level. There should be NO auto-moving of nodes like there is currently. Node positions are a crucial element for PMs and should be controlled by them; otherwise it can feel like being in a supermarket where all the shelves have been rearranged. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #8) ---
+Implementation:
+- Backend: Added sort_order integer column to NodeRow (default 0). New reorder_sibling service method that swaps sort_order values between adjacent siblings. POST /nodes/{id}/reorder endpoint accepts {"direction": "left"|"right"}.
+- Migration: Added startup migration for sort_order column on existing databases. Normalize sort_order on read (assign 0,1,2... if all siblings have sort_order=0).
+- Frontend: Node context menu includes "Move Left" / "Move Right" buttons displayed side-by-side with arrow indicators. Disabled state (opacity-30, cursor-not-allowed) for leftmost/rightmost nodes. Root nodes don't show move options.
+- Layout integration: Symmetric layout algorithm sorts siblings by sort_order, so moves immediately reflect in visual position.
+- API: POST /nodes/{id}/reorder with direction parameter. Returns updated tree data.
+
+Review cycles: 5 total. Cycles 3-5 all clean (0 P0, 0 P1).
+Edge cases verified: Full round-trip (right then left returns to original), multi-step moves, disable states at boundaries.
+Files changed: schema.py, node.py, repository.py, tree_service.py, engine.py, nodes.py (router), types.ts, TreeCanvas.tsx, use-tree.ts, api-client.ts
+--- END DIARY ---
+
+9. If I right-click on a node I should be able to connect that node to a different node, that is, change the parent node. All children of that node should then travel along with that node. That way, whole sub-trees should be able to be moved. User should be able to right-click, select "attach node to" or something like that, and then enter a node number in a dialog. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #9) ---
+Implementation:
+- Backend was already fully implemented (move_subtree service, API endpoint POST /nodes/{id}/move, API client, React hook useMoveNode, MCP tool, CLI command)
+- Frontend only: Added "Attach to..." button to node context menu (hidden for root nodes), modal dialog with number input, BFS index reverse mapping, comprehensive client + server-side error handling
+- Dialog shows node # and title, has Cancel/Move buttons, displays errors inline in red
+- Client-side validation: self-attach, same-parent, non-existent node number, invalid input
+- Server-side validation: cycle detection (descendant check), cross-tree check, root protection
+
+Review Cycles (5 total):
+- Cycle 1 (PM - manual via Playwright): 9/9 scenarios PASS. Basic flow, all error cases, root node hidden, round-trip move.
+- Cycle 2 (Designer): 5/5 PASS. Backdrop dismiss, Escape dismiss, empty input, visual layout, console clean. 2x P2 (subtle backdrop, no as-you-type validation).
+- Cycle 3 (OST Expert): 4/4 PASS. Solution moved between branches, leaf node moved, node count preserved (13), round-trip verified. 1x P2 (BFS numbers shift after moves — expected).
+- Cycle 4 (QA - edge cases): 7/7 PASS on FocusFlow tree (35 nodes). Large subtree move, rapid open/close, zero/negative input, blank input, console clean. 1x P2 (Move button enabled for 0/negative — caught on submit).
+- Cycle 5 (PM+Designer final): 11/11 PASS. Full test matrix with all error cases + successful move + restore. 0 P0, 0 P1. STABLE.
+
+Final verdict: 0 P0, 0 P1, 4 P2 (all cosmetic). STABLE — 5 review cycles, all clean.
+
+Files changed (1): TreeCanvas.tsx (added useMoveNode import, reparent state, handlers, dialog UI, context menu button)
+--- END DIARY ---
+
+10. Assumptions should not be attached to edges any more, rather just to nodes. Also update the ost_recipe to that effect. Attaching to edges makes some sense, but it is rather confusing generally. Users should just be able to add (and see) assumptions directly in the nodes. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #10) ---
+Implementation:
+- Backend: Added `assumption` (Text) and `evidence` (Text) columns to NodeRow. Updated NodeCreate, NodeUpdate, Node models. Repository add_node, update_node, _node_from_row, restore_snapshot all handle new fields. Migration in engine.py adds columns if missing.
+- Validation: Rewrote check_edge_completeness to check node.assumption instead of edge existence. Tests updated (test_missing_assumptions_warned, test_node_with_assumption_no_warning).
+- Frontend: Added assumption/evidence textareas to NodeDetailPanel with 800ms debounced auto-save. Placeholder shows parent name ("Why does this matter for [parent]?"). Removed EdgeHypothesisForm component. Simplified HypothesisEdge to plain line (no labels/badges/tooltips). OSTNode shows "has assumption" indicator. TreeCanvas removed edgeMap/nodeAssumptionCount/nodeRiskyCount. ValidationPanel label renamed "Missing Hypotheses" → "Missing Assumptions".
+- API/MCP/CLI: Updated chat.py system prompts and tool handlers. Added assumption/evidence to add_node/update_node in MCP server and CLI. Chat tools.py deprecated set_edge_hypothesis and update_edge.
+- Types: Added NodeUpdate interface in types.ts with assumption, evidence, edge_thickness, override fields. api-client.ts updated to use NodeUpdate.
+- Docs: Updated ost_recipe.md — "Edges carry assumptions" → "Nodes carry assumptions".
+
+Review cycles:
+- Cycle 1 (PM + Designer): No P0. P1: font size inconsistency between assumption/evidence textareas. P2: "has assumption" indicator could be icon, show parent context.
+- Cycle 2 (PM + OST Expert): Fixes verified (font size, contextual placeholder). P1: "Missing Hypotheses" label stale. Both reviewers CLEAN otherwise.
+- Cycle 3 (PM+Designer + Engineer): UI CLEAN. Engineer found CLI `add` missing --assumption/--evidence flags. Fixed.
+- Cycle 4 (PM+Designer final): CLEAN — no issues found. All 12 test cases pass.
+- Cycle 5 (OST Expert final): CLEAN — methodology verified correct. Validation, assumption fields, root exclusion all proper.
+
+209 tests passing. TypeScript clean.
+
+Files changed (18): schema.py, node.py, repository.py, engine.py, rules.py, tree_service.py, types.ts, NodeDetailPanel.tsx, EdgeHypothesisForm.tsx (DELETED), TreeCanvas.tsx, HypothesisEdge.tsx, OSTNode.tsx, use-tree.ts, api-client.ts, chat.py, tools.py, server.py, main.py (CLI), ValidationPanel.tsx, ost_recipe.md, test_validation.py
+--- END DIARY ---
+
+11. Remove the promotion logic from the app and also from ost_recipe. This is too complicated and should be managed manually by the PM. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #11) ---
+Implementation:
+- Documentation-only cleanup. Promotion logic was never implemented as executable code — it existed only as conceptual guidance in markdown docs.
+- docs/ost_recipe.md: Rewrote Step 5 from "Assumption Promotion" with Promotion Rule/Path A/Path B/Scope Test/Cold Pizza example → simple "Evaluate Assumptions" guidance. Simplified Step 6 (removed "risky assumption from Step 5" language). Simplified Step 7 (removed "riskiest assumption" language). Updated Experiment node description (removed "risky").
+- CLAUDE.md: Changed "promotion rules" → "structural rules" in two places (Key Technical Details and Project Structure).
+- docs/requirements.md: Removed "Promote assumptions" row from capabilities table. Removed "Promotion rule enforcement" from validation rules list.
+- No code changes — all tests remain passing.
+
+Review Cycles (2 total):
+- Cycle 1 (PM review): Found 5 P1s — CLAUDE.md data model description stale ("EdgeHypotheses with type and risky flag"), requirements.md had "risky assumption" in Experiment description, "Edges carry assumptions" (should be Nodes), "Edge hypothesis completeness" (should be Assumption completeness), validation rules.py had "riskiest assumption" in messages. All fixed.
+- Cycle 2 (OST Expert review): Confirmed methodology is sound and closer to canonical OST practice. Same requirements.md P1 (already fixed). P2 suggestions: optional bridging sentence in Step 5, decomposition depth guidance. Both deemed non-blocking — current recipe sufficient for experienced PMs.
+
+Final: 0 P0, 0 P1 remaining, 2 P2 (cosmetic). STABLE after 2 review cycles.
+209 tests passing. No code logic changed.
+
+Files changed (4): docs/ost_recipe.md, CLAUDE.md, docs/requirements.md, packages/ost_core/src/ost_core/validation/rules.py
+--- END DIARY ---
+
+12. Simplify the node-"Detail" dialog: 1) Just have one assumption text box and one evidence text box -- remove the ability to add multiple ones. 2) Remove the dropdown that allows noting the "type" of assumption (like "problem", "feasibility" etc); this is all a bit too much over-engineering. 3) Remove the "risky" checkmark. 4) Remove the "Add assumption" Button. Whatever is put into the dialogs just stays there. Focus view and "Add child" dialog should remain. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #12) ---
+Implementation:
+- Ticket #10 already accomplished ALL UI requirements: single assumption textarea, single evidence textarea, debounced auto-save (800ms), no type dropdown, no risky checkbox, no "Add assumption" button. Focus View and Add Child retained.
+- This ticket was verification-only. No code changes needed.
+- Frontend type definitions (HypothesisType, EdgeHypothesis) left intact — still used by snapshot data and backend API responses.
+- Frontend API client edge methods left intact — no harm, may be used by snapshot features.
+
+Verification:
+- 209 Python tests passing, TypeScript clean (npx tsc --noEmit)
+- Visual verification via Playwright: NodeDetailPanel shows simplified layout across all node types (Outcome, Opportunity, Child Opportunity, Solution, Experiment, Epic)
+- Auto-save verified: assumption text persists across full page refresh
+- Network requests confirm PATCH fires after debounce
+
+Review Cycles (5 total, ALL CLEAN):
+- Cycle 1 (PM - end-to-end walkthrough): 5 nodes tested across 4 types. All 11 checks PASS per node. Validation tab confirmed "assumption" terminology. Zero issues.
+- Cycle 2 (PM - edge cases): Rapid node switching, context menu (no hypothesis options), "has assumption" badge toggle, long text handling, empty states, cross-tab terminology. Zero issues.
+- Cycle 3 (Designer - layout & visual): 8 focus areas (visual hierarchy, information density, textarea UX, cross-type consistency, Focus View, Add Child, tabs, responsive). All PASS. Zero issues.
+- Cycle 4 (Designer - interaction design): Click-to-edit title sync, Add Child flow + delete, Chat-about-node, Focus View navigation, cross-panel consistency (assumption count in Validate tab). All PASS. Zero issues.
+- Cycle 5 (QA - final stability): Tested across 3 trees (Miraculix 13 nodes, FocusFlow 35 nodes, Case Management BVG 48 nodes) in 2 projects. 10-point final checklist all PASS. Zero console errors. Zero issues.
+
+Final verdict: 0 P0, 0 P1, 0 P2, 0 P3. STABLE — 5 review cycles, all clean. No code changes required.
+--- END DIARY ---
+
+13. Light font toggle for dark fill colors. When bubble types or tags have dark fill colors (solid fill), the default dark text becomes unreadable. Add a simple toggle to switch to light (white) text for improved contrast. Should be configurable on bubble type defaults, tags, and per-node style overrides. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #13) ---
+Implementation:
+- Backend: Added font_light boolean at three cascading levels. BubbleTypeDefault (Pydantic model, JSON column, no migration needed). ProjectTagRow.font_light column + migration. NodeRow.override_font_light nullable column + migration. Repository maps all three in CRUD and snapshot save/restore.
+- API: Pydantic models auto-expose new fields through existing endpoints. No router changes.
+- MCP: Added font_light params to create_tag, update_tag, update_node tools with docstrings.
+- CLI: Added --font-light/--no-font-light options to tag create/update. Added "Light Font" column to tag list table.
+- Frontend: TypeScript types updated (BubbleTypeDefault, Tag, Node, NodeUpdate). TreeCanvas computes fontLight cascade: bubble type default → tag (first tag with fill) → node override. OSTNode renders conditional white text classes (title, description, index badge, status badge, assumption indicator). fontLight only activates when hasFill is true (fillColor !== null && fillStyle !== "none"), preventing white-on-white invisible text.
+- ContextPanel: Light checkbox for each bubble type row and each tag row. Preview swatch shows "L" indicator (not misleading fill).
+- NodeStyleDialog: override_font_light toggle with preview. Accepts inheritedFontLight prop for accurate preview when override is null.
+- Tests: 6 new backend tests (test_repository.py + test_api.py). 209+ tests passing, TypeScript clean.
+
+Review Cycles (5 total):
+- Cycle 1 (PM walkthrough): CLEAN with 2 P2s: (1) NodeStyleDialog preview didn't reflect inherited fontLight state, (2) No warning when enabling Light on type with no solid fill (deferred).
+- Cycle 2 (Designer): P1 found — white text on white background when font_light=true on bubble type but node has NO solid fill. P2 — ContextPanel preview swatch misleadingly fills with border_color. P2 — "Epiccustom" label concatenation (pre-existing).
+- Cycle 3 (QA cascade test): CLEAN — all 7 cascade scenarios passed (default, bubble type, tag override, node override, clearing, dialog preview, reset).
+- Cycle 4 (PM post-fix): CLEAN — all 5 test scenarios passed (no-fill dark text, fill white text, remove fill revert, tag solid+light, swatch "L" indicator).
+- Cycle 5 (Final stability): CLEAN — fill-gated fontLight tested across all scenarios, test data cleaned up.
+
+Key fixes:
+- P1: Added hasFill guard in OSTNode.tsx — fontLight only activates when fillColor !== null && fillStyle !== "none"
+- P2: Changed ContextPanel swatch from border_color fill to white background with "L" text indicator
+- P2: Added inheritedFontLight prop to NodeStyleDialog for accurate cascade preview
+
+Final verdict: 0 P0, 0 P1 remaining, 1 P2 remaining (Epiccustom label, pre-existing). STABLE — 5 review cycles, last 3 clean.
+209+ tests passing. TypeScript clean.
+
+Files changed (17): project.py, tag.py, node.py, schema.py, repository.py, engine.py, server.py (MCP), main.py (CLI), types.ts, api-client.ts, use-tree.ts, TreeCanvas.tsx, OSTNode.tsx, ContextPanel.tsx, NodeStyleDialog.tsx, test_repository.py, test_api.py
+--- END DIARY ---
+
+14. Remove dedicated Validate tab, integrate validation into AI chat and status indicator. The standalone Validate tab feels contrived and is unlikely to be used. Users already get validation guidance from the AI chat during tree building. [STATUS: IN PROGRESS]
+
+Problem analysis:
+- Dedicated "Validate" tab requires manual click to run - interrupts flow
+- Redundant with AI chat which already guides OST methodology
+- Validation of in-progress trees generates noise (incomplete branches are expected)
+- Real OSTs are messy during discovery - strict validation may discourage exploration
+- Tab is buried in bottom panel, easy to forget
+
+When validation IS valuable:
+- "Is my tree ready to present?" before stakeholder reviews
+- Learning OST methodology for newcomers
+- Team quality standards before discussions
+
+Solution:
+1. Remove "Validate" button from bottom panel tabs
+2. Keep validation engine/logic (still valuable for chat and programmatic use)
+3. AI chat becomes primary validation interface (respond to "check my tree", "validate", "is this ready?")
+4. Add tree health status indicator in UI header (🟢 Good / 🟡 N warnings / 🔴 N errors)
+5. Keep API/MCP/CLI validation endpoints for programmatic access
+
+--- DIARY (Ticket #14) ---
+Implementation:
+- Frontend: Removed "validation" from BOTTOM_TABS and BottomPanelTab type. Deleted ValidationPanel.tsx (300 lines). Created TreeHealthIndicator.tsx component showing colored status pill (green/amber/red) based on validationReport. Added indicator to main app header next to Chat button. Added "Check Tree" button to ChatPanel header for quick validation access.
+- Backend: Enhanced system prompts in chat.py to format validation results with visual indicators (✅/⚠️/❌), group issues by rule, use node references, explain WHY issues matter, and offer help. Auto-validate continues running in background (useAutoValidate hook, 2s debounce).
+- Architecture: Validation engine, API endpoints, MCP tools, CLI commands all preserved unchanged.
+- Tests: All 222 Python tests pass, TypeScript compiles cleanly.
+
+Review Cycles (3 total):
+- Cycle 1 (PM + Designer): All core functionality PASS. TreeHealthIndicator positioning good, click behavior works, "Check Tree" button functional, system prompts enhanced. 0 P0/P1. 2 P2s (visual polish: subtle ring on warnings/errors, tooltip consistency).
+- Cycle 2 (Designer edge cases): Edge case handling STRONG. Rapid clicking, chat open/close, auto-validation, tree switching all PASS. Console shows expected 400 errors (missing API key - acceptable in test env). Could not test green "Tree OK" state (all trees had validation issues). 0 P0. 1 P1 downgraded to P2 (console error handling is expected behavior for missing API key).
+- Cycle 3 (QA stability): ALL CLEAN. Cross-tree switching, new tree creation, auto-validation, state persistence, rapid clicks, TypeScript compilation all PASS. Zero console warnings. Performance excellent. 0 P0/P1/P2.
+
+Post-review refinement:
+- Removed "Check Tree" button from ChatPanel header (redundant)
+- Removed TreeHealthIndicator component entirely (user preference - keep validation purely conversational)
+- Validation now accessible ONLY via natural chat conversation ("validate", "check my tree", "is this ready?")
+- Cleanest possible UI, fully conversational validation UX - no buttons, no visual indicators, just AI guidance
+
+Final verdict: 0 P0, 0 P1, 2 P2 (cosmetic visual polish). STABLE — 3 review cycles, last cycle fully clean.
+222 tests passing. TypeScript clean. Net -344 lines (significantly simplified UX).
+
+Files changed (7): page.tsx, tree-store.ts, ValidationPanel.tsx (DELETED), TreeHealthIndicator.tsx (DELETED), ChatPanel.tsx, chat.py, tickets
+--- END DIARY ---

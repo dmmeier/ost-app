@@ -1,0 +1,27 @@
+# Pin to exact Python version to avoid dependency drift
+FROM python:3.12.8-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Copy project files
+COPY pyproject.toml ./
+COPY packages/ ./packages/
+COPY services/ ./services/
+
+# Install dependencies
+RUN uv sync
+
+# Expose port
+EXPOSE 8000
+
+# Run backend
+CMD ["uv", "run", "uvicorn", "ost_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
