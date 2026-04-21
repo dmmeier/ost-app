@@ -466,9 +466,34 @@ Files changed (12): config.py, exceptions.py, git_service.py (NEW), git.py route
 --- END DIARY ---
 
 20. Currently the tree gets very horizontally wide, because essentially the whole horizontal space taken by the children of parent node
-A is reserved also upstream, meaning no other node at the parent A level (say node B) can rest in the space above these children. 
+A is reserved also upstream, meaning no other node at the parent A level (say node B) can rest in the space above these children.
 Is there a way to add a "compact view" setting, where the tree is sort of horizontally squashed meaning the space above the children
-is not reserved and can be used by other bubbles of the same level as the parent of the children. 
+is not reserved and can be used by other bubbles of the same level as the parent of the children. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #20) ---
+Implementation:
+- Frontend-only change. No backend/API/CLI/MCP changes needed (purely visual).
+- tree-layout.ts: Added Reingold-Tilford contour-based compact layout algorithm alongside existing subtreeWidth algorithm. New `compact` boolean parameter on getLayoutedElements. When compact=true, uses bottom-up contour merging to minimize horizontal width by allowing nodes to occupy space above children of sibling subtrees.
+- tree-store.ts: Added `compactLayout: boolean` (default false) and `setCompactLayout` setter to Zustand store.
+- TreeCanvas.tsx: "Compact" toggle button in the level collapse/expand control bar (after vertical divider). Active state: dark bg + white text. Inactive: gray text. Auto-fitView with 300ms animation on toggle. Compact state passed through buildReactFlowElements → getLayoutedElements.
+
+Width reduction measurements:
+- Case Management BVG (52 nodes, unbalanced): 8080px → 6580px = **18.6% reduction**
+- FocusFlow (43 nodes, wide fan-out): 7700px → 7250px = **5.8% reduction**
+- Balanced trees: identical layout (expected — no wasted space to reclaim)
+
+Review Cycles (5 total):
+- Cycle 1 (PM + Designer agent): CLEAN. No P0/P1. 3x P2: auto-fit view on toggle, keyboard shortcut, richer tooltip. Fixed P2 #1 (auto-fit) and P2 #3 (tooltip).
+- Cycle 2 (QA edge cases agent): CLEAN. Tested 2-node, balanced (16), fan-out (43), unbalanced (52). Programmatic overlap detection: 0 overlaps across all trees. Auto-fit animation verified.
+- Cycle 3 (Manual Playwright): Verified tag filter + compact, level collapse + compact, context menu + compact, tree switching with compact persisted. 0 overlaps.
+- Cycle 4 (Small tree): 2-node tree renders identically in compact/wide. No crash.
+- Cycle 5 (Miraculix 16-node): Balanced tree, compact renders correctly with edges clean.
+
+Final verdict: 0 P0, 0 P1, 1 P2 remaining (keyboard shortcut — nice-to-have). STABLE — 5 review cycles, all clean.
+232 tests passing. TypeScript clean.
+
+Files changed (3): tree-layout.ts, tree-store.ts, TreeCanvas.tsx
+--- END DIARY ---
 
 21. I do not like the current "Assumption" initial dialog that says "Why does this matter...". This should be improved. The point is:
 In an opportunity we want to know: "Why do we think this is actually a problem" (we do not want to solve something that is actually not a problem), and "why does solving this opportunity impact the outcome". 
