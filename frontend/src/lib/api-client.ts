@@ -1,4 +1,4 @@
-import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse } from "./types";
+import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -115,12 +115,25 @@ export const api = {
       }),
   },
   git: {
-    status: () => fetchAPI<GitStatusResponse>("/git/status"),
-    commit: (treeId: string, commitMessage: string) =>
+    status: (projectId: string) => fetchAPI<GitStatusResponse>(`/git/status/${projectId}`),
+    updateConfig: (projectId: string, data: { remote_url?: string; branch?: string }) =>
+      fetchAPI<GitStatusResponse>(`/git/config/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    commit: (treeId: string, commitMessage: string, authorName?: string, authorEmail?: string) =>
       fetchAPI<GitCommitResponse>("/git/commit", {
         method: "POST",
-        body: JSON.stringify({ tree_id: treeId, commit_message: commitMessage }),
+        body: JSON.stringify({
+          tree_id: treeId,
+          commit_message: commitMessage,
+          author_name: authorName || "",
+          author_email: authorEmail || "",
+        }),
       }),
+    authors: (projectId: string) => fetchAPI<GitAuthor[]>(`/git/authors/${projectId}`),
+    history: (projectId: string, limit: number = 50) =>
+      fetchAPI<GitCommitLog[]>(`/git/history/${projectId}?limit=${limit}`),
   },
 };
 

@@ -932,27 +932,43 @@ def tag_remove(
 
 
 @git_app.command("status")
-def git_status():
+def git_status(
+    project_id: Optional[str] = typer.Option(None, "--project-id", help="Project ID (show project-level config)"),
+):
     """Show git export configuration status."""
     from ost_core.config import get_settings
 
     settings = get_settings()
-    if not settings.git_remote_url:
-        console.print("[yellow]Git export not configured.[/yellow]")
-        console.print("Set OST_GIT_REMOTE_URL in your environment or .env file.")
-        return
+    service = _get_service()
 
     table = Table(title="Git Export Configuration")
     table.add_column("Setting", style="bold")
     table.add_column("Value")
 
-    # Mask token in URL
-    url = settings.git_remote_url
-    table.add_row("Remote URL", url)
-    table.add_row("Branch", settings.git_branch)
-    table.add_row("User Name", settings.user_name or "[dim]not set[/dim]")
-    table.add_row("User Email", settings.user_email or "[dim]not set[/dim]")
+    if project_id:
+        try:
+            project = service.get_project(_resolve_project_id(project_id))
+        except Exception as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
+        remote_url = project.git_remote_url or settings.git_remote_url or ""
+        branch = project.git_branch or settings.git_branch or "main"
+        table.add_row("Project", f"{project.name} ({project.id})")
+        table.add_row("Remote URL (project)", project.git_remote_url or "[dim]not set (using env)[/dim]")
+        table.add_row("Branch (project)", project.git_branch or "[dim]not set (using env)[/dim]")
+    else:
+        remote_url = settings.git_remote_url
+        branch = settings.git_branch
+
+    table.add_row("Remote URL (resolved)", remote_url or "[dim]not configured[/dim]")
+    table.add_row("Branch (resolved)", branch)
     table.add_row("Token", "[green]set[/green]" if settings.resolved_git_token else "[dim]not set[/dim]")
+
+    if not remote_url:
+        console.print(table)
+        console.print("[yellow]Git export not configured.[/yellow]")
+        console.print("Set remote URL via project config or OST_GIT_REMOTE_URL in .env.")
+        return
 
     console.print(table)
 
@@ -961,17 +977,20 @@ def git_status():
 def git_commit(
     tree_id: str = typer.Argument(..., help="Tree ID (or prefix)"),
     message: str = typer.Option("", "-m", "--message", help="Commit message"),
+    author_name: Optional[str] = typer.Option(None, "--author-name", help="Author name"),
+    author_email: Optional[str] = typer.Option(None, "--author-email", help="Author email"),
 ):
     """Export a tree as JSON and commit + push to the configured git remote."""
     from ost_core.config import get_settings
     from ost_core.exceptions import (
+        GitAuthenticationError,
         GitNotConfiguredError,
         GitOperationError,
         GitPushConflictError,
+        ProjectNotFoundError,
+        TreeNotFoundError,
     )
     from ost_core.services.git_service import commit_tree_to_git
-
-    from ost_core.exceptions import TreeNotFoundError, ProjectNotFoundError
 
     service = _get_service()
     settings = get_settings()
@@ -989,6 +1008,13 @@ def git_commit(
 
     commit_msg = message or f"Update {tree.name}"
 
+    # Resolve config: project-level > env-level
+    remote_url = project.git_remote_url or settings.git_remote_url or ""
+    branch = project.git_branch or settings.git_branch or "main"
+    token = settings.resolved_git_token
+    resolved_author_name = author_name or settings.user_name or ""
+    resolved_author_email = author_email or settings.user_email or ""
+
     try:
         with console.status("Committing to git..."):
             result = commit_tree_to_git(
@@ -996,10 +1022,18 @@ def git_commit(
                 project_name=project.name,
                 tree_name=tree.name,
                 commit_message=commit_msg,
-                settings=settings,
+                remote_url=remote_url,
+                branch=branch,
+                token=token,
+                author_name=resolved_author_name,
+                author_email=resolved_author_email,
             )
     except GitNotConfiguredError as e:
         console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except GitAuthenticationError as e:
+        console.print(f"[red]Authentication failed:[/red] {e}")
+        console.print("[yellow]Tip: Set GIT_TOKEN in .env for HTTPS authentication.[/yellow]")
         raise typer.Exit(1)
     except GitPushConflictError as e:
         console.print(f"[red]Push conflict:[/red] {e}")
@@ -1009,14 +1043,118 @@ def git_commit(
         raise typer.Exit(1)
 
     if result.no_changes:
-        console.print(f"[yellow]No changes — tree JSON is already up to date.[/yellow]")
+        console.print("[yellow]No changes — tree JSON is already up to date.[/yellow]")
         console.print(f"  File: {result.file_path}")
         console.print(f"  Branch: {result.branch}")
     else:
-        console.print(f"[green]Committed and pushed![/green]")
+        console.print("[green]Committed and pushed![/green]")
         console.print(f"  SHA: {result.commit_sha[:12]}")
         console.print(f"  File: {result.file_path}")
         console.print(f"  Branch: {result.branch}")
+
+        # Log the commit
+        if resolved_author_name and resolved_author_email:
+            try:
+                service.create_git_commit_log(
+                    project_id=tree.project_id,
+                    tree_id=tree.id,
+                    commit_sha=result.commit_sha,
+                    author_name=resolved_author_name,
+                    author_email=resolved_author_email,
+                    commit_message=commit_msg,
+                    file_path=result.file_path,
+                    branch=result.branch,
+                    remote_url=remote_url,
+                )
+            except Exception:
+                pass
+
+
+@git_app.command("config")
+def git_config(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+    remote_url: Optional[str] = typer.Option(None, "--remote-url", help="Git remote URL"),
+    branch: Optional[str] = typer.Option(None, "--branch", help="Git branch"),
+):
+    """Set git remote URL and/or branch for a project."""
+    from ost_core.models import ProjectUpdate
+
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+
+    update_data = ProjectUpdate()
+    if remote_url is not None:
+        update_data.git_remote_url = remote_url
+    if branch is not None:
+        update_data.git_branch = branch
+
+    if remote_url is None and branch is None:
+        console.print("[yellow]No config specified. Use --remote-url and/or --branch.[/yellow]")
+        return
+
+    project = service.update_project(pid, update_data)
+    console.print(f"[green]Updated git config for project:[/green] {project.name}")
+    if project.git_remote_url:
+        console.print(f"  Remote: {project.git_remote_url}")
+    console.print(f"  Branch: {project.git_branch}")
+
+
+@git_app.command("authors")
+def git_authors(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+):
+    """List distinct authors from git commit history."""
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+    authors = service.get_git_authors(pid)
+
+    if not authors:
+        console.print("[dim]No commit authors found.[/dim]")
+        return
+
+    table = Table(title="Git Authors")
+    table.add_column("Name", style="bold")
+    table.add_column("Email")
+
+    for a in authors:
+        table.add_row(a.name, a.email)
+
+    console.print(table)
+
+
+@git_app.command("history")
+def git_history(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+    limit: int = typer.Option(20, "--limit", help="Number of commits to show"),
+):
+    """Show git commit history for a project."""
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+    logs = service.list_git_commit_logs(pid, limit=limit)
+
+    if not logs:
+        console.print("[dim]No commits found.[/dim]")
+        return
+
+    table = Table(title="Git Commit History")
+    table.add_column("SHA", style="dim")
+    table.add_column("Author", style="bold")
+    table.add_column("Message")
+    table.add_column("File")
+    table.add_column("Branch")
+    table.add_column("Date", style="dim")
+
+    for log in logs:
+        table.add_row(
+            str(log.commit_sha)[:12],
+            f"{log.author_name} <{log.author_email}>",
+            log.commit_message[:50] + ("..." if len(log.commit_message) > 50 else ""),
+            log.file_path,
+            log.branch,
+            str(log.created_at)[:19],
+        )
+
+    console.print(table)
 
 
 if __name__ == "__main__":

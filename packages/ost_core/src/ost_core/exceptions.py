@@ -73,6 +73,11 @@ class GitOperationError(OSTError):
         super().__init__(f"Git operation failed: {message}")
 
 
+class GitAuthenticationError(OSTError):
+    def __init__(self, message: str = "Git authentication failed. Set GIT_TOKEN in .env for HTTPS authentication."):
+        super().__init__(message)
+
+
 class GitPushConflictError(OSTError):
     def __init__(self, message: str = "Push failed after retry — manual resolution required"):
         super().__init__(message)

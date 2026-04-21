@@ -38,6 +38,8 @@ class ProjectRow(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     project_context: Mapped[str] = mapped_column(Text, default="")
     bubble_defaults: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    git_remote_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    git_branch: Mapped[str] = mapped_column(String(100), default="main")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -214,4 +216,31 @@ class TreeSnapshotRow(Base):
 
     __table_args__ = (
         Index("ix_snapshot_tree_created", "tree_id", "created_at"),
+    )
+
+
+class GitCommitLogRow(Base):
+    """Log of git commits made through the app."""
+
+    __tablename__ = "git_commit_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    tree_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("trees.id", ondelete="SET NULL"), nullable=True
+    )
+    commit_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    author_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    author_email: Mapped[str] = mapped_column(String(200), nullable=False)
+    commit_message: Mapped[str] = mapped_column(Text, default="")
+    file_path: Mapped[str] = mapped_column(String(500), default="")
+    branch: Mapped[str] = mapped_column(String(100), default="main")
+    remote_url: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    __table_args__ = (
+        Index("ix_git_commit_log_project", "project_id"),
+        Index("ix_git_commit_log_project_created", "project_id", "created_at"),
     )

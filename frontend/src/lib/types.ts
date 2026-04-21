@@ -19,6 +19,8 @@ export interface Project {
   description: string;
   project_context: string;
   bubble_defaults: BubbleDefaults | null;
+  git_remote_url: string | null;
+  git_branch: string;
   created_at: string;
   updated_at: string;
 }
@@ -192,8 +194,7 @@ export interface GitStatusResponse {
   configured: boolean;
   remote_url: string;
   branch: string;
-  user_name: string;
-  user_email: string;
+  token_configured: boolean;
 }
 
 export interface GitCommitResponse {
@@ -202,4 +203,23 @@ export interface GitCommitResponse {
   branch: string;
   pushed: boolean;
   no_changes: boolean;
+}
+
+export interface GitAuthor {
+  name: string;
+  email: string;
+}
+
+export interface GitCommitLog {
+  id: string;
+  project_id: string;
+  tree_id: string | null;
+  commit_sha: string;
+  author_name: string;
+  author_email: string;
+  commit_message: string;
+  file_path: string;
+  branch: string;
+  remote_url: string;
+  created_at: string;
 }

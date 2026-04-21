@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
-from ost_core.config import Settings
 from ost_core.exceptions import (
+    GitAuthenticationError,
     GitNotConfiguredError,
     GitOperationError,
     GitPushConflictError,
@@ -33,6 +33,25 @@ def slugify(name: str) -> str:
     return s or "unnamed"
 
 
+_AUTH_ERROR_PATTERNS = [
+    "authentication failed",
+    "invalid credentials",
+    "could not read username",
+    "terminal prompts disabled",
+    "fatal: could not read password",
+    "403",
+    "401",
+    "remote: invalid username or password",
+    "support for password authentication was removed",
+]
+
+
+def _detect_auth_error(stderr: str) -> bool:
+    """Check if git stderr output indicates an authentication failure."""
+    lower = stderr.lower()
+    return any(pat in lower for pat in _AUTH_ERROR_PATTERNS)
+
+
 def _run_git(args: list[str], cwd: Path, timeout: int = 60) -> subprocess.CompletedProcess:
     """Run a git command and return the result. Raises GitOperationError on failure."""
     cmd = ["git"] + args
@@ -45,6 +64,12 @@ def _run_git(args: list[str], cwd: Path, timeout: int = 60) -> subprocess.Comple
             timeout=timeout,
         )
         if result.returncode != 0:
+            if _detect_auth_error(result.stderr):
+                raise GitAuthenticationError(
+                    f"Git authentication failed for `git {' '.join(args)}`. "
+                    "Set GIT_TOKEN in .env for HTTPS authentication, "
+                    "or configure SSH keys for SSH URLs."
+                )
             raise GitOperationError(
                 f"`git {' '.join(args)}` failed (rc={result.returncode}): {result.stderr.strip()}"
             )
@@ -53,6 +78,8 @@ def _run_git(args: list[str], cwd: Path, timeout: int = 60) -> subprocess.Comple
         raise GitOperationError(f"`git {' '.join(args)}` timed out after {timeout}s")
     except FileNotFoundError:
         raise GitOperationError("git is not installed or not on PATH")
+    except (GitAuthenticationError, GitOperationError, GitPushConflictError):
+        raise  # re-raise our own exceptions
 
 
 def _apply_token_to_url(url: str, token: str) -> str:
@@ -108,11 +135,18 @@ def _ensure_clone(remote_url: str, branch: str, repo_dir: Path, token: str) -> N
             timeout=120,
         )
         if result.returncode != 0:
+            if _detect_auth_error(result.stderr):
+                raise GitAuthenticationError(
+                    f"Git clone authentication failed. "
+                    "Set GIT_TOKEN in .env for HTTPS authentication."
+                )
             raise GitOperationError(f"git clone failed: {result.stderr.strip()}")
     except subprocess.TimeoutExpired:
         raise GitOperationError("git clone timed out after 120s")
     except FileNotFoundError:
         raise GitOperationError("git is not installed or not on PATH")
+    except (GitAuthenticationError, GitOperationError):
+        raise
 
     if not (repo_dir / ".git").is_dir():
         raise GitOperationError(f"Clone appeared to succeed but {repo_dir}/.git not found")
@@ -123,7 +157,11 @@ def commit_tree_to_git(
     project_name: str,
     tree_name: str,
     commit_message: str,
-    settings: Settings,
+    remote_url: str,
+    branch: str = "main",
+    token: str = "",
+    author_name: str = "",
+    author_email: str = "",
 ) -> GitCommitResult:
     """Export a tree as JSON and commit + push to the configured git remote.
 
@@ -134,24 +172,21 @@ def commit_tree_to_git(
     4. Write JSON file
     5. Stage, commit, push (with one retry on push conflict)
     """
-    if not settings.git_remote_url:
+    if not remote_url:
         raise GitNotConfiguredError()
 
     _check_git_available()
 
-    token = settings.resolved_git_token
-    branch = settings.git_branch
-    remote_url = settings.git_remote_url
     repo_dir = _repo_dir_for_url(remote_url)
 
     # 1. Clone or verify
     _ensure_clone(remote_url, branch, repo_dir, token)
 
     # 2. Configure author for this repo
-    if settings.user_name:
-        _run_git(["config", "user.name", settings.user_name], cwd=repo_dir)
-    if settings.user_email:
-        _run_git(["config", "user.email", settings.user_email], cwd=repo_dir)
+    if author_name:
+        _run_git(["config", "user.name", author_name], cwd=repo_dir)
+    if author_email:
+        _run_git(["config", "user.email", author_email], cwd=repo_dir)
 
     # 3. Pull latest with rebase
     try:
@@ -191,19 +226,23 @@ def commit_tree_to_git(
 
     # 7. Commit
     author_flag = []
-    if settings.user_name and settings.user_email:
-        author_flag = ["--author", f"{settings.user_name} <{settings.user_email}>"]
+    if author_name and author_email:
+        author_flag = ["--author", f"{author_name} <{author_email}>"]
 
     _run_git(["commit"] + author_flag + ["-m", commit_message], cwd=repo_dir)
 
     # 8. Push (with one retry)
     try:
         _run_git(["push", "origin", branch], cwd=repo_dir)
+    except GitAuthenticationError:
+        raise  # Don't retry auth failures
     except GitOperationError:
         # Retry: pull --rebase then push again
         try:
             _run_git(["pull", "--rebase", "origin", branch], cwd=repo_dir)
             _run_git(["push", "origin", branch], cwd=repo_dir)
+        except GitAuthenticationError:
+            raise
         except GitOperationError as e:
             raise GitPushConflictError(
                 f"Push failed after retry: {e}. Manual resolution may be required."

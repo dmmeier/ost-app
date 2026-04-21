@@ -948,11 +948,13 @@ class TestGitEndpoints:
     @patch("ost_api.routers.git.get_settings")
     def test_git_status_not_configured(self, mock_settings, client):
         mock_settings.return_value = Settings(git_remote_url="", git_branch="main", user_name="", user_email="")
-        r = client.get("/api/v1/git/status")
+        project = _create_project(client)
+        r = client.get(f"/api/v1/git/status/{project['id']}")
         assert r.status_code == 200
         data = r.json()
         assert data["configured"] is False
         assert data["remote_url"] == ""
+        assert "token_configured" in data
 
     @patch("ost_api.routers.git.get_settings")
     def test_git_status_configured(self, mock_settings, client):
@@ -962,12 +964,12 @@ class TestGitEndpoints:
             user_name="Test User",
             user_email="test@example.com",
         )
-        r = client.get("/api/v1/git/status")
+        project = _create_project(client)
+        r = client.get(f"/api/v1/git/status/{project['id']}")
         assert r.status_code == 200
         data = r.json()
         assert data["configured"] is True
         assert data["branch"] == "main"
-        assert data["user_name"] == "Test User"
 
     @patch("ost_api.routers.git.commit_tree_to_git")
     @patch("ost_api.routers.git.get_settings")
@@ -992,6 +994,8 @@ class TestGitEndpoints:
         r = client.post("/api/v1/git/commit", json={
             "tree_id": tree["id"],
             "commit_message": "test commit",
+            "author_name": "Test",
+            "author_email": "test@test.com",
         })
         assert r.status_code == 200
         data = r.json()
@@ -1030,12 +1034,57 @@ class TestGitEndpoints:
         })
         assert r.status_code == 409
 
+    @patch("ost_api.routers.git.commit_tree_to_git")
+    @patch("ost_api.routers.git.get_settings")
+    def test_git_commit_auth_error(self, mock_settings, mock_commit, client):
+        """Authentication error returns 401."""
+        from ost_core.exceptions import GitAuthenticationError
+        mock_settings.return_value = Settings(
+            git_remote_url="https://github.com/org/repo.git",
+        )
+        mock_commit.side_effect = GitAuthenticationError()
+
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+
+        r = client.post("/api/v1/git/commit", json={
+            "tree_id": tree["id"],
+            "commit_message": "test",
+        })
+        assert r.status_code == 401
+
     def test_git_commit_tree_not_found(self, client):
         r = client.post("/api/v1/git/commit", json={
             "tree_id": "00000000-0000-0000-0000-000000000000",
             "commit_message": "test",
         })
         assert r.status_code == 404
+
+    def test_git_config_update(self, client):
+        """PATCH /git/config/{project_id} saves remote_url and branch."""
+        project = _create_project(client)
+        r = client.patch(f"/api/v1/git/config/{project['id']}", json={
+            "remote_url": "https://github.com/org/new-repo.git",
+            "branch": "develop",
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["configured"] is True
+        assert data["branch"] == "develop"
+
+    def test_git_authors_empty(self, client):
+        """GET /git/authors/{project_id} returns empty list initially."""
+        project = _create_project(client)
+        r = client.get(f"/api/v1/git/authors/{project['id']}")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_git_history_empty(self, client):
+        """GET /git/history/{project_id} returns empty list initially."""
+        project = _create_project(client)
+        r = client.get(f"/api/v1/git/history/{project['id']}")
+        assert r.status_code == 200
+        assert r.json() == []
 
 
 class TestFontLightAPI:

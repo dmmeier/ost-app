@@ -500,3 +500,45 @@ In an opportunity we want to know: "Why do we think this is actually a problem" 
 Can we brainstorm something around that and then implement it. For solutions, the assumptions are around "Why do I think the proposed solution
 solves the opportunity/problem". 
 Also, in the evidence box, say instead "Supporting data, observations, statements, research...". 
+
+22. Put the viewing controls and search bar in one line of controls. So: The level shrinker, then compact view toggle, search. 
+They should all be horizontally aligned in one set of controls; like the level shrinker and the compact view toggle are now. 
+Also, make it so that the compact view toggle does not turn dark/black in compact view, but rather a light grey. Otherwise I find it too distracting visually. The text on the toggle should just say "Compact" like it does now. 
+
+23. About the git controls. First of all, I would like there to be a register card next to "Versions" that says "Git".
+I would ideally like all things Git to be controlled/user-set in there. That is: The remote, the branch, the author. As for the
+Git token, I guess that one should remain in .env in case it is needed -- right (after all, I do not want to save tokens to db since I do not want to deal with user authentication and security risks of this kind)? Please let me know as well what happens
+when the Git token is needed; what kind of error message is shown to the user (i.e. when git does not work "out of the box", e.g. when running in a Docker container)?
+For remote, branch: These should
+be saved at project level to the db. Someone else can overwrite them later, but the latest version at least should be stored.
+Also, some metadata about the git commits should be stored to db, too. As for the author: Please ask for email-address so that
+no one just writes their name down (as prompt inside the field).
+The author cannot be stored at project level, because multiple people may commit.
+In that case I would like you to offer as authors either a dropdown where either the people that have previously committed
+(compare with commit metadata) can be selected, or (through clicking on +) a new author can be chosen. Is this kind of clear?
+[STATUS: COMPLETE]
+
+--- DIARY (Ticket #23) ---
+Implementation:
+- Backend: Added git_remote_url (Text, nullable) and git_branch (String(100), default "main") columns to ProjectRow. Created GitCommitLogRow table (id, project_id FK, tree_id FK, commit_sha, author_name, author_email, commit_message, file_path, branch, remote_url, created_at) with indexes. Migration in engine.py. New Pydantic models: GitCommitLog, GitAuthor, GitProjectConfig in models/git.py. Added GitAuthenticationError exception with clear ".env GIT_TOKEN" guidance. Refactored git_service.py: explicit params instead of Settings object, _detect_auth_error pattern matching, auth-specific exception raising. Repository: create_git_commit_log, list_git_commit_logs, get_git_authors methods.
+- API: 5 endpoints — GET /git/status/{project_id} (project config + env fallback, token_configured bool), PATCH /git/config/{project_id} (save remote_url/branch to project), POST /git/commit (author params, commit logging to DB), GET /git/authors/{project_id} (distinct authors from history), GET /git/history/{project_id} (commit log, newest first, limit 50). GitAuthenticationError → HTTP 401 with GIT_TOKEN guidance.
+- CLI: Updated `ost git status` with --project-id, `ost git commit` with --author-name/--author-email. New commands: `ost git config`, `ost git authors`, `ost git history`. Catches GitAuthenticationError.
+- Frontend: New GitPanel.tsx with 4 sections (Settings, Author, Commit, History) in bottom panel "Git" tab. Settings: debounced (800ms) auto-save for remote URL + branch. Token status indicator (green "configured" / amber "not configured — set GIT_TOKEN in .env"). Author: dropdown of previous committers from history + "New author" inline name/email inputs. Commit: message textarea pre-filled with tree name, "Commit & Push" button with validation, auth error guidance. History: timeline with relative times. Deleted old GitCommitDialog.tsx from header.
+- Tests: Rewrote test_git_service.py for new function signature + added TestDetectAuthError (6 tests) + test_auth_error_on_push. Updated test_api.py git endpoints for project_id paths + added config/authors/history/auth tests. 243 tests passing, TypeScript clean.
+
+Review Cycles (5 total):
+- Cycle 1 (PM + Designer): P0 found — author resolution didn't work when authors array was empty (first use). showNewAuthor was false but name/email form was rendered, causing resolved values to be empty strings. Fixed by adding `|| authors.length === 0` to resolution logic. All 4 sections render correctly after fix.
+- Cycle 2 (Settings auto-save): P1 found — race condition in project fetch overwriting status-derived remote URL with empty string when project has null git_remote_url. PATCH sent empty remote_url. Fixed by only setting from project fetch when values are non-null. Auto-save verified: branch change preserves remote URL.
+- Cycle 3 (PM + Designer): CLEAN. Token status message clear. All sections render with proper data. No console errors. Tree switching doesn't break Git panel.
+- Cycle 4 (Cross-project tree switching): CLEAN. Switching from Case Management BVG to Miraculix tree correctly updates commit message, loads project-specific git config. No console errors.
+- Cycle 5 (Final stability): CLEAN. Switching back to Case Management BVG shows correct config. 0 console errors.
+
+Key fixes:
+- P0: Author resolution with empty authors array — added `useNewAuthorFields = showNewAuthor || authors.length === 0`
+- P1: Project fetch race condition — only overwrite remoteUrl/branch from project API when project has explicit values
+
+Final verdict: 0 P0 remaining, 0 P1 remaining, 0 P2. STABLE — 5 review cycles, last 3 clean.
+243 tests passing. TypeScript clean.
+
+Files changed (20): schema.py, engine.py, repository.py, project.py, git.py models (NEW), __init__.py (models), exceptions.py, git_service.py, tree_service.py, git.py router, main.py (CLI), types.ts, api-client.ts, tree-store.ts, GitPanel.tsx (NEW), GitCommitDialog.tsx (DELETED), page.tsx, test_git_service.py, test_api.py
+--- END DIARY ---

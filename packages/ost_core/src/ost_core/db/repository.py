@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from ost_core.db.schema import (
     ChatMessageRow,
     EdgeHypothesisRow,
+    GitCommitLogRow,
     NodeClosureRow,
     NodeRow,
     NodeTagRow,
@@ -28,6 +29,8 @@ from ost_core.models import (
     EdgeHypothesis,
     EdgeHypothesisCreate,
     EdgeHypothesisUpdate,
+    GitAuthor,
+    GitCommitLog,
     Node,
     NodeCreate,
     NodeUpdate,
@@ -97,6 +100,10 @@ class TreeRepository:
                 row.bubble_defaults = {
                     k: v.model_dump() for k, v in data.bubble_defaults.items()
                 }
+            if data.git_remote_url is not None:
+                row.git_remote_url = data.git_remote_url or None  # empty string → NULL
+            if data.git_branch is not None:
+                row.git_branch = data.git_branch or "main"
             row.updated_at = datetime.now(UTC)
             session.commit()
             session.refresh(row)
@@ -128,6 +135,8 @@ class TreeRepository:
                 description=project.description,
                 project_context=project.project_context,
                 bubble_defaults=project.bubble_defaults,
+                git_remote_url=project.git_remote_url,
+                git_branch=project.git_branch,
                 created_at=project.created_at,
                 updated_at=project.updated_at,
                 trees=trees,
@@ -763,6 +772,8 @@ class TreeRepository:
             description=row.description,
             project_context=row.project_context,
             bubble_defaults=bubble_defaults,
+            git_remote_url=row.git_remote_url,
+            git_branch=row.git_branch or "main",
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -1067,6 +1078,89 @@ class TreeRepository:
                 "created_at": row.created_at.isoformat(),
                 "snapshot_data": row.snapshot_data,
             }
+
+    # ── Git Commit Log ───────────────────────────────────────
+
+    def create_git_commit_log(
+        self,
+        project_id: UUID,
+        tree_id: UUID | None,
+        commit_sha: str,
+        author_name: str,
+        author_email: str,
+        commit_message: str = "",
+        file_path: str = "",
+        branch: str = "main",
+        remote_url: str = "",
+    ) -> GitCommitLog:
+        with self._session() as session:
+            row = GitCommitLogRow(
+                id=str(uuid4()),
+                project_id=str(project_id),
+                tree_id=str(tree_id) if tree_id else None,
+                commit_sha=commit_sha,
+                author_name=author_name,
+                author_email=author_email,
+                commit_message=commit_message,
+                file_path=file_path,
+                branch=branch,
+                remote_url=remote_url,
+            )
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            return GitCommitLog(
+                id=UUID(row.id),
+                project_id=UUID(row.project_id),
+                tree_id=UUID(row.tree_id) if row.tree_id else None,
+                commit_sha=row.commit_sha,
+                author_name=row.author_name,
+                author_email=row.author_email,
+                commit_message=row.commit_message,
+                file_path=row.file_path,
+                branch=row.branch,
+                remote_url=row.remote_url,
+                created_at=row.created_at,
+            )
+
+    def list_git_commit_logs(self, project_id: UUID, limit: int = 50) -> list[GitCommitLog]:
+        with self._session() as session:
+            rows = session.execute(
+                select(GitCommitLogRow)
+                .where(GitCommitLogRow.project_id == str(project_id))
+                .order_by(GitCommitLogRow.created_at.desc())
+                .limit(limit)
+            ).scalars().all()
+            return [
+                GitCommitLog(
+                    id=UUID(r.id),
+                    project_id=UUID(r.project_id),
+                    tree_id=UUID(r.tree_id) if r.tree_id else None,
+                    commit_sha=r.commit_sha,
+                    author_name=r.author_name,
+                    author_email=r.author_email,
+                    commit_message=r.commit_message,
+                    file_path=r.file_path,
+                    branch=r.branch,
+                    remote_url=r.remote_url,
+                    created_at=r.created_at,
+                )
+                for r in rows
+            ]
+
+    def get_git_authors(self, project_id: UUID) -> list[GitAuthor]:
+        """Get distinct authors from commit history for a project."""
+        with self._session() as session:
+            rows = session.execute(
+                select(
+                    GitCommitLogRow.author_name,
+                    GitCommitLogRow.author_email,
+                )
+                .where(GitCommitLogRow.project_id == str(project_id))
+                .group_by(GitCommitLogRow.author_name, GitCommitLogRow.author_email)
+                .order_by(GitCommitLogRow.author_name)
+            ).all()
+            return [GitAuthor(name=r[0], email=r[1]) for r in rows]
 
     def restore_snapshot(self, snapshot_id: str) -> UUID:
         """Restore a tree from a snapshot. Replaces all nodes and edges."""

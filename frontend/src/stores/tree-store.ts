@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { TreeWithNodes, Node, ValidationReport } from "@/lib/types";
 
-type BottomPanelTab = "detail" | "context" | "versions";
+type BottomPanelTab = "detail" | "context" | "versions" | "git";
 
 interface TreeStore {
   // Selected project

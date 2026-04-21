@@ -57,6 +57,10 @@ def _migrate_add_columns(engine: Engine) -> None:
         with engine.begin() as conn:
             if "bubble_defaults" not in project_columns:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN bubble_defaults TEXT"))
+            if "git_remote_url" not in project_columns:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN git_remote_url TEXT"))
+            if "git_branch" not in project_columns:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN git_branch VARCHAR(100) DEFAULT 'main'"))
 
     if "edge_hypotheses" in inspector.get_table_names():
         edge_columns = [c["name"] for c in inspector.get_columns("edge_hypotheses")]

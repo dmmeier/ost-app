@@ -23,12 +23,16 @@ from ost_core.models.project import (
     ProjectUpdate,
     ProjectWithTrees,
 )
+from ost_core.models.git import GitAuthor, GitCommitLog, GitProjectConfig
 from ost_core.models.tag import VALID_FILL_STYLES, Tag, TagCreate, TagUpdate
 from ost_core.models.tree import Tree, TreeCreate, TreeUpdate, TreeWithNodes
 
 __all__ = [
     "BubbleTypeDefault",
     "DEFAULT_BUBBLE_DEFAULTS",
+    "GitAuthor",
+    "GitCommitLog",
+    "GitProjectConfig",
     "EdgeHypothesis",
     "EdgeHypothesisCreate",
     "EdgeHypothesisUpdate",

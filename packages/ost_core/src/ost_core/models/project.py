@@ -46,6 +46,8 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     project_context: str | None = None
     bubble_defaults: dict[str, BubbleTypeDefault] | None = None
+    git_remote_url: str | None = None
+    git_branch: str | None = None
 
 
 class Project(BaseModel):
@@ -56,6 +58,8 @@ class Project(BaseModel):
     description: str = ""
     project_context: str = ""
     bubble_defaults: dict[str, BubbleTypeDefault] | None = None
+    git_remote_url: str | None = None
+    git_branch: str = "main"
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ost_core.config import Settings
 from ost_core.exceptions import (
+    GitAuthenticationError,
     GitNotConfiguredError,
     GitOperationError,
     GitPushConflictError,
@@ -15,6 +15,7 @@ from ost_core.exceptions import (
 from ost_core.services.git_service import (
     GitCommitResult,
     _apply_token_to_url,
+    _detect_auth_error,
     _repo_dir_for_url,
     commit_tree_to_git,
     slugify,
@@ -81,19 +82,28 @@ class TestRepoDirForUrl:
         assert result == Path.home() / ".ost-app" / "git-repos" / "my-repo"
 
 
+class TestDetectAuthError:
+    def test_authentication_failed(self):
+        assert _detect_auth_error("fatal: Authentication failed for ...") is True
+
+    def test_invalid_credentials(self):
+        assert _detect_auth_error("remote: Invalid credentials") is True
+
+    def test_403_response(self):
+        assert _detect_auth_error("The requested URL returned error: 403") is True
+
+    def test_password_auth_removed(self):
+        assert _detect_auth_error("Support for password authentication was removed") is True
+
+    def test_normal_error(self):
+        assert _detect_auth_error("fatal: remote origin already exists") is False
+
+    def test_empty_string(self):
+        assert _detect_auth_error("") is False
+
+
 class TestCommitTreeToGit:
     """Tests for the main commit_tree_to_git function with mocked subprocess."""
-
-    def _make_settings(self, **overrides) -> Settings:
-        defaults = {
-            "git_remote_url": "https://github.com/myorg/ost-trees.git",
-            "git_branch": "main",
-            "git_token": "",
-            "user_name": "Test User",
-            "user_email": "test@example.com",
-        }
-        defaults.update(overrides)
-        return Settings(**defaults)
 
     @patch("ost_core.services.git_service._check_git_available")
     @patch("ost_core.services.git_service._ensure_clone")
@@ -115,13 +125,16 @@ class TestCommitTreeToGit:
             MagicMock(stdout="abc123def456\n"),  # rev-parse HEAD
         ]
 
-        settings = self._make_settings()
         result = commit_tree_to_git(
             tree_json={"name": "Test Tree", "nodes": []},
             project_name="My Project",
             tree_name="Test Tree",
             commit_message="Update tree",
-            settings=settings,
+            remote_url="https://github.com/myorg/ost-trees.git",
+            branch="main",
+            token="",
+            author_name="Test User",
+            author_email="test@example.com",
         )
 
         assert isinstance(result, GitCommitResult)
@@ -148,28 +161,28 @@ class TestCommitTreeToGit:
             MagicMock(stdout="abc123def456\n"),  # rev-parse HEAD
         ]
 
-        settings = self._make_settings()
         result = commit_tree_to_git(
             tree_json={"name": "Test"},
             project_name="Proj",
             tree_name="Test",
             commit_message="Update",
-            settings=settings,
+            remote_url="https://github.com/myorg/ost-trees.git",
+            author_name="Test User",
+            author_email="test@example.com",
         )
 
         assert result.no_changes is True
         assert result.pushed is False
 
     def test_not_configured(self):
-        """Raises GitNotConfiguredError when git_remote_url is empty."""
-        settings = self._make_settings(git_remote_url="")
+        """Raises GitNotConfiguredError when remote_url is empty."""
         with pytest.raises(GitNotConfiguredError):
             commit_tree_to_git(
                 tree_json={},
                 project_name="P",
                 tree_name="T",
                 commit_message="msg",
-                settings=settings,
+                remote_url="",
             )
 
     @patch("ost_core.services.git_service._check_git_available")
@@ -180,20 +193,6 @@ class TestCommitTreeToGit:
         """Push fails once, retry (pull --rebase + push) succeeds."""
         mock_subprocess_run.return_value = MagicMock(returncode=1)  # has changes
 
-        push_fail = GitOperationError("push failed")
-        mock_run_git.side_effect = [
-            MagicMock(),  # config name
-            MagicMock(),  # config email
-            MagicMock(),  # pull
-            MagicMock(),  # add
-            MagicMock(),  # commit
-            push_fail,    # first push fails
-            MagicMock(),  # retry pull
-            MagicMock(),  # retry push succeeds
-            MagicMock(stdout="def456\n"),  # rev-parse
-        ]
-
-        # Need to handle that _run_git raises on push but succeeds on retry
         call_count = [0]
         original_side_effects = [
             MagicMock(),  # config name
@@ -218,13 +217,14 @@ class TestCommitTreeToGit:
 
         mock_run_git.side_effect = push_side_effect
 
-        settings = self._make_settings()
         result = commit_tree_to_git(
             tree_json={"name": "T"},
             project_name="P",
             tree_name="T",
             commit_message="msg",
-            settings=settings,
+            remote_url="https://github.com/myorg/ost-trees.git",
+            author_name="Test User",
+            author_email="test@example.com",
         )
         assert result.pushed is True
         assert result.commit_sha == "def456"
@@ -252,12 +252,43 @@ class TestCommitTreeToGit:
 
         mock_run_git.side_effect = side_effect
 
-        settings = self._make_settings()
         with pytest.raises(GitPushConflictError):
             commit_tree_to_git(
                 tree_json={"name": "T"},
                 project_name="P",
                 tree_name="T",
                 commit_message="msg",
-                settings=settings,
+                remote_url="https://github.com/myorg/ost-trees.git",
+                author_name="Test User",
+                author_email="test@example.com",
+            )
+
+    @patch("ost_core.services.git_service._check_git_available")
+    @patch("ost_core.services.git_service._ensure_clone")
+    @patch("ost_core.services.git_service._run_git")
+    @patch("subprocess.run")
+    def test_auth_error_on_push(self, mock_subprocess_run, mock_run_git, mock_clone, mock_check):
+        """Authentication error on push raises GitAuthenticationError."""
+        mock_subprocess_run.return_value = MagicMock(returncode=1)
+
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] <= 5:
+                return MagicMock()
+            else:
+                raise GitAuthenticationError("auth failed")
+
+        mock_run_git.side_effect = side_effect
+
+        with pytest.raises(GitAuthenticationError):
+            commit_tree_to_git(
+                tree_json={"name": "T"},
+                project_name="P",
+                tree_name="T",
+                commit_message="msg",
+                remote_url="https://github.com/myorg/ost-trees.git",
+                author_name="Test",
+                author_email="test@test.com",
             )

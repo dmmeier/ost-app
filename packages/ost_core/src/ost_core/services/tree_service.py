@@ -12,6 +12,8 @@ from ost_core.models import (
     EdgeHypothesis,
     EdgeHypothesisCreate,
     EdgeHypothesisUpdate,
+    GitAuthor,
+    GitCommitLog,
     HypothesisType,
     Node,
     NodeCreate,
@@ -386,6 +388,17 @@ class TreeService:
             nodes=visible_nodes,
             edges=visible_edges,
         )
+
+    # ── Git Commit Log ────────────────────────────────────────
+
+    def create_git_commit_log(self, **kwargs) -> GitCommitLog:
+        return self.repo.create_git_commit_log(**kwargs)
+
+    def list_git_commit_logs(self, project_id: UUID, limit: int = 50) -> list[GitCommitLog]:
+        return self.repo.list_git_commit_logs(project_id, limit=limit)
+
+    def get_git_authors(self, project_id: UUID) -> list[GitAuthor]:
+        return self.repo.get_git_authors(project_id)
 
     # ── Archive ────────────────────────────────────────────────
 
