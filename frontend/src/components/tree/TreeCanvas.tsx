@@ -897,25 +897,25 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                   onKeyDown={(e) => {
                     if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
                   }}
-                  className="px-2 py-0.5 text-sm w-36 outline-none border rounded"
+                  className="px-2 py-0.5 text-[11px] w-36 outline-none border rounded"
                 />
                 {searchQuery.trim() && (
-                  <div className="absolute top-full mt-1 left-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-72 z-50">
+                  <div className="absolute top-full mt-1 left-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-64 z-50">
                     {searchResults.length > 0 ? (
                       searchResults.map((n) => (
                         <button
                           key={n.id}
                           onClick={() => handleSearchResultClick(n.id)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-2"
+                          className="w-full text-left px-2 py-1 text-[11px] hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-1.5"
                         >
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: effectiveBubbleDefaults[n.node_type]?.border_color ?? "#94a3b8" }} />
-                          <span className="font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: effectiveBubbleDefaults[n.node_type]?.border_color ?? "#94a3b8" }} />
+                          <span>
                             <HighlightMatch text={n.title} query={searchQuery} />
                           </span>
                         </button>
                       ))
                     ) : (
-                      <div className="px-3 py-3 text-sm text-gray-400 text-center">
+                      <div className="px-2 py-2 text-[11px] text-gray-400 text-center">
                         No results for &quot;{searchQuery}&quot;
                       </div>
                     )}
