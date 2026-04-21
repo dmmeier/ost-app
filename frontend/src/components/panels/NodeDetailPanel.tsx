@@ -228,7 +228,15 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                   <textarea
                     value={assumptionDraft}
                     onChange={(e) => handleAssumptionChange(e.target.value)}
-                    placeholder={parent ? `Why does this matter for "${parent.title}"?` : "What must be true for this connection to hold?"}
+                    placeholder={
+                      selectedNode?.node_type === "opportunity" || selectedNode?.node_type === "child_opportunity"
+                        ? "What assumptions need to be tested to verify that this is a relevant problem?"
+                        : selectedNode?.node_type === "solution"
+                          ? "Why will this solve the problem?"
+                          : selectedNode?.node_type === "experiment"
+                            ? "Which assumptions are we testing?"
+                            : ""
+                    }
                     rows={2}
                     className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
@@ -240,7 +248,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                   <textarea
                     value={evidenceDraft}
                     onChange={(e) => handleEvidenceChange(e.target.value)}
-                    placeholder="Supporting data, research, observations..."
+                    placeholder="Supporting data, observations, statements, research..."
                     rows={2}
                     className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
