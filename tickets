@@ -501,9 +501,31 @@ Can we brainstorm something around that and then implement it. For solutions, th
 solves the opportunity/problem". 
 Also, in the evidence box, say instead "Supporting data, observations, statements, research...". 
 
-22. Put the viewing controls and search bar in one line of controls. So: The level shrinker, then compact view toggle, search. 
-They should all be horizontally aligned in one set of controls; like the level shrinker and the compact view toggle are now. 
-Also, make it so that the compact view toggle does not turn dark/black in compact view, but rather a light grey. Otherwise I find it too distracting visually. The text on the toggle should just say "Compact" like it does now. 
+22. Put the viewing controls and search bar in one line of controls. So: The level shrinker, then compact view toggle, search.
+They should all be horizontally aligned in one set of controls; like the level shrinker and the compact view toggle are now.
+Also, make it so that the compact view toggle does not turn dark/black in compact view, but rather a light grey. Otherwise I find it too distracting visually. The text on the toggle should just say "Compact" like it does now. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #22) ---
+Implementation:
+- Frontend-only: Merged two separate control bars (search at top-3/left-3/z-40 and level+compact at top-14/left-3/z-20) into a single unified bar at top-3/left-3/z-40.
+- Layout: Single `<div>` with `flex items-center` containing: Level collapse/expand (−, depth indicator, +) | vertical divider | Compact toggle | vertical divider | Search (icon button that expands to inline input).
+- Compact toggle active styling changed from `bg-gray-800 text-white` (dark/black) to `bg-gray-200 text-gray-700` (light grey).
+- Search results dropdown repositioned with `right-0` to align with the search input within the combined bar.
+- Controls only render when `tree.nodes.length > 1`.
+
+Verification:
+- TypeScript clean (npx tsc --noEmit)
+- 243 Python tests passing
+- Visual checks via Playwright:
+  - All three control groups in one horizontal line — PASS
+  - Compact toggle light grey when active — PASS
+  - Search opens/closes, results dropdown works — PASS
+  - Ctrl+F / ⌘F shortcut works — PASS
+  - Level collapse/expand functional — PASS
+  - Escape closes search — PASS
+
+Files changed (1): TreeCanvas.tsx
+--- END DIARY ---
 
 23. About the git controls. First of all, I would like there to be a register card next to "Versions" that says "Git".
 I would ideally like all things Git to be controlled/user-set in there. That is: The remote, the branch, the author. As for the

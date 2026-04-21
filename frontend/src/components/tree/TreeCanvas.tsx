@@ -840,55 +840,102 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
 
   return (
     <div className="w-full h-full relative">
-      {/* Search bar */}
-      <div className="absolute top-3 left-3 z-40 flex items-center gap-2">
-        {searchOpen ? (
-          <div className="bg-white rounded-lg border shadow-sm flex items-center">
-            <input
-              ref={searchInputRef}
-              autoFocus
-              type="text"
-              placeholder="Search nodes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
-              }}
-              className="px-3 py-1.5 text-sm w-48 outline-none rounded-lg"
-            />
-            {searchQuery.trim() && (
-              <div className="absolute top-full mt-1 left-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-72">
-                {searchResults.length > 0 ? (
-                  searchResults.map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => handleSearchResultClick(n.id)}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-2"
-                    >
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: effectiveBubbleDefaults[n.node_type]?.border_color ?? "#94a3b8" }} />
-                      <span className="font-medium">
-                        <HighlightMatch text={n.title} query={searchQuery} />
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-3 py-3 text-sm text-gray-400 text-center">
-                    No results for &quot;{searchQuery}&quot;
+      {/* Unified viewing controls bar */}
+      {tree.nodes.length > 1 && (
+        <div className="absolute top-3 left-3 z-40 bg-white rounded-lg border shadow-sm flex items-center gap-1 px-2 py-1">
+          {/* Level collapse/expand */}
+          <button
+            onClick={collapseOneLevel}
+            disabled={visibleDepth !== null && visibleDepth <= 0}
+            className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Collapse one level"
+          >
+            −
+          </button>
+          <span className="text-[11px] text-gray-500 min-w-[56px] text-center font-medium">
+            {visibleDepth === null
+              ? `All (${maxTreeDepth})`
+              : `Level ${visibleDepth}/${maxTreeDepth}`}
+          </span>
+          <button
+            onClick={expandOneLevel}
+            disabled={visibleDepth === null}
+            className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Expand one level"
+          >
+            +
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+
+          {/* Compact toggle */}
+          <button
+            onClick={() => setCompactLayout(!compactLayout)}
+            className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors ${
+              compactLayout
+                ? "bg-gray-200 text-gray-700"
+                : "text-gray-500 hover:bg-gray-100"
+            }`}
+            title="Toggle compact layout (pack nodes closer together)"
+          >
+            Compact
+          </button>
+
+          {/* Divider */}
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+
+          {/* Search */}
+          <div className="relative">
+            {searchOpen ? (
+              <div className="flex items-center">
+                <input
+                  ref={searchInputRef}
+                  autoFocus
+                  type="text"
+                  placeholder="Search nodes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
+                  }}
+                  className="px-2 py-0.5 text-sm w-40 outline-none border rounded"
+                />
+                {searchQuery.trim() && (
+                  <div className="absolute top-full mt-1 right-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-72 z-50">
+                    {searchResults.length > 0 ? (
+                      searchResults.map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => handleSearchResultClick(n.id)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-2"
+                        >
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: effectiveBubbleDefaults[n.node_type]?.border_color ?? "#94a3b8" }} />
+                          <span className="font-medium">
+                            <HighlightMatch text={n.title} query={searchQuery} />
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-3 text-sm text-gray-400 text-center">
+                        No results for &quot;{searchQuery}&quot;
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            ) : (
+              <button
+                onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                className="text-[11px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 flex items-center gap-1"
+                title="Search nodes (Ctrl+F)"
+              >
+                Search <kbd className="text-[10px] bg-gray-100 rounded px-1 py-0.5 text-gray-400">⌘F</kbd>
+              </button>
             )}
           </div>
-        ) : (
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="bg-white rounded-lg border shadow-sm px-3 py-1.5 text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1.5"
-            title="Search nodes (Ctrl+F)"
-          >
-            Search <kbd className="text-[10px] bg-gray-100 rounded px-1 py-0.5 ml-1 text-gray-400">⌘F</kbd>
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Legend + tag filter */}
       <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5">
@@ -936,45 +983,6 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           </div>
         )}
       </div>
-
-      {/* Level collapse/expand controls + compact toggle — positioned below search bar */}
-      {tree.nodes.length > 1 && (
-        <div className="absolute top-14 left-3 z-20 bg-white rounded-lg border shadow-sm flex items-center gap-1 px-2 py-1">
-          <button
-            onClick={collapseOneLevel}
-            disabled={visibleDepth !== null && visibleDepth <= 0}
-            className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Collapse one level"
-          >
-            −
-          </button>
-          <span className="text-[11px] text-gray-500 min-w-[56px] text-center font-medium">
-            {visibleDepth === null
-              ? `All (${maxTreeDepth})`
-              : `Level ${visibleDepth}/${maxTreeDepth}`}
-          </span>
-          <button
-            onClick={expandOneLevel}
-            disabled={visibleDepth === null}
-            className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Expand one level"
-          >
-            +
-          </button>
-          <div className="w-px h-4 bg-gray-200 mx-1" />
-          <button
-            onClick={() => setCompactLayout(!compactLayout)}
-            className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors ${
-              compactLayout
-                ? "bg-gray-800 text-white"
-                : "text-gray-500 hover:bg-gray-100"
-            }`}
-            title="Toggle compact layout (pack nodes closer together)"
-          >
-            Compact
-          </button>
-        </div>
-      )}
 
 
       <ReactFlow
