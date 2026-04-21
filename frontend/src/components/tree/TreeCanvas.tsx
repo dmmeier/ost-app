@@ -108,6 +108,7 @@ function buildReactFlowElements(
   expandedBeyondDepth: Set<string>,
   bubbleDefaults?: BubbleDefaults,
   projectTags?: Tag[],
+  compact: boolean = false,
 ) {
   const selectedNodeId = useTreeStore.getState().selectedNodeId;
   const editingNodeId = useTreeStore.getState().editingNodeId;
@@ -289,7 +290,7 @@ function buildReactFlowElements(
       },
     }));
 
-  const { nodes: lNodes, edges: lEdges } = getLayoutedElements(rfNodes, rfEdges);
+  const { nodes: lNodes, edges: lEdges } = getLayoutedElements(rfNodes, rfEdges, "TB", compact);
   return { nodes: lNodes, edges: lEdges };
 }
 
@@ -336,6 +337,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const expandOneLevel = useTreeStore((s) => s.expandOneLevel);
   const expandedBeyondDepth = useTreeStore((s) => s.expandedBeyondDepth);
   const editingNodeId = useTreeStore((s) => s.editingNodeId);
+  const compactLayout = useTreeStore((s) => s.compactLayout);
+  const setCompactLayout = useTreeStore((s) => s.setCompactLayout);
   const centerOnNodeId = useTreeStore((s) => s.centerOnNodeId);
   const setCenterOnNodeId = useTreeStore((s) => s.setCenterOnNodeId);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -363,8 +366,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const effectiveBubbleDefaults = bubbleDefaults ?? DEFAULT_BUBBLE_DEFAULTS;
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => buildReactFlowElements(tree, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags ?? undefined),
-    [tree, selectedNodeId, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags, editingNodeId]
+    () => buildReactFlowElements(tree, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags ?? undefined, compactLayout),
+    [tree, selectedNodeId, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags, editingNodeId, compactLayout]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
@@ -374,6 +377,17 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
   }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
+
+  // Auto-fit view when compact layout is toggled
+  const prevCompactRef = useRef(compactLayout);
+  useEffect(() => {
+    if (prevCompactRef.current !== compactLayout) {
+      prevCompactRef.current = compactLayout;
+      setTimeout(() => {
+        reactFlowInstance.fitView({ duration: 300, padding: 0.2 });
+      }, 50);
+    }
+  }, [compactLayout, reactFlowInstance]);
 
   // Track whether selection was triggered by keyboard (not click)
   const keyboardNavRef = useRef(false);
@@ -923,7 +937,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         )}
       </div>
 
-      {/* Level collapse/expand controls — positioned below search bar */}
+      {/* Level collapse/expand controls + compact toggle — positioned below search bar */}
       {tree.nodes.length > 1 && (
         <div className="absolute top-14 left-3 z-20 bg-white rounded-lg border shadow-sm flex items-center gap-1 px-2 py-1">
           <button
@@ -946,6 +960,18 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             title="Expand one level"
           >
             +
+          </button>
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+          <button
+            onClick={() => setCompactLayout(!compactLayout)}
+            className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors ${
+              compactLayout
+                ? "bg-gray-800 text-white"
+                : "text-gray-500 hover:bg-gray-100"
+            }`}
+            title="Toggle compact layout (pack nodes closer together)"
+          >
+            Compact
           </button>
         </div>
       )}

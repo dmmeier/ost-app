@@ -73,6 +73,10 @@ interface TreeStore {
   // Inline editing for newly created nodes
   editingNodeId: string | null;
   setEditingNodeId: (id: string | null) => void;
+
+  // Compact layout toggle
+  compactLayout: boolean;
+  setCompactLayout: (compact: boolean) => void;
 }
 
 export const useTreeStore = create<TreeStore>((set) => ({
@@ -188,6 +192,9 @@ export const useTreeStore = create<TreeStore>((set) => ({
 
   editingNodeId: null,
   setEditingNodeId: (id) => set({ editingNodeId: id }),
+
+  compactLayout: false,
+  setCompactLayout: (compact) => set({ compactLayout: compact }),
 
   expandedBeyondDepth: new Set(),
   toggleExpandBeyondDepth: (nodeId) =>
