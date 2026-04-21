@@ -840,53 +840,51 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
 
   return (
     <div className="w-full h-full relative">
-      {/* Unified viewing controls bar */}
+      {/* Unified viewing controls */}
       {tree.nodes.length > 1 && (
-        <div className="absolute top-3 left-3 z-40 bg-white rounded-lg border shadow-sm flex items-center gap-1 px-2 py-1">
-          {/* Level collapse/expand */}
-          <button
-            onClick={collapseOneLevel}
-            disabled={visibleDepth !== null && visibleDepth <= 0}
-            className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Collapse one level"
-          >
-            −
-          </button>
-          <span className="text-[11px] text-gray-500 min-w-[56px] text-center font-medium">
-            {visibleDepth === null
-              ? `All (${maxTreeDepth})`
-              : `Level ${visibleDepth}/${maxTreeDepth}`}
-          </span>
-          <button
-            onClick={expandOneLevel}
-            disabled={visibleDepth === null}
-            className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Expand one level"
-          >
-            +
-          </button>
+        <div className="absolute top-3 left-3 z-40 bg-white rounded-lg border shadow-sm flex flex-col divide-y divide-gray-100">
+          {/* Row 1: Level collapse/expand */}
+          <div className="flex items-center gap-1 px-2 py-1">
+            <button
+              onClick={collapseOneLevel}
+              disabled={visibleDepth !== null && visibleDepth <= 0}
+              className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Collapse one level"
+            >
+              −
+            </button>
+            <span className="text-[11px] text-gray-500 min-w-[56px] text-center font-medium">
+              {visibleDepth === null
+                ? `All (${maxTreeDepth})`
+                : `Level ${visibleDepth}/${maxTreeDepth}`}
+            </span>
+            <button
+              onClick={expandOneLevel}
+              disabled={visibleDepth === null}
+              className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Expand one level"
+            >
+              +
+            </button>
+          </div>
 
-          {/* Divider */}
-          <div className="w-px h-4 bg-gray-200 mx-1" />
+          {/* Row 2: Compact toggle */}
+          <div className="px-2 py-1">
+            <button
+              onClick={() => setCompactLayout(!compactLayout)}
+              className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors w-full ${
+                compactLayout
+                  ? "bg-gray-200 text-gray-700"
+                  : "text-gray-500 hover:bg-gray-100"
+              }`}
+              title="Toggle compact layout (pack nodes closer together)"
+            >
+              Compact
+            </button>
+          </div>
 
-          {/* Compact toggle */}
-          <button
-            onClick={() => setCompactLayout(!compactLayout)}
-            className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors ${
-              compactLayout
-                ? "bg-gray-200 text-gray-700"
-                : "text-gray-500 hover:bg-gray-100"
-            }`}
-            title="Toggle compact layout (pack nodes closer together)"
-          >
-            Compact
-          </button>
-
-          {/* Divider */}
-          <div className="w-px h-4 bg-gray-200 mx-1" />
-
-          {/* Search */}
-          <div className="relative">
+          {/* Row 3: Search */}
+          <div className="relative px-2 py-1">
             {searchOpen ? (
               <div className="flex items-center">
                 <input
@@ -899,10 +897,10 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                   onKeyDown={(e) => {
                     if (e.key === "Escape") { setSearchOpen(false); setSearchQuery(""); }
                   }}
-                  className="px-2 py-0.5 text-sm w-40 outline-none border rounded"
+                  className="px-2 py-0.5 text-sm w-36 outline-none border rounded"
                 />
                 {searchQuery.trim() && (
-                  <div className="absolute top-full mt-1 right-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-72 z-50">
+                  <div className="absolute top-full mt-1 left-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-72 z-50">
                     {searchResults.length > 0 ? (
                       searchResults.map((n) => (
                         <button
@@ -927,7 +925,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             ) : (
               <button
                 onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
-                className="text-[11px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 flex items-center gap-1"
+                className="text-[11px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 flex items-center gap-1 w-full justify-center"
                 title="Search nodes (Ctrl+F)"
               >
                 Search <kbd className="text-[10px] bg-gray-100 rounded px-1 py-0.5 text-gray-400">⌘F</kbd>

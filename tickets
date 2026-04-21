@@ -507,17 +507,21 @@ Also, make it so that the compact view toggle does not turn dark/black in compac
 
 --- DIARY (Ticket #22) ---
 Implementation:
-- Frontend-only: Merged two separate control bars (search at top-3/left-3/z-40 and level+compact at top-14/left-3/z-20) into a single unified bar at top-3/left-3/z-40.
-- Layout: Single `<div>` with `flex items-center` containing: Level collapse/expand (−, depth indicator, +) | vertical divider | Compact toggle | vertical divider | Search (icon button that expands to inline input).
+- Frontend-only: Merged two separate control bars (search at top-3/left-3/z-40 and level+compact at top-14/left-3/z-20) into a single unified control unit at top-3/left-3/z-40.
+- Layout: Vertical stack (`flex flex-col`) with 3 rows separated by `divide-y divide-gray-100`:
+  Row 1: Level collapse/expand (−, depth indicator, +)
+  Row 2: Compact toggle (full width)
+  Row 3: Search button (expands to inline input)
+- Initially implemented horizontally, then switched to vertical to avoid overlap with legend on smaller screens.
 - Compact toggle active styling changed from `bg-gray-800 text-white` (dark/black) to `bg-gray-200 text-gray-700` (light grey).
-- Search results dropdown repositioned with `right-0` to align with the search input within the combined bar.
 - Controls only render when `tree.nodes.length > 1`.
 
 Verification:
 - TypeScript clean (npx tsc --noEmit)
 - 243 Python tests passing
 - Visual checks via Playwright:
-  - All three control groups in one horizontal line — PASS
+  - All three control groups in one vertical unit — PASS
+  - No overlap with legend on right — PASS
   - Compact toggle light grey when active — PASS
   - Search opens/closes, results dropdown works — PASS
   - Ctrl+F / ⌘F shortcut works — PASS
