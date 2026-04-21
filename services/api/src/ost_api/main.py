@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from ost_api.routers import chat, edges, feedback, nodes, projects, settings, tags, trees, validation
+from ost_api.routers import chat, edges, feedback, git, nodes, projects, settings, tags, trees, validation
 
 app = FastAPI(
     title="OST API",
@@ -28,6 +28,7 @@ app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["feedback"])
 app.include_router(tags.router, prefix="/api/v1/tags", tags=["tags"])
 app.include_router(settings.router, prefix="/api/v1/settings", tags=["settings"])
+app.include_router(git.router, prefix="/api/v1/git", tags=["git"])
 
 
 @app.get("/health")

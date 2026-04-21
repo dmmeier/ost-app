@@ -1,5 +1,7 @@
 """Configuration settings for OST core."""
 
+import os
+
 from pydantic_settings import BaseSettings
 
 
@@ -16,7 +18,19 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     google_api_key: str = ""
 
+    # Git export settings
+    git_remote_url: str = ""
+    git_branch: str = "main"
+    git_token: str = ""
+    user_name: str = ""
+    user_email: str = ""
+
     model_config = {"env_prefix": "OST_"}
+
+    @property
+    def resolved_git_token(self) -> str:
+        """Return git token, falling back to GIT_TOKEN env var."""
+        return self.git_token or os.environ.get("GIT_TOKEN", "")
 
 
 # Runtime overrides (set via the settings API, take precedence over env vars)

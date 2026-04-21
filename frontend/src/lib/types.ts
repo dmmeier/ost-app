@@ -187,3 +187,19 @@ export interface ChatHistoryMessage {
   mode: string;
   created_at: string;
 }
+
+export interface GitStatusResponse {
+  configured: boolean;
+  remote_url: string;
+  branch: string;
+  user_name: string;
+  user_email: string;
+}
+
+export interface GitCommitResponse {
+  commit_sha: string;
+  file_path: string;
+  branch: string;
+  pushed: boolean;
+  no_changes: boolean;
+}

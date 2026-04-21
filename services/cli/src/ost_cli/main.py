@@ -32,6 +32,8 @@ edge_app = typer.Typer(name="edge", help="Manage edge hypotheses (assumptions)")
 app.add_typer(edge_app, name="edge")
 tag_app = typer.Typer(name="tag", help="Manage tags")
 app.add_typer(tag_app, name="tag")
+git_app = typer.Typer(name="git", help="Git export commands")
+app.add_typer(git_app, name="git")
 
 console = Console()
 
@@ -924,6 +926,97 @@ def tag_remove(
     service = _get_service()
     service.remove_tag_from_node(UUID(node_id), UUID(tag_id))
     console.print(f"[red]Removed tag:[/red] {tag_id[:8]}... from node {node_id[:8]}...")
+
+
+# ── Git commands ─────────────────────────────────────────────
+
+
+@git_app.command("status")
+def git_status():
+    """Show git export configuration status."""
+    from ost_core.config import get_settings
+
+    settings = get_settings()
+    if not settings.git_remote_url:
+        console.print("[yellow]Git export not configured.[/yellow]")
+        console.print("Set OST_GIT_REMOTE_URL in your environment or .env file.")
+        return
+
+    table = Table(title="Git Export Configuration")
+    table.add_column("Setting", style="bold")
+    table.add_column("Value")
+
+    # Mask token in URL
+    url = settings.git_remote_url
+    table.add_row("Remote URL", url)
+    table.add_row("Branch", settings.git_branch)
+    table.add_row("User Name", settings.user_name or "[dim]not set[/dim]")
+    table.add_row("User Email", settings.user_email or "[dim]not set[/dim]")
+    table.add_row("Token", "[green]set[/green]" if settings.resolved_git_token else "[dim]not set[/dim]")
+
+    console.print(table)
+
+
+@git_app.command("commit")
+def git_commit(
+    tree_id: str = typer.Argument(..., help="Tree ID (or prefix)"),
+    message: str = typer.Option("", "-m", "--message", help="Commit message"),
+):
+    """Export a tree as JSON and commit + push to the configured git remote."""
+    from ost_core.config import get_settings
+    from ost_core.exceptions import (
+        GitNotConfiguredError,
+        GitOperationError,
+        GitPushConflictError,
+    )
+    from ost_core.services.git_service import commit_tree_to_git
+
+    from ost_core.exceptions import TreeNotFoundError, ProjectNotFoundError
+
+    service = _get_service()
+    settings = get_settings()
+    tid = _resolve_tree_id(tree_id)
+
+    try:
+        tree = service.get_tree(tid)
+        project = service.get_project(tree.project_id)
+    except (TreeNotFoundError, ProjectNotFoundError) as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+    full_tree = service.get_full_tree(tid)
+    tree_json = full_tree.model_dump(mode="json")
+
+    commit_msg = message or f"Update {tree.name}"
+
+    try:
+        with console.status("Committing to git..."):
+            result = commit_tree_to_git(
+                tree_json=tree_json,
+                project_name=project.name,
+                tree_name=tree.name,
+                commit_message=commit_msg,
+                settings=settings,
+            )
+    except GitNotConfiguredError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except GitPushConflictError as e:
+        console.print(f"[red]Push conflict:[/red] {e}")
+        raise typer.Exit(1)
+    except GitOperationError as e:
+        console.print(f"[red]Git error:[/red] {e}")
+        raise typer.Exit(1)
+
+    if result.no_changes:
+        console.print(f"[yellow]No changes — tree JSON is already up to date.[/yellow]")
+        console.print(f"  File: {result.file_path}")
+        console.print(f"  Branch: {result.branch}")
+    else:
+        console.print(f"[green]Committed and pushed![/green]")
+        console.print(f"  SHA: {result.commit_sha[:12]}")
+        console.print(f"  File: {result.file_path}")
+        console.print(f"  Branch: {result.branch}")
 
 
 if __name__ == "__main__":

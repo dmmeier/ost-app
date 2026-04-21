@@ -1,4 +1,4 @@
-import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults } from "./types";
+import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -112,6 +112,14 @@ export const api = {
       fetchAPI<ChatResponse>("/chat/", {
         method: "POST",
         body: JSON.stringify({ tree_id: treeId, messages, provider, mode }),
+      }),
+  },
+  git: {
+    status: () => fetchAPI<GitStatusResponse>("/git/status"),
+    commit: (treeId: string, commitMessage: string) =>
+      fetchAPI<GitCommitResponse>("/git/commit", {
+        method: "POST",
+        body: JSON.stringify({ tree_id: treeId, commit_message: commitMessage }),
       }),
   },
 };

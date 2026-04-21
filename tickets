@@ -347,3 +347,84 @@ Final verdict: 0 P0, 0 P1, 2 P2 (cosmetic visual polish). STABLE — 3 review cy
 
 Files changed (7): page.tsx, tree-store.ts, ValidationPanel.tsx (DELETED), TreeHealthIndicator.tsx (DELETED), ChatPanel.tsx, chat.py, tickets
 --- END DIARY ---
+
+15. When constructing a new tree, the welcome screen in the middle says, among other things", "Build with AI Coach". At the same time,
+when the chat is open, it says "OST Coach" and "Start building an OST". This messaging is very confusing and overwhelming.
+My preferred method would be to remove the "Build with AI Coach" button in the middle pane. That makes it cleaner. 
+
+16. The "Assumption" and "Evidence" text boxes on bubbles are not resizeable but are stuck at fixed height. Can you make this adjustable.
+
+17. I do not like the current "Assumption" initial dialog that says "Why does this matter...". This should be improved. The point is:
+In an opportunity we want to know: "Why do we think this is actually a problem", and "why does solving this opportunity impact the outcome". 
+Can we brainstorm something around that and then implement it. For solutions, the assumptions are around "Why do I think the proposed solution
+solves the opportunity/problem". 
+Also, in the evidence box, say instead "Supporting data, observations, statements, research...". 
+
+18. When I create a new sub-opportunity (or generally a new bubble) I would like to then immediately be able to start typing. 
+Typing should then change the title of the bubble. This should only happen when creating a bubble using right-click etc. 
+Not every time I select a bubble. 
+
+19. Git Export: Commit tree JSONs to a remote git repo from inside the app. [STATUS: COMPLETE]
+Users should be able to push tree JSON exports to a separate remote git repo directly from the UI.
+
+Setup (via .env):
+- OST_USER_NAME — display name for git commit author
+- OST_USER_EMAIL — email for git commit author
+- GIT_TOKEN — optional, for HTTPS auth (needed in Docker / clean VMs; not needed if VM already has git auth)
+- GIT_REMOTE_URL — remote repo URL (e.g. git@github.com:myorg/ost-trees.git)
+- GIT_BRANCH — branch to commit to (default: main)
+
+UX flow:
+- "Commit to Git" button in the UI (exact placement TBD)
+- Dialog with commit message textarea
+- Backend exports tree JSON, writes to local clone at ~/.ost-app/git-repos/{slug}/
+- File path: {project-name}/{tree-name}.json (auto-derived)
+- Runs: git pull --rebase, git add, git commit --author="Name <email>", git push
+- On push conflict: retry once (pull --rebase + push). If still fails, abort and show error.
+
+Safety rules:
+- NEVER git push --force
+- NEVER auto-resolve merge conflicts
+- Fail loudly on unexpected state
+- Commits are always additive
+
+Auth strategy:
+- If GIT_TOKEN env var is set, rewrite remote URL to https://{token}@host/path.git
+- Otherwise use system git auth as-is (SSH keys, credential helpers)
+
+No user management — identity comes from .env fields. Each user has their own VM + .env.
+
+--- DIARY (Ticket #19) ---
+Implementation:
+- Backend: Added 5 git config fields to Settings (git_remote_url, git_branch, git_token, user_name, user_email) with OST_ prefix. Added resolved_git_token property with GIT_TOKEN env fallback. Added 3 exceptions (GitNotConfiguredError, GitOperationError, GitPushConflictError).
+- Core Service: Created git_service.py (~180 lines). Functions: slugify, _run_git (subprocess wrapper), _apply_token_to_url (HTTPS token injection, SSH passthrough), _ensure_clone (clone on first use, verify .git/ on re-use), _check_git_available, _repo_dir_for_url, commit_tree_to_git (main entry). Flow: validate config → clone/verify → pull --rebase → write JSON → git add → diff check → commit --author → push (with one retry on conflict). GitCommitResult Pydantic model for return data.
+- API: Created git router with GET /status (config check, masked URL) and POST /commit (tree_id + message → async commit via asyncio.to_thread). Error mapping: 400 (not configured), 404 (tree/project not found), 409 (push conflict), 500 (git error). Registered at /api/v1/git.
+- CLI: Added `ost git status` and `ost git commit <tree-id> -m "message"` subcommands. Clean error handling for TreeNotFoundError, ProjectNotFoundError, and all git exceptions. Rich status table for config display.
+- Frontend: Added GitStatusResponse and GitCommitResponse TypeScript interfaces. Added api.git.status() and api.git.commit() API client methods. Created GitCommitDialog.tsx (~140 lines): shadcn Dialog with status fetch on open, not-configured amber warning with example, configured state shows remote/branch/author info + commit message textarea + "Commit & Push" button with loading/success/error states, auto-close 3s after success. Added to page.tsx header between Chat and Settings buttons, conditionally rendered when tree is selected.
+- Tests: 19 unit tests in test_git_service.py (slugify edge cases, URL token injection, repo dir computation, happy path, no-changes, not-configured, push conflict retry success/fail). 6 API tests in test_api.py (status configured/unconfigured, commit success, not-configured 400, push conflict 409, tree not found 404). 232 total tests passing, TypeScript clean.
+
+Review Cycles (5 total):
+- Cycle 1 (PM + Designer via Playwright): CLEAN. Git button visible and discoverable between Chat and Settings. Button style consistent. Dialog "not configured" state clear with amber warning, OST_GIT_REMOTE_URL reference, and example URL. 2x P3 pre-existing (aria-describedby, Button component inconsistency).
+- Cycle 2 (Engineer - error scenarios): P1 found — CLI git commit showed traceback on non-existent tree (TreeNotFoundError not caught). P2 found — API router had overly broad Exception catch mapping all errors to 404. P2 found — _ensure_clone swallowed git clone errors. All fixed.
+- Cycle 3 (CLI end-to-end): CLEAN. All 4 CLI checks pass: git --help shows both commands, git status shows not-configured message, git commit with bad UUID gives clean error (no traceback), git appears in main help.
+- Cycle 4 (PM + Designer stability): CLEAN. Header button order correct, dialog open/close clean, re-open clean, API endpoints correct. Unused import fixed (P3).
+- Cycle 5 (Final stability): CLEAN. Conditional rendering verified (no Git button without tree), dialog state reset on re-open, API docs include endpoints, 232 tests passing.
+
+Key fixes from review:
+- P1: Wrapped service.get_tree() and service.get_project() in try/except in CLI git commit
+- P2: Narrowed API exception handlers to TreeNotFoundError and ProjectNotFoundError only
+- P2: Added returncode check to _ensure_clone subprocess.run for git clone
+- P3: Removed unused Settings import from git router
+
+Final verdict: 0 P0, 0 P1 remaining, 0 P2 remaining. STABLE — 5 review cycles, last 3 clean.
+232 tests passing. TypeScript clean.
+
+Files changed (12): config.py, exceptions.py, git_service.py (NEW), git.py router (NEW), main.py (API), main.py (CLI), types.ts, api-client.ts, GitCommitDialog.tsx (NEW), page.tsx, test_git_service.py (NEW), test_api.py
+--- END DIARY ---
+
+20. What does the "toggle interactivity" thing do on the main graph viewer?
+
+21. Currently the tree gets very horizontally wide, because essentially the whole horizontal space taken by the children of parent node
+A is reserved also upstream, meaning no other node at the parent A level (say node B) can rest in the space above these children. 
+Is there a way to add a "compact view" setting, where the tree is sort of horizontally squashed meaning the space above the children
+is not reserved and can be used by other bubbles of the same level as the parent of the children. 

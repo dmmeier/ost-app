@@ -61,3 +61,18 @@ class DuplicateRootError(OSTError):
     def __init__(self, tree_id: UUID):
         self.tree_id = tree_id
         super().__init__(f"Tree {tree_id} already has a root (Outcome) node")
+
+
+class GitNotConfiguredError(OSTError):
+    def __init__(self):
+        super().__init__("Git remote URL not configured. Set OST_GIT_REMOTE_URL in .env")
+
+
+class GitOperationError(OSTError):
+    def __init__(self, message: str):
+        super().__init__(f"Git operation failed: {message}")
+
+
+class GitPushConflictError(OSTError):
+    def __init__(self, message: str = "Push failed after retry — manual resolution required"):
+        super().__init__(message)

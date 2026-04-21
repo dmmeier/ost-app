@@ -7,8 +7,10 @@ from fastapi.testclient import TestClient
 
 from ost_api.main import app
 from ost_api.deps import get_repo, get_service, get_tree_validator
+from ost_core.config import Settings
 from ost_core.db.repository import TreeRepository
 from ost_core.db.schema import Base
+from ost_core.exceptions import GitNotConfiguredError, GitPushConflictError
 from ost_core.llm.base import LLMResponse, ToolCall
 from ost_core.services.tree_service import TreeService
 from ost_core.validation.validator import TreeValidator
@@ -938,6 +940,102 @@ class TestChatEndpoint:
         assert "onboarding" in system_prompt
         assert "Project Context (shared across all trees" in system_prompt
         assert "Tree Context (specific to this tree)" in system_prompt
+
+
+class TestGitEndpoints:
+    """Tests for git export API endpoints."""
+
+    @patch("ost_api.routers.git.get_settings")
+    def test_git_status_not_configured(self, mock_settings, client):
+        mock_settings.return_value = Settings(git_remote_url="", git_branch="main", user_name="", user_email="")
+        r = client.get("/api/v1/git/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["configured"] is False
+        assert data["remote_url"] == ""
+
+    @patch("ost_api.routers.git.get_settings")
+    def test_git_status_configured(self, mock_settings, client):
+        mock_settings.return_value = Settings(
+            git_remote_url="https://github.com/org/repo.git",
+            git_branch="main",
+            user_name="Test User",
+            user_email="test@example.com",
+        )
+        r = client.get("/api/v1/git/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["configured"] is True
+        assert data["branch"] == "main"
+        assert data["user_name"] == "Test User"
+
+    @patch("ost_api.routers.git.commit_tree_to_git")
+    @patch("ost_api.routers.git.get_settings")
+    def test_git_commit_success(self, mock_settings, mock_commit, client):
+        from ost_core.services.git_service import GitCommitResult
+
+        mock_settings.return_value = Settings(
+            git_remote_url="https://github.com/org/repo.git",
+            user_name="Test",
+            user_email="test@test.com",
+        )
+        mock_commit.return_value = GitCommitResult(
+            commit_sha="abc123",
+            file_path="project/tree.json",
+            branch="main",
+            pushed=True,
+        )
+
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+
+        r = client.post("/api/v1/git/commit", json={
+            "tree_id": tree["id"],
+            "commit_message": "test commit",
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["commit_sha"] == "abc123"
+        assert data["pushed"] is True
+
+    @patch("ost_api.routers.git.commit_tree_to_git")
+    @patch("ost_api.routers.git.get_settings")
+    def test_git_commit_not_configured(self, mock_settings, mock_commit, client):
+        mock_settings.return_value = Settings(git_remote_url="")
+        mock_commit.side_effect = GitNotConfiguredError()
+
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+
+        r = client.post("/api/v1/git/commit", json={
+            "tree_id": tree["id"],
+            "commit_message": "test",
+        })
+        assert r.status_code == 400
+
+    @patch("ost_api.routers.git.commit_tree_to_git")
+    @patch("ost_api.routers.git.get_settings")
+    def test_git_commit_push_conflict(self, mock_settings, mock_commit, client):
+        mock_settings.return_value = Settings(
+            git_remote_url="https://github.com/org/repo.git",
+        )
+        mock_commit.side_effect = GitPushConflictError()
+
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+
+        r = client.post("/api/v1/git/commit", json={
+            "tree_id": tree["id"],
+            "commit_message": "test",
+        })
+        assert r.status_code == 409
+
+    def test_git_commit_tree_not_found(self, client):
+        r = client.post("/api/v1/git/commit", json={
+            "tree_id": "00000000-0000-0000-0000-000000000000",
+            "commit_message": "test",
+        })
+        assert r.status_code == 404
 
 
 class TestFontLightAPI:
