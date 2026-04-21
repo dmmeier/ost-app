@@ -69,6 +69,10 @@ interface TreeStore {
   // Center canvas on a specific node (consumed by TreeCanvas)
   centerOnNodeId: string | null;
   setCenterOnNodeId: (id: string | null) => void;
+
+  // Inline editing for newly created nodes
+  editingNodeId: string | null;
+  setEditingNodeId: (id: string | null) => void;
 }
 
 export const useTreeStore = create<TreeStore>((set) => ({
@@ -181,6 +185,9 @@ export const useTreeStore = create<TreeStore>((set) => ({
 
   centerOnNodeId: null,
   setCenterOnNodeId: (id) => set({ centerOnNodeId: id }),
+
+  editingNodeId: null,
+  setEditingNodeId: (id) => set({ editingNodeId: id }),
 
   expandedBeyondDepth: new Set(),
   toggleExpandBeyondDepth: (nodeId) =>

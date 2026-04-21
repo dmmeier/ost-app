@@ -110,6 +110,7 @@ function buildReactFlowElements(
   projectTags?: Tag[],
 ) {
   const selectedNodeId = useTreeStore.getState().selectedNodeId;
+  const editingNodeId = useTreeStore.getState().editingNodeId;
 
   // Build children map and count map (sorted by sort_order)
   const childrenMap = new Map<string, Node[]>();
@@ -267,6 +268,7 @@ function buildReactFlowElements(
         fontLight,
         tagColorMap,
         sortOrder: node.sort_order ?? 0,
+        isEditing: node.id === editingNodeId,
       },
     };
   });
@@ -333,6 +335,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const collapseOneLevel = useTreeStore((s) => s.collapseOneLevel);
   const expandOneLevel = useTreeStore((s) => s.expandOneLevel);
   const expandedBeyondDepth = useTreeStore((s) => s.expandedBeyondDepth);
+  const editingNodeId = useTreeStore((s) => s.editingNodeId);
   const centerOnNodeId = useTreeStore((s) => s.centerOnNodeId);
   const setCenterOnNodeId = useTreeStore((s) => s.setCenterOnNodeId);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -361,7 +364,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
     () => buildReactFlowElements(tree, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags ?? undefined),
-    [tree, selectedNodeId, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags]
+    [tree, selectedNodeId, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags, editingNodeId]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
@@ -569,6 +572,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     [setSelectedNodeId]
   );
 
+  const setEditingNodeId = useTreeStore((s) => s.setEditingNodeId);
+
   const handleAddChild = (childType: string) => {
     if (!contextMenu) return;
     addNode.mutate(
@@ -581,6 +586,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         onSuccess: (newNode) => {
           setSelectedNodeId(newNode.id);
           setBottomPanel("detail");
+          setEditingNodeId(newNode.id);
         },
       }
     );

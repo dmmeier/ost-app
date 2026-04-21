@@ -230,7 +230,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                     onChange={(e) => handleAssumptionChange(e.target.value)}
                     placeholder={parent ? `Why does this matter for "${parent.title}"?` : "What must be true for this connection to hold?"}
                     rows={2}
-                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
                 </div>
                 <div>
@@ -242,7 +242,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                     onChange={(e) => handleEvidenceChange(e.target.value)}
                     placeholder="Supporting data, research, observations..."
                     rows={2}
-                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
                   />
                 </div>
               </div>

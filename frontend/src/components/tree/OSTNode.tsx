@@ -1,11 +1,13 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { NodeType, BubbleDefaults, FillStyle } from "@/lib/types";
 import { useTreeStore } from "@/stores/tree-store";
 import { DEFAULT_BUBBLE_DEFAULTS } from "@/lib/colors";
 import { getFillStyle } from "@/lib/fill-patterns";
+import { api } from "@/lib/api-client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface OSTNodeData {
   title: string;
@@ -30,6 +32,7 @@ interface OSTNodeData {
   tagFillStyle?: string | null;
   fontLight?: boolean;
   tagColorMap?: Record<string, string>;
+  isEditing?: boolean;
   [key: string]: unknown;
 }
 
@@ -37,6 +40,44 @@ function OSTNodeComponent({ id, data }: NodeProps) {
   const nodeData = data as OSTNodeData;
   const toggleCollapse = useTreeStore((s) => s.toggleCollapse);
   const toggleExpandBeyondDepth = useTreeStore((s) => s.toggleExpandBeyondDepth);
+  const setEditingNodeId = useTreeStore((s) => s.setEditingNodeId);
+  const queryClient = useQueryClient();
+
+  // Inline editing state
+  const [editTitle, setEditTitle] = useState(nodeData.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (nodeData.isEditing && inputRef.current) {
+      // Delay focus to avoid conflict with ReactFlow's setCenter animation
+      // which steals focus when centering on the newly created node
+      const timers = [
+        setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 50),
+        setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 350),
+      ];
+      return () => timers.forEach(clearTimeout);
+    }
+  }, [nodeData.isEditing]);
+
+  // Sync draft when title changes externally
+  useEffect(() => {
+    if (!nodeData.isEditing) {
+      setEditTitle(nodeData.title);
+    }
+  }, [nodeData.title, nodeData.isEditing]);
+
+  const commitEdit = useCallback(async () => {
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== nodeData.title) {
+      try {
+        await api.nodes.update(id, { title: trimmed });
+        queryClient.invalidateQueries({ queryKey: ["tree"] });
+      } catch (err) {
+        console.error("Failed to update title:", err);
+      }
+    }
+    setEditingNodeId(null);
+  }, [editTitle, nodeData.title, id, queryClient, setEditingNodeId]);
 
   // Get border styling from bubble defaults (passed via data) or fallback to defaults
   const bubbleDefaults = nodeData.bubbleDefaults ?? DEFAULT_BUBBLE_DEFAULTS;
@@ -72,7 +113,22 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           #{nodeData.index}
         </span>
       )}
-      <div className={`text-[15px] font-semibold leading-snug line-clamp-3 pr-8 ${fontLight ? "text-white" : "text-gray-900"}`}>{nodeData.title}</div>
+      {nodeData.isEditing ? (
+        <input
+          ref={inputRef}
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+            if (e.key === "Escape") { setEditTitle(nodeData.title); setEditingNodeId(null); }
+          }}
+          className={`text-[15px] font-semibold leading-snug pr-8 w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : "text-gray-900 border-gray-400"}`}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <div className={`text-[15px] font-semibold leading-snug line-clamp-3 pr-8 ${fontLight ? "text-white" : "text-gray-900"}`}>{nodeData.title}</div>
+      )}
       {nodeData.status && nodeData.status !== "active" && (
         <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${fontLight ? "bg-white/15 text-white/80" : "bg-gray-200 text-gray-600"}`}>
           {nodeData.status}

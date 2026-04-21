@@ -259,12 +259,6 @@ export default function Home() {
 }
 
 function EmptyTreePrompt({ treeId }: { treeId: string }) {
-  const { setChatMode } = useTreeStore();
-
-  const startBuilder = () => {
-    setChatMode("builder");
-  };
-
   return (
     <div className="h-full flex items-center justify-center text-gray-400">
       <div className="text-center max-w-lg">
@@ -279,17 +273,7 @@ function EmptyTreePrompt({ treeId }: { treeId: string }) {
           Good outcomes include a metric and target, e.g. &quot;Increase mobile app DAU to 500K&quot;
           or &quot;Reduce churn rate to below 5%&quot;.
         </p>
-        <div className="space-y-3">
-          <AddRootNodeButton treeId={treeId} />
-          <div className="text-xs text-gray-300">or</div>
-          <Button
-            variant="outline"
-            className="text-amber-600 border-amber-300 hover:bg-amber-50"
-            onClick={startBuilder}
-          >
-            Build with AI Coach
-          </Button>
-        </div>
+        <AddRootNodeButton treeId={treeId} />
       </div>
     </div>
   );

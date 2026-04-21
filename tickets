@@ -350,19 +350,62 @@ Files changed (7): page.tsx, tree-store.ts, ValidationPanel.tsx (DELETED), TreeH
 
 15. When constructing a new tree, the welcome screen in the middle says, among other things", "Build with AI Coach". At the same time,
 when the chat is open, it says "OST Coach" and "Start building an OST". This messaging is very confusing and overwhelming.
-My preferred method would be to remove the "Build with AI Coach" button in the middle pane. That makes it cleaner. 
+My preferred method would be to remove the "Build with AI Coach" button in the middle pane. That makes it cleaner. [STATUS: COMPLETE]
 
-16. The "Assumption" and "Evidence" text boxes on bubbles are not resizeable but are stuck at fixed height. Can you make this adjustable.
+--- DIARY (Ticket #15) ---
+Implementation:
+- Removed "Build with AI Coach" button, "or" divider, and related `setChatMode`/`startBuilder` code from EmptyTreePrompt in page.tsx
+- Welcome screen now shows only: target icon, "Start with your Outcome" heading, explanation text, and AddRootNodeButton input
 
-17. I do not like the current "Assumption" initial dialog that says "Why does this matter...". This should be improved. The point is:
-In an opportunity we want to know: "Why do we think this is actually a problem", and "why does solving this opportunity impact the outcome". 
-Can we brainstorm something around that and then implement it. For solutions, the assumptions are around "Why do I think the proposed solution
-solves the opportunity/problem". 
-Also, in the evidence box, say instead "Supporting data, observations, statements, research...". 
+Review Cycles (2 total):
+- Cycle 1 (PM + Designer): PASS. No AI Coach button, no "or" divider, spacing looks natural. P2: chat panel still shows "Start Building an OST" button (out of scope, separate component).
+- Cycle 2 (Designer): PASS. Visual spacing good, Add flow intuitive, no awkward gaps.
 
-18. When I create a new sub-opportunity (or generally a new bubble) I would like to then immediately be able to start typing. 
-Typing should then change the title of the bubble. This should only happen when creating a bubble using right-click etc. 
-Not every time I select a bubble. 
+Final verdict: 0 P0, 0 P1, 1 P2 (out of scope). STABLE.
+Files changed (1): page.tsx
+--- END DIARY ---
+
+16. The "Assumption" and "Evidence" text boxes on bubbles are not resizeable but are stuck at fixed height. Can you make this adjustable. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #16) ---
+Implementation:
+- Changed both Assumption and Evidence textareas from `resize-none` to `resize-y` in NodeDetailPanel.tsx
+- Users can now drag the bottom edge of each textarea to adjust height vertically
+
+Review Cycles (2 total):
+- Cycle 1 (PM): PASS. Both textareas have `resize-y` CSS, computed style `resize: vertical` confirmed. Drag handle visible.
+- Cycle 2 (Designer): PASS. Resize only works vertically (no horizontal overflow). Visual consistency good. P3: session persistence resets on full page reload (standard browser behavior).
+
+Final verdict: 0 P0, 0 P1, 0 P2. STABLE.
+Files changed (1): NodeDetailPanel.tsx
+--- END DIARY ---
+
+17. -- missing, nothing to be done here!
+
+18. When I create a new sub-opportunity (or generally a new bubble) I would like to then immediately be able to start typing.
+Typing should then change the title of the bubble. This should only happen when creating a bubble using right-click etc.
+Not every time I select a bubble. [STATUS: COMPLETE]
+
+--- DIARY (Ticket #18) ---
+Implementation:
+- Added `editingNodeId` / `setEditingNodeId` to Zustand tree store
+- TreeCanvas `handleAddChild` sets `editingNodeId` on success (only on creation, not selection)
+- OSTNode renders an inline `<input>` when `isEditing` is true: transparent bg, dashed underline, matching font style
+- Enter saves title via API + invalidates queries; Escape reverts to original title
+- `buildReactFlowElements` passes `isEditing` flag through node data
+
+P1 fix (Cycle 1): Auto-focus was stolen by ReactFlow's `setCenter` centering animation (300ms duration).
+Fix: Dual-timeout strategy (50ms + 350ms) to re-focus and re-select after animation completes, with proper cleanup.
+
+Review Cycles (3 total):
+- Cycle 1 (PM + Designer): PASS with P1 — auto-focus not working due to setCenter animation conflict. P2: dashed underline subtle.
+- Cycle 2 (Applied focus fix): Dual-timeout approach implemented.
+- Cycle 3 (QA verification): 7/7 test cases PASS. Auto-focus works, text fully selected, typing immediately works, Enter saves, Escape reverts, click/double-click on existing nodes does NOT trigger editing. 0 P0, 0 P1, 0 P2.
+
+Final verdict: 0 P0, 0 P1, 1 P2 (cosmetic dashed underline subtlety). STABLE — 3 review cycles, last clean.
+232 tests passing. TypeScript clean.
+Files changed (3): tree-store.ts, TreeCanvas.tsx, OSTNode.tsx
+--- END DIARY ---
 
 19. Git Export: Commit tree JSONs to a remote git repo from inside the app. [STATUS: COMPLETE]
 Users should be able to push tree JSON exports to a separate remote git repo directly from the UI.
@@ -422,9 +465,13 @@ Final verdict: 0 P0, 0 P1 remaining, 0 P2 remaining. STABLE — 5 review cycles,
 Files changed (12): config.py, exceptions.py, git_service.py (NEW), git.py router (NEW), main.py (API), main.py (CLI), types.ts, api-client.ts, GitCommitDialog.tsx (NEW), page.tsx, test_git_service.py (NEW), test_api.py
 --- END DIARY ---
 
-20. What does the "toggle interactivity" thing do on the main graph viewer?
-
-21. Currently the tree gets very horizontally wide, because essentially the whole horizontal space taken by the children of parent node
+20. Currently the tree gets very horizontally wide, because essentially the whole horizontal space taken by the children of parent node
 A is reserved also upstream, meaning no other node at the parent A level (say node B) can rest in the space above these children. 
 Is there a way to add a "compact view" setting, where the tree is sort of horizontally squashed meaning the space above the children
 is not reserved and can be used by other bubbles of the same level as the parent of the children. 
+
+21. I do not like the current "Assumption" initial dialog that says "Why does this matter...". This should be improved. The point is:
+In an opportunity we want to know: "Why do we think this is actually a problem" (we do not want to solve something that is actually not a problem), and "why does solving this opportunity impact the outcome". 
+Can we brainstorm something around that and then implement it. For solutions, the assumptions are around "Why do I think the proposed solution
+solves the opportunity/problem". 
+Also, in the evidence box, say instead "Supporting data, observations, statements, research...". 
