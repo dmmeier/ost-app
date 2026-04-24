@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     user_name: str = ""
     user_email: str = ""
 
-    model_config = {"env_prefix": "OST_"}
+    model_config = {"env_prefix": "OST_", "env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     @property
     def resolved_git_token(self) -> str:

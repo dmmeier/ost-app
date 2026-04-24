@@ -2,6 +2,7 @@
 
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
@@ -123,10 +124,22 @@ def _ensure_clone(remote_url: str, branch: str, repo_dir: Path, token: str) -> N
             raise GitOperationError(
                 f"Directory {repo_dir} exists but is not a git repo (no .git/)"
             )
+        # Ensure we're on the right branch
+        try:
+            _run_git(["checkout", branch], cwd=repo_dir)
+        except GitOperationError:
+            # Branch doesn't exist locally — create it
+            try:
+                _run_git(["checkout", "-b", branch], cwd=repo_dir)
+            except GitOperationError:
+                pass  # Already on it or other benign failure
         return
 
     repo_dir.parent.mkdir(parents=True, exist_ok=True)
     auth_url = _apply_token_to_url(remote_url, token)
+
+    # Try cloning with specific branch first; fall back to default branch
+    # for empty repos or repos where the target branch doesn't exist yet
     try:
         result = subprocess.run(
             ["git", "clone", "--branch", branch, "--single-branch", auth_url, str(repo_dir)],
@@ -137,10 +150,40 @@ def _ensure_clone(remote_url: str, branch: str, repo_dir: Path, token: str) -> N
         if result.returncode != 0:
             if _detect_auth_error(result.stderr):
                 raise GitAuthenticationError(
-                    f"Git clone authentication failed. "
+                    "Git clone authentication failed. "
                     "Set GIT_TOKEN in .env for HTTPS authentication."
                 )
-            raise GitOperationError(f"git clone failed: {result.stderr.strip()}")
+            # Branch not found or empty repo — try cloning without --branch
+            if repo_dir.exists():
+                shutil.rmtree(repo_dir)
+            result2 = subprocess.run(
+                ["git", "clone", auth_url, str(repo_dir)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result2.returncode != 0:
+                if _detect_auth_error(result2.stderr):
+                    raise GitAuthenticationError(
+                        "Git clone authentication failed. "
+                        "Set GIT_TOKEN in .env for HTTPS authentication."
+                    )
+                # Might be a completely empty repo — init locally and add remote
+                if "empty" in result2.stderr.lower() or "warning" in result2.stderr.lower() or result2.stderr.strip() == "":
+                    repo_dir.mkdir(parents=True, exist_ok=True)
+                    subprocess.run(["git", "init"], cwd=str(repo_dir), capture_output=True, text=True)
+                    subprocess.run(["git", "remote", "add", "origin", auth_url], cwd=str(repo_dir), capture_output=True, text=True)
+                else:
+                    raise GitOperationError(f"git clone failed: {result2.stderr.strip()}")
+            # Now checkout or create the target branch
+            if (repo_dir / ".git").is_dir():
+                try:
+                    _run_git(["checkout", branch], cwd=repo_dir)
+                except GitOperationError:
+                    try:
+                        _run_git(["checkout", "-b", branch], cwd=repo_dir)
+                    except GitOperationError:
+                        pass  # Already on it
     except subprocess.TimeoutExpired:
         raise GitOperationError("git clone timed out after 120s")
     except FileNotFoundError:
@@ -231,16 +274,16 @@ def commit_tree_to_git(
 
     _run_git(["commit"] + author_flag + ["-m", commit_message], cwd=repo_dir)
 
-    # 8. Push (with one retry)
+    # 8. Push (with one retry; use -u to create remote branch if needed)
     try:
-        _run_git(["push", "origin", branch], cwd=repo_dir)
+        _run_git(["push", "-u", "origin", branch], cwd=repo_dir)
     except GitAuthenticationError:
         raise  # Don't retry auth failures
     except GitOperationError:
         # Retry: pull --rebase then push again
         try:
             _run_git(["pull", "--rebase", "origin", branch], cwd=repo_dir)
-            _run_git(["push", "origin", branch], cwd=repo_dir)
+            _run_git(["push", "-u", "origin", branch], cwd=repo_dir)
         except GitAuthenticationError:
             raise
         except GitOperationError as e:

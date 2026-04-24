@@ -180,6 +180,9 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
 
   return (
     <div className="p-4 space-y-5 text-sm max-w-3xl">
+      <p className="text-xs text-gray-400">
+        Export tree data as JSON and push it to a remote Git repository.
+      </p>
       {/* ── Settings Section ─────────────────────────────── */}
       <section>
         <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">Settings</h3>
@@ -207,9 +210,10 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
             {status?.token_configured ? (
               <span className="text-green-600 font-medium">configured</span>
             ) : (
-              <span className="text-amber-600">
-                not configured — set <code className="bg-amber-50 px-1 rounded">GIT_TOKEN</code> in{" "}
-                <code className="bg-amber-50 px-1 rounded">.env</code>
+              <span className="text-gray-500">
+                not set — if your remote requires token auth, add{" "}
+                <code className="bg-gray-100 px-1 rounded">GIT_TOKEN</code> to{" "}
+                <code className="bg-gray-100 px-1 rounded">.env</code>
               </span>
             )}
           </div>

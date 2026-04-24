@@ -126,6 +126,9 @@ export function VersionPanel({ tree }: VersionPanelProps) {
 
   const timeline = (
     <div className="p-3 space-y-3 overflow-y-auto h-full">
+      <p className="text-xs text-gray-400">
+        Save and restore tree snapshots locally. Versions are stored in the app database.
+      </p>
       {/* Compact commit bar */}
       <div>
         <div className="flex gap-2 items-center">
