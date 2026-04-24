@@ -991,7 +991,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
       )}
 
       {/* Legend + tag filter */}
-      <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5">
+      <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)" }}>
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
           {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((t) => (
             <div key={t} className="flex items-center gap-1">
