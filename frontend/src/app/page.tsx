@@ -173,7 +173,7 @@ export default function Home() {
                   <ResizablePanel id="chat" defaultSize="30%" minSize="20%" maxSize="45%">
                     <div className="h-full overflow-hidden border-l bg-white">
                       {tree ? (
-                        <ChatPanel treeId={tree.id} />
+                        <ChatPanel treeId={tree.id} projectId={tree.project_id} />
                       ) : (
                         <div className="h-full flex items-center justify-center text-gray-400 text-sm">
                           <p>Select a tree to start chatting</p>

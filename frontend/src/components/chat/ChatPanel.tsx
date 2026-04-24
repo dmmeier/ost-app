@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface ChatPanelProps {
   treeId: string;
+  projectId: string;
 }
 
 interface DisplayMessage {
@@ -19,7 +20,7 @@ interface DisplayMessage {
   toolCalls?: { name: string; id: string }[];
 }
 
-export function ChatPanel({ treeId }: ChatPanelProps) {
+export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
@@ -136,10 +137,12 @@ export function ChatPanel({ treeId }: ChatPanelProps) {
       // Update conversation history with the full message trail
       setConversationHistory(response.messages);
 
-      // Refresh the tree visualization and sidebar (for renames)
+      // Refresh the tree visualization, sidebar, and project-level data
       queryClient.invalidateQueries({ queryKey: ["tree", treeId] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["project"] });
+      queryClient.invalidateQueries({ queryKey: ["bubbleDefaults", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projectTags", projectId] });
     } catch (error) {
       setDisplayMessages((prev) => [
         ...prev,

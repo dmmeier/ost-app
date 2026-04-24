@@ -29,6 +29,11 @@ from ost_core.models import (
     TreeUpdate,
     TreeWithNodes,
 )
+from ost_core.models.node import STANDARD_NODE_TYPES
+from ost_core.models.project import (
+    BubbleTypeDefault,
+    DEFAULT_BUBBLE_DEFAULTS,
+)
 
 
 class TreeService:
@@ -81,7 +86,21 @@ class TreeService:
         """Add a node to the tree. Any type can be a root; multiple roots allowed."""
         if data.parent_id is not None:
             self.repo.get_node(data.parent_id)  # verify parent exists
-        return self.repo.add_node(tree_id, data)
+        node = self.repo.add_node(tree_id, data)
+
+        # Auto-register custom bubble types in the project's bubble_defaults
+        if data.node_type not in STANDARD_NODE_TYPES:
+            tree = self.repo.get_tree(tree_id)
+            project = self.repo.get_project(tree.project_id)
+            current_defaults = dict(project.bubble_defaults or DEFAULT_BUBBLE_DEFAULTS)
+            if data.node_type not in current_defaults:
+                current_defaults[data.node_type] = BubbleTypeDefault()
+                self.repo.update_project(
+                    project.id,
+                    ProjectUpdate(bubble_defaults=current_defaults),
+                )
+
+        return node
 
     def get_node(self, node_id: UUID) -> Node:
         return self.repo.get_node(node_id)

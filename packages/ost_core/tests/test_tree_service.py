@@ -150,6 +150,55 @@ class TestBubbleDefaults:
         assert updated.bubble_defaults["outcome"].border_color == "#aabbcc"
 
 
+    def test_custom_type_auto_registers_in_bubble_defaults(self, service: TreeService):
+        """Adding a node with a custom type auto-registers it in bubble_defaults."""
+        project = service.create_project(ProjectCreate(name="Auto-reg"))
+        tree = service.create_tree(TreeCreate(name="T", project_id=project.id))
+
+        # Project starts with no bubble_defaults
+        assert project.bubble_defaults is None
+
+        # Add node with custom type
+        service.add_node(tree.id, NodeCreate(title="Custom", node_type="my_custom"))
+
+        # Verify auto-registration
+        updated = service.get_project(project.id)
+        assert updated.bubble_defaults is not None
+        assert "my_custom" in updated.bubble_defaults
+        assert updated.bubble_defaults["my_custom"].border_color == "#93c5fd"  # default
+
+    def test_custom_type_no_duplicate_registration(self, service: TreeService):
+        """Adding multiple nodes of same custom type doesn't overwrite defaults."""
+        project = service.create_project(ProjectCreate(name="No-dup"))
+        tree = service.create_tree(TreeCreate(name="T", project_id=project.id))
+
+        service.add_node(tree.id, NodeCreate(title="First", node_type="widget"))
+
+        # Customize the defaults
+        proj = service.get_project(project.id)
+        defaults = dict(proj.bubble_defaults)
+        defaults["widget"] = BubbleTypeDefault(border_color="#ff0000", border_width=5.0)
+        service.update_project(project.id, ProjectUpdate(bubble_defaults=defaults))
+
+        # Add another node of same type — should NOT overwrite
+        service.add_node(tree.id, NodeCreate(title="Second", node_type="widget"))
+
+        final = service.get_project(project.id)
+        assert final.bubble_defaults["widget"].border_color == "#ff0000"
+        assert final.bubble_defaults["widget"].border_width == 5.0
+
+    def test_standard_type_not_auto_registered(self, service: TreeService):
+        """Standard types don't trigger auto-registration."""
+        project = service.create_project(ProjectCreate(name="Std"))
+        tree = service.create_tree(TreeCreate(name="T", project_id=project.id))
+
+        service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+
+        proj = service.get_project(project.id)
+        # Should still be None — standard types don't get auto-registered
+        assert proj.bubble_defaults is None
+
+
 class TestTypeConstraints:
     def test_any_type_can_be_root(self, service: TreeService, sample_project):
         """Any node type can be a root — no longer restricted to outcome."""
