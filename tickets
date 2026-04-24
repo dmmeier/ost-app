@@ -595,3 +595,43 @@ Final verdict: 0 P0 remaining, 0 P1 remaining, 0 P2. STABLE — 5 review cycles,
 
 Files changed (20): schema.py, engine.py, repository.py, project.py, git.py models (NEW), __init__.py (models), exceptions.py, git_service.py, tree_service.py, git.py router, main.py (CLI), types.ts, api-client.ts, tree-store.ts, GitPanel.tsx (NEW), GitCommitDialog.tsx (DELETED), page.tsx, test_git_service.py, test_api.py
 --- END DIARY ---
+
+24. Should be able to create a bubble on canvas of any type (this way one can, for instance, build up trees from an outcome up to key business metrics / KPIs at P&L levels). When creating a bubble on the canvas I should be able to build a tree from that
+like I would usually, so that more than one tree can now reside on the canvas. I should also be able to move trees like we did before. For example, if I have two trees I should be able to move one tree to be a subtree of the other tree, attached to a particular node. What this means is that there has to be a consistent numbering of bubbles across both trees (for instance, no
+repetitions of numbers). A simple use case for this would be to add a bubble "P&L" where I describe the P&L impact of the outcome,
+somwhere on the canvas, and then attaching the previous OST (beginning with the outcome) to that bubble, so that P&L outcome then flows to outcome and then the tree is attached there. Adding another bubble on canvas should be possible by right-click anywhere
+and then that is where the bubble should appear. Make sure that this is present consistently in API / CLI (MCP -- although I think mcp we have removed, right?) so that, for instance, we can create such bubbles from chat. When creating bubbles from chat (i.e. wihtout location information), they should be placed vertically above the other trees currently there, somwhere horizontally centered above the other trees (so that it's not all the way to one side, for instance). This is a big change; if necessary, structure it carefully into smaller tickets. Probably this will also require migrating databases; make sure you do this carefully, without destroying trees currently there (especially the case management tree; that one is a productive tree). All other functionalities should remain (e.g. download and re-upload of tree jsons etc -- but now of course with potentially more than one tree) [STATUS: COMPLETE]
+
+--- DIARY (Ticket #24) ---
+Implementation:
+- Backend: Removed 3 constraints from tree_service.py: (1) root-type must be outcome, (2) duplicate root rejection, (3) root cannot be moved. Updated merge_trees to iterate get_root_nodes(). Added get_root_nodes() to repository.py. Fixed sort_order auto-assignment for root nodes (computes max among sibling roots). Fixed reorder_sibling() to handle root nodes as siblings (query by tree_id + parent_id IS NULL). Deprecated DuplicateRootError. Removed DuplicateRootError catch from API nodes router. No schema changes needed — all constraints were in service layer.
+- CLI: Updated `show` command to find ALL roots, sort by sort_order, display each as separate Rich tree panel. Updated `stats` to compute max depth across all root subtrees, show "Root nodes" count.
+- Chat tools: Updated add_node description (any type can be root, multiple roots supported), removed enum constraint on node_type. Updated move_node description (root nodes can be moved). Fixed multi-root BFS numbering in chat.py get_tree handler.
+- Frontend layout: Added TREE_GAP constant (3 * SIBLING_GAP). Updated getLayoutedElements to find all roots, sort by sortOrder. Single root: standard layout. Multiple roots: layout each subtree independently (wide or compact), compute bounding boxes, arrange side by side centered around x=0.
+- Frontend canvas: Updated computeBfsIndexes for multiple roots (BFS across all roots sequentially). Updated contextNodeSiblingInfo for root siblings. Enabled "Attach to..." for ALL nodes (removed isRoot guard). Enabled Move Left/Right for roots with siblings. Added pane context menu (right-click empty canvas → "Create Standalone Node" with all type buttons). Added handleCreateStandalone function. Updated keyboard navigation (ArrowLeft/Right for root nodes navigates among sibling roots).
+- Tests: Updated 3 existing tests (test_any_type_can_be_root, test_multiple_roots_allowed, test_move_root_to_another_node). Updated test_merge_basic (3 nodes, not 2). Updated test_move_root_to_descendant_returns_400 (cycle detection, not root-move rejection). Added TestMultiRoot class with 5 new tests (sort_order, reorder, get_root_nodes, snapshot/restore, attach reduces root count). 248 tests passing, TypeScript clean.
+
+Review Cycles (3 total):
+- Cycle 1 (PM + Designer via Playwright): All test scenarios PASS. No P0/P1. 2x P2 (acceptable design choices).
+- Cycle 2 (QA + Designer via Playwright — 5 deep scenarios):
+  - Scenario 1: Create standalone roots via canvas right-click — PASS
+  - Scenario 2: Attach root to another root — PASS
+  - Scenario 3: Move Left/Right for root nodes — PASS
+  - Scenario 4: API multi-root verification — PASS
+  - Scenario 5: Snapshot/Restore with multi-root — PASS
+  No P0/P1. 2x P2 (empty tree canvas lacks pane right-click, duplicate names allowed).
+- Cycle 3 (QA CLI/API deep testing — 7 scenarios):
+  - Test 1: Create multiple roots via API — PASS
+  - Test 2: CLI `ost show` with multiple roots — PASS
+  - Test 3: CLI `ost stats` with multiple roots — PASS
+  - Test 4: Reorder root nodes via API — PASS
+  - Test 5: Move root to another node via API — PASS
+  - Test 6: Snapshot/Restore with multiple roots — PASS
+  - Test 7: Export/Import with multiple roots — PASS
+  No P0/P1. 1x P2 (no "detach"/"make root" API endpoint — not blocking).
+
+Final verdict: 0 P0, 0 P1, 5x P2 (all cosmetic/enhancement). STABLE — 3 review cycles, all clean.
+248 tests passing. TypeScript clean.
+
+Files changed (10): tree_service.py, repository.py, exceptions.py, nodes.py (router), chat.py, tools.py (LLM), main.py (CLI), tree-layout.ts, TreeCanvas.tsx, test_tree_service.py, test_api.py
+--- END DIARY ---
