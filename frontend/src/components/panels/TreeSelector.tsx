@@ -424,7 +424,7 @@ function ProjectAccordion({
         >
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-xs text-gray-400 shrink-0">
-              {isExpanded ? "▼" : "▶"}
+              {isExpanded ? "▼\uFE0E" : "▶\uFE0E"}
             </span>
             {editingProjectId === project.id ? (
               <input
