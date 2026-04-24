@@ -316,8 +316,8 @@ class TestNodeEndpoints:
         r = client.delete(f"/api/v1/nodes/{node['id']}")
         assert r.status_code == 204
 
-    def test_move_root_returns_400(self, client):
-        """Moving the root node should return 400 with 'Cannot move the root' message."""
+    def test_move_root_to_descendant_returns_400(self, client):
+        """Moving a root to its own descendant should return 400 (cycle detection)."""
         project = _create_project(client)
         tree = _create_tree(client, project["id"])
         root = client.post(
@@ -333,7 +333,7 @@ class TestNodeEndpoints:
             json={"new_parent_id": opp["id"]},
         )
         assert r.status_code == 400
-        assert "Cannot move the root" in r.json()["detail"]
+        assert "descendants" in r.json()["detail"]
 
     def test_move_cross_tree_returns_400(self, client):
         """Moving a node to a different tree should return 400 with cross-tree error."""

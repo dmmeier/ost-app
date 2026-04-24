@@ -46,13 +46,11 @@ CHAT_TOOLS: list[ToolDefinition] = [
     ToolDefinition(
         name="add_node",
         description=(
-            "Add a node to the tree. Valid node types: outcome, opportunity, "
-            "child_opportunity, solution, experiment. "
-            "Rules: Outcome is root (no parent needed). "
-            "Opportunity goes under Outcome. "
-            "Child Opportunity goes under Opportunity or another Child Opportunity. "
-            "Solution goes under Opportunity or Child Opportunity. "
-            "Experiment goes under Solution."
+            "Add a node to the tree. Standard node types: outcome, opportunity, "
+            "child_opportunity, solution, experiment. Custom types are also allowed. "
+            "Any type can be a root node (omit parent_id for standalone/root). "
+            "Multiple roots are supported — the tree can be a forest. "
+            "Typical hierarchy: Outcome → Opportunity → Child Opportunity → Solution → Experiment."
         ),
         parameters={
             "type": "object",
@@ -61,10 +59,9 @@ CHAT_TOOLS: list[ToolDefinition] = [
                 "title": {"type": "string", "description": "Node title"},
                 "node_type": {
                     "type": "string",
-                    "enum": ["outcome", "opportunity", "child_opportunity", "solution", "experiment"],
-                    "description": "Type of node",
+                    "description": "Type of node (e.g. outcome, opportunity, child_opportunity, solution, experiment, or custom)",
                 },
-                "parent_id": {"type": "string", "description": "Parent node ID (omit for root outcome)"},
+                "parent_id": {"type": "string", "description": "Parent node ID (omit for standalone root)"},
                 "description": {"type": "string", "description": "Optional description"},
                 "assumption": {"type": "string", "description": "The assumption/hypothesis explaining why this node matters for its parent"},
                 "evidence": {"type": "string", "description": "Supporting data, observations, or research findings"},
@@ -100,7 +97,7 @@ CHAT_TOOLS: list[ToolDefinition] = [
     ),
     ToolDefinition(
         name="move_node",
-        description="Move a node and its subtree to a new parent. Type constraints are validated.",
+        description="Move a node and its subtree to a new parent. Root nodes can also be moved (attached to another node).",
         parameters={
             "type": "object",
             "properties": {

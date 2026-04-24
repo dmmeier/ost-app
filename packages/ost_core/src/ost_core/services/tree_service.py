@@ -4,7 +4,6 @@ from uuid import UUID
 
 from ost_core.db.repository import TreeRepository
 from ost_core.exceptions import (
-    DuplicateRootError,
     InvalidMoveError,
     InvalidNodeTypeError,
 )
@@ -30,7 +29,6 @@ from ost_core.models import (
     TreeUpdate,
     TreeWithNodes,
 )
-from ost_core.models.node import OUTCOME
 
 
 class TreeService:
@@ -80,19 +78,9 @@ class TreeService:
     # ── Node operations ────────────────────────────────────────
 
     def add_node(self, tree_id: UUID, data: NodeCreate) -> Node:
-        """Add a node to the tree with type constraint validation."""
-        if data.parent_id is None:
-            # Must be an Outcome (root) node
-            if data.node_type != OUTCOME:
-                raise InvalidNodeTypeError("(root)", data.node_type)
-            # Check tree doesn't already have a root
-            existing_root = self.repo.get_root_node(tree_id)
-            if existing_root:
-                raise DuplicateRootError(tree_id)
-        else:
-            # Just verify parent exists
-            self.repo.get_node(data.parent_id)
-
+        """Add a node to the tree. Any type can be a root; multiple roots allowed."""
+        if data.parent_id is not None:
+            self.repo.get_node(data.parent_id)  # verify parent exists
         return self.repo.add_node(tree_id, data)
 
     def get_node(self, node_id: UUID) -> Node:
@@ -102,11 +90,6 @@ class TreeService:
         return self.repo.get_children(node_id)
 
     def update_node(self, node_id: UUID, data: NodeUpdate) -> Node:
-        if data.node_type is not None:
-            node = self.repo.get_node(node_id)
-            # Root node must remain outcome
-            if node.parent_id is None and data.node_type != OUTCOME:
-                raise InvalidNodeTypeError("(root)", data.node_type)
         return self.repo.update_node(node_id, data)
 
     def remove_node(self, node_id: UUID, cascade: bool = True) -> None:
@@ -127,10 +110,6 @@ class TreeService:
         """Move a node and its subtree to a new parent, with validation."""
         node = self.repo.get_node(node_id)
         new_parent = self.repo.get_node(new_parent_id)
-
-        # Can't move root node
-        if node.parent_id is None:
-            raise InvalidMoveError("Cannot move the root (Outcome) node")
 
         # Can't move to self
         if node_id == new_parent_id:
@@ -264,23 +243,20 @@ class TreeService:
     def merge_trees(
         self, source_tree_id: UUID, target_tree_id: UUID, target_parent_id: UUID
     ) -> None:
-        """Merge source tree's root children under a target parent node.
+        """Merge source tree's root subtrees under a target parent node.
 
-        Copies all children of the source tree's root into the target tree
-        under the specified parent node.
+        Copies all root nodes and their children from the source tree
+        into the target tree under the specified parent node.
         """
-        source_root = self.repo.get_root_node(source_tree_id)
-        if not source_root:
+        source_roots = self.repo.get_root_nodes(source_tree_id)
+        if not source_roots:
             return  # Empty tree, nothing to merge
 
         # Get the target parent to validate it exists
         self.repo.get_node(target_parent_id)
 
-        # Get all root's children in the source tree
-        source_children = self.repo.get_children(source_root.id)
-
-        for child in source_children:
-            self._copy_subtree(child, target_tree_id, target_parent_id)
+        for root in source_roots:
+            self._copy_subtree(root, target_tree_id, target_parent_id)
 
     def _copy_subtree(self, node: Node, target_tree_id: UUID, new_parent_id: UUID) -> None:
         """Recursively copy a node and its descendants into a target tree."""

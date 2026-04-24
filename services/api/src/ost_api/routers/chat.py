@@ -246,21 +246,23 @@ def _execute_tool(
             # Add BFS indexes so AI can reference nodes by #N
             nodes = data.get("nodes", [])
             children_map: dict[str | None, list[dict]] = {}
-            root_node = None
+            root_nodes: list[dict] = []
             for n in nodes:
                 pid = n.get("parent_id")
                 if pid is None:
-                    root_node = n
+                    root_nodes.append(n)
                 else:
                     children_map.setdefault(pid, []).append(n)
-            if root_node:
-                queue = [root_node]
-                idx = 1
-                while queue:
-                    current = queue.pop(0)
-                    current["index"] = idx
-                    idx += 1
-                    queue.extend(children_map.get(current["id"], []))
+            # Sort roots by sort_order for consistent numbering
+            root_nodes.sort(key=lambda r: (r.get("sort_order", 0), r.get("created_at", "")))
+            # BFS across all roots sequentially
+            queue = list(root_nodes)
+            idx = 1
+            while queue:
+                current = queue.pop(0)
+                current["index"] = idx
+                idx += 1
+                queue.extend(children_map.get(current["id"], []))
             return json.dumps(data, indent=2)
 
         elif tool_name == "add_node":

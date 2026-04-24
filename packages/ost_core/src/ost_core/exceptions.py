@@ -58,6 +58,7 @@ class TagNotFoundError(OSTError):
 
 
 class DuplicateRootError(OSTError):
+    """Deprecated: multiple roots are now allowed per tree (forest support)."""
     def __init__(self, tree_id: UUID):
         self.tree_id = tree_id
         super().__init__(f"Tree {tree_id} already has a root (Outcome) node")

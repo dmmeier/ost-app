@@ -249,25 +249,23 @@ def show(
 
     # Build node lookup
     children_map: dict[str, list] = {}
-    root = None
+    roots: list = []
 
     for n in full_tree.nodes:
         if n.parent_id is None:
-            root = n
+            roots.append(n)
         else:
             parent_key = str(n.parent_id)
             if parent_key not in children_map:
                 children_map[parent_key] = []
             children_map[parent_key].append(n)
 
-    if not root:
+    if not roots:
         console.print("[dim]Tree is empty.[/dim]")
         return
 
-    # Build Rich tree
-    icon = NODE_ICONS.get(root.node_type, "")
-    color = NODE_COLORS.get(root.node_type, "")
-    rich_tree = RichTree(f"[{color}]{icon} {root.title}[/{color}] [dim]({root.node_type})[/dim]")
+    # Sort roots by sort_order
+    roots.sort(key=lambda r: (r.sort_order or 0, str(r.created_at)))
 
     def _add_children(parent_id: str, parent_tree: RichTree):
         for child in children_map.get(parent_id, []):
@@ -282,9 +280,13 @@ def show(
             )
             _add_children(str(child.id), child_tree)
 
-    _add_children(str(root.id), rich_tree)
-
-    console.print(Panel(rich_tree, title=f"[bold]{full_tree.name}[/bold]", border_style="blue"))
+    # Display each root as a separate tree panel
+    for root in roots:
+        icon = NODE_ICONS.get(root.node_type, "")
+        color = NODE_COLORS.get(root.node_type, "")
+        rich_tree = RichTree(f"[{color}]{icon} {root.title}[/{color}] [dim]({root.node_type})[/dim]")
+        _add_children(str(root.id), rich_tree)
+        console.print(Panel(rich_tree, title=f"[bold]{full_tree.name}[/bold]", border_style="blue"))
 
 
 @app.command()
@@ -393,12 +395,12 @@ def stats(tree_id: str = typer.Argument(..., help="Tree ID (or prefix)")):
         if e.is_risky:
             risky_count += 1
 
-    # Calculate tree depth
+    # Calculate tree depth (max across all root subtrees)
     children_map: dict[str, list] = {}
-    root_id = None
+    root_ids: list[str] = []
     for n in full_tree.nodes:
         if n.parent_id is None:
-            root_id = str(n.id)
+            root_ids.append(str(n.id))
         else:
             parent_key = str(n.parent_id)
             if parent_key not in children_map:
@@ -411,7 +413,7 @@ def stats(tree_id: str = typer.Argument(..., help="Tree ID (or prefix)")):
             return 1
         return 1 + max(_depth(c) for c in children)
 
-    depth = _depth(root_id) if root_id else 0
+    depth = max((_depth(rid) for rid in root_ids), default=0)
 
     # Count leaf nodes (no children)
     leaf_count = sum(1 for n in full_tree.nodes if str(n.id) not in children_map)
@@ -443,7 +445,8 @@ def stats(tree_id: str = typer.Argument(..., help="Tree ID (or prefix)")):
     summary_table = Table(title="Tree Structure")
     summary_table.add_column("Metric", style="bold")
     summary_table.add_column("Value", justify="right")
-    summary_table.add_row("Depth", str(depth))
+    summary_table.add_row("Root nodes", str(len(root_ids)))
+    summary_table.add_row("Max depth", str(depth))
     summary_table.add_row("Leaf nodes", str(leaf_count))
     console.print(summary_table)
 

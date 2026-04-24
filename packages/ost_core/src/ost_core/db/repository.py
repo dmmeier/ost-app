@@ -225,6 +225,20 @@ class TreeRepository:
                 ).first()
                 if max_order_result:
                     sort_order = max_order_result[0] + 1
+            else:
+                # Root node: compute max sort_order among sibling roots
+                max_order_result = session.execute(
+                    select(NodeRow.sort_order)
+                    .where(
+                        and_(
+                            NodeRow.tree_id == str(tree_id),
+                            NodeRow.parent_id.is_(None),
+                        )
+                    )
+                    .order_by(NodeRow.sort_order.desc())
+                ).first()
+                if max_order_result:
+                    sort_order = max_order_result[0] + 1
 
             node_id = str(uuid4())
             row = NodeRow(
@@ -486,7 +500,7 @@ class TreeRepository:
             )
 
     def get_root_node(self, tree_id: UUID) -> Node | None:
-        """Get the root node (Outcome) of a tree, or None if tree is empty."""
+        """Get the first root node of a tree, or None if tree is empty."""
         with self._session() as session:
             row = (
                 session.execute(
@@ -496,11 +510,30 @@ class TreeRepository:
                             NodeRow.parent_id.is_(None),
                         )
                     )
+                    .order_by(NodeRow.sort_order, NodeRow.created_at)
                 )
                 .scalars()
                 .first()
             )
             return self._node_from_row(row) if row else None
+
+    def get_root_nodes(self, tree_id: UUID) -> list[Node]:
+        """Get all root nodes of a tree, ordered by sort_order then created_at."""
+        with self._session() as session:
+            rows = (
+                session.execute(
+                    select(NodeRow).where(
+                        and_(
+                            NodeRow.tree_id == str(tree_id),
+                            NodeRow.parent_id.is_(None),
+                        )
+                    )
+                    .order_by(NodeRow.sort_order, NodeRow.created_at)
+                )
+                .scalars()
+                .all()
+            )
+            return [self._node_from_row(r) for r in rows]
 
     # ── Edge hypothesis CRUD ───────────────────────────────────
 
@@ -694,19 +727,34 @@ class TreeRepository:
             node = session.get(NodeRow, str(node_id))
             if not node:
                 raise NodeNotFoundError(node_id)
-            if not node.parent_id:
-                return  # Root node can't be reordered
 
             # Get all siblings ordered by sort_order, then created_at
-            siblings = (
-                session.execute(
-                    select(NodeRow)
-                    .where(NodeRow.parent_id == node.parent_id)
-                    .order_by(NodeRow.sort_order, NodeRow.created_at)
+            if node.parent_id:
+                siblings = (
+                    session.execute(
+                        select(NodeRow)
+                        .where(NodeRow.parent_id == node.parent_id)
+                        .order_by(NodeRow.sort_order, NodeRow.created_at)
+                    )
+                    .scalars()
+                    .all()
                 )
-                .scalars()
-                .all()
-            )
+            else:
+                # Root node: siblings are other roots in the same tree
+                siblings = (
+                    session.execute(
+                        select(NodeRow)
+                        .where(
+                            and_(
+                                NodeRow.tree_id == node.tree_id,
+                                NodeRow.parent_id.is_(None),
+                            )
+                        )
+                        .order_by(NodeRow.sort_order, NodeRow.created_at)
+                    )
+                    .scalars()
+                    .all()
+                )
 
             # Normalize sort_order values (0, 1, 2, ...) to handle ties
             for i, sib in enumerate(siblings):

@@ -4,6 +4,7 @@ const NODE_WIDTH = 260;
 const NODE_HEIGHT = 100;
 const SIBLING_GAP = 40;
 const RANK_SEP = NODE_HEIGHT + 80;
+const TREE_GAP = 3 * SIBLING_GAP;
 
 /**
  * Custom symmetric tree layout.
@@ -45,20 +46,76 @@ export function getLayoutedElements(
     });
   }
 
-  // Find root (node with no parent in the edge set)
+  // Find ALL roots (nodes with no parent in the edge set)
   const childSet = new Set(edges.map((e) => e.target));
-  const root = nodes.find((n) => !childSet.has(n.id));
-  if (!root) {
-    // Fallback: just use first node
+  const roots = nodes.filter((n) => !childSet.has(n.id));
+  if (roots.length === 0) {
     return { nodes, edges };
   }
 
+  // Sort roots by sort_order for consistent layout
+  roots.sort((a, b) => {
+    const aOrder = (a.data as { sortOrder?: number })?.sortOrder ?? 0;
+    const bOrder = (b.data as { sortOrder?: number })?.sortOrder ?? 0;
+    return aOrder - bOrder;
+  });
+
   const positions = new Map<string, { x: number; y: number }>();
 
-  if (compact) {
-    layoutCompact(root.id, childrenMap, positions);
+  if (roots.length === 1) {
+    // Single root: use standard layout
+    if (compact) {
+      layoutCompact(roots[0].id, childrenMap, positions);
+    } else {
+      layoutWide(roots[0].id, childrenMap, positions);
+    }
   } else {
-    layoutWide(root.id, childrenMap, positions);
+    // Multiple roots: layout each subtree independently, then arrange side by side
+    const subtreePositions: Map<string, { x: number; y: number }>[] = [];
+    const subtreeBounds: { minX: number; maxX: number; minY: number; maxY: number }[] = [];
+
+    for (const root of roots) {
+      const subPos = new Map<string, { x: number; y: number }>();
+      if (compact) {
+        layoutCompact(root.id, childrenMap, subPos);
+      } else {
+        layoutWide(root.id, childrenMap, subPos);
+      }
+      subtreePositions.push(subPos);
+
+      // Compute bounding box of this subtree
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const pos of subPos.values()) {
+        if (pos.x < minX) minX = pos.x;
+        if (pos.x + NODE_WIDTH > maxX) maxX = pos.x + NODE_WIDTH;
+        if (pos.y < minY) minY = pos.y;
+        if (pos.y + NODE_HEIGHT > maxY) maxY = pos.y + NODE_HEIGHT;
+      }
+      subtreeBounds.push({ minX, maxX, minY, maxY });
+    }
+
+    // Arrange subtrees side by side
+    let currentX = 0;
+    const totalWidth =
+      subtreeBounds.reduce((sum, b) => sum + (b.maxX - b.minX), 0) +
+      (subtreeBounds.length - 1) * TREE_GAP;
+    let startX = -totalWidth / 2;
+
+    for (let i = 0; i < roots.length; i++) {
+      const subPos = subtreePositions[i];
+      const bounds = subtreeBounds[i];
+      const offsetX = startX - bounds.minX;
+      const offsetY = -bounds.minY; // Align all subtree roots at y=0
+
+      for (const [nodeId, pos] of subPos) {
+        positions.set(nodeId, {
+          x: pos.x + offsetX,
+          y: pos.y + offsetY,
+        });
+      }
+
+      startX += (bounds.maxX - bounds.minX) + TREE_GAP;
+    }
   }
 
   const layoutedNodes = nodes.map((node) => {

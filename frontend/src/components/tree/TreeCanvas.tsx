@@ -34,23 +34,26 @@ interface TreeCanvasProps {
 
 function computeBfsIndexes(nodes: Node[]): Map<string, number> {
   const childrenMap = new Map<string, Node[]>();
-  let root: Node | undefined;
+  const roots: Node[] = [];
   for (const n of nodes) {
     if (!n.parent_id) {
-      root = n;
+      roots.push(n);
     } else {
       const siblings = childrenMap.get(n.parent_id) || [];
       siblings.push(n);
       childrenMap.set(n.parent_id, siblings);
     }
   }
+  // Sort roots by sort_order
+  roots.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   // Sort children by sort_order for consistent BFS numbering
   for (const [, children] of childrenMap) {
     children.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   }
   const indexMap = new Map<string, number>();
-  if (!root) return indexMap;
-  const queue: Node[] = [root];
+  if (roots.length === 0) return indexMap;
+  // BFS across all roots sequentially
+  const queue: Node[] = [...roots];
   let idx = 1;
   while (queue.length > 0) {
     const current = queue.shift()!;
@@ -343,6 +346,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const setCenterOnNodeId = useTreeStore((s) => s.setCenterOnNodeId);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [edgeContextMenu, setEdgeContextMenu] = useState<EdgeContextMenuState | null>(null);
+  const [paneContextMenu, setPaneContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [styleDialogNodeId, setStyleDialogNodeId] = useState<string | null>(null);
   const addNode = useAddNode(tree.id);
@@ -416,18 +420,18 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
 
   // Close context menus on Escape or outside click
   useEffect(() => {
-    if (!contextMenu && !edgeContextMenu) return;
+    if (!contextMenu && !edgeContextMenu && !paneContextMenu) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setContextMenu(null); setEdgeContextMenu(null); setConfirmDelete(false); }
+      if (e.key === "Escape") { setContextMenu(null); setEdgeContextMenu(null); setPaneContextMenu(null); setConfirmDelete(false); }
     };
-    const handleClick = () => { setContextMenu(null); setEdgeContextMenu(null); setConfirmDelete(false); };
+    const handleClick = () => { setContextMenu(null); setEdgeContextMenu(null); setPaneContextMenu(null); setConfirmDelete(false); };
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("click", handleClick);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("click", handleClick);
     };
-  }, [contextMenu, edgeContextMenu]);
+  }, [contextMenu, edgeContextMenu, paneContextMenu]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -471,8 +475,16 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
       } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && selectedNodeId) {
         e.preventDefault();
         const node = nodeMap.get(selectedNodeId);
-        if (node?.parent_id) {
-          const siblings = childrenMap.get(node.parent_id) || [];
+        if (node) {
+          let siblings: Node[];
+          if (node.parent_id) {
+            siblings = childrenMap.get(node.parent_id) || [];
+          } else {
+            // Root node: siblings are other roots
+            siblings = tree.nodes
+              .filter((n) => !n.parent_id)
+              .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+          }
           const currentIdx = siblings.findIndex((s) => s.id === selectedNodeId);
           if (currentIdx !== -1) {
             const nextIdx = e.key === "ArrowLeft"
@@ -561,6 +573,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     setSelectedNodeId(null);
     setContextMenu(null);
     setEdgeContextMenu(null);
+    setPaneContextMenu(null);
   }, [setSelectedNodeId]);
 
   const onNodeContextMenu: NodeMouseHandler = useCallback(
@@ -652,6 +665,39 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     setReparentError(null);
     setContextMenu(null);
   };
+
+  const handleCreateStandalone = (nodeType: string) => {
+    addNode.mutate(
+      {
+        title: `New ${getNodeLabel(nodeType, effectiveBubbleDefaults)}`,
+        node_type: nodeType,
+      },
+      {
+        onSuccess: (newNode) => {
+          setSelectedNodeId(newNode.id);
+          setBottomPanel("detail");
+          setEditingNodeId(newNode.id);
+        },
+      }
+    );
+    setPaneContextMenu(null);
+  };
+
+  const onPaneContextMenu = useCallback(
+    (event: MouseEvent | React.MouseEvent) => {
+      event.preventDefault();
+      setContextMenu(null);
+      setEdgeContextMenu(null);
+      const rawX = (event as MouseEvent).clientX;
+      const rawY = (event as MouseEvent).clientY;
+      const menuWidth = 200;
+      const menuHeight = 300;
+      const x = rawX + menuWidth > window.innerWidth ? rawX - menuWidth : rawX;
+      const y = rawY + menuHeight > window.innerHeight ? rawY - menuHeight : rawY;
+      setPaneContextMenu({ x, y });
+    },
+    []
+  );
 
   const handleReparentSubmit = () => {
     if (!reparentNodeId) return;
@@ -757,15 +803,24 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const contextNodeSiblingInfo = useMemo(() => {
     if (!contextMenu) return { canMoveLeft: false, canMoveRight: false, isRoot: true };
     const node = tree.nodes.find((n) => n.id === contextMenu.nodeId);
-    if (!node || !node.parent_id) return { canMoveLeft: false, canMoveRight: false, isRoot: true };
-    const siblings = tree.nodes
-      .filter((n) => n.parent_id === node.parent_id)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    if (!node) return { canMoveLeft: false, canMoveRight: false, isRoot: true };
+    const isRoot = !node.parent_id;
+    let siblings: Node[];
+    if (isRoot) {
+      // Root node: siblings are other roots in the same tree
+      siblings = tree.nodes
+        .filter((n) => !n.parent_id)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    } else {
+      siblings = tree.nodes
+        .filter((n) => n.parent_id === node.parent_id)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    }
     const idx = siblings.findIndex((s) => s.id === node.id);
     return {
       canMoveLeft: idx > 0,
       canMoveRight: idx < siblings.length - 1,
-      isRoot: false,
+      isRoot,
     };
   }, [contextMenu, tree.nodes]);
 
@@ -991,6 +1046,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
         onPaneClick={onPaneClick}
+        onPaneContextMenu={onPaneContextMenu}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         nodeTypes={nodeTypes}
@@ -1127,15 +1183,13 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           >
             Style Override
           </button>
-          {!contextNodeSiblingInfo.isRoot && (
-            <button
-              onClick={handleOpenReparent}
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
-            >
-              Attach to…
-            </button>
-          )}
-          {!contextNodeSiblingInfo.isRoot && (
+          <button
+            onClick={handleOpenReparent}
+            className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+          >
+            Attach to…
+          </button>
+          {(contextNodeSiblingInfo.canMoveLeft || contextNodeSiblingInfo.canMoveRight) && (
             <>
               <div className="h-px bg-gray-100 my-1" />
               <div className="flex gap-1 px-3 py-1">
@@ -1225,6 +1279,28 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                 }}
               />
               <span>{t}px</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Pane context menu (right-click on empty canvas to create standalone node) */}
+      {paneContextMenu && (
+        <div
+          className="fixed bg-white rounded-lg border shadow-lg py-1 z-50 min-w-[180px]"
+          style={{ left: paneContextMenu.x, top: paneContextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">
+            Create Standalone Node
+          </div>
+          <div className="h-px bg-gray-100 my-1" />
+          {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((nodeType) => (
+            <button
+              key={nodeType}
+              onClick={() => handleCreateStandalone(nodeType)}
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: effectiveBubbleDefaults[nodeType]?.border_color ?? "#94a3b8" }} /> {getNodeLabel(nodeType, effectiveBubbleDefaults)}
             </button>
           ))}
         </div>

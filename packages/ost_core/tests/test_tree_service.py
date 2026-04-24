@@ -4,7 +4,6 @@ import pytest
 from uuid import uuid4
 
 from ost_core.exceptions import (
-    DuplicateRootError,
     InvalidMoveError,
     InvalidNodeTypeError,
     ProjectNotFoundError,
@@ -152,23 +151,29 @@ class TestBubbleDefaults:
 
 
 class TestTypeConstraints:
-    def test_root_must_be_outcome(self, service: TreeService, sample_project):
+    def test_any_type_can_be_root(self, service: TreeService, sample_project):
+        """Any node type can be a root — no longer restricted to outcome."""
         tree = service.create_tree(TreeCreate(name="Test", project_id=sample_project.id))
-        with pytest.raises(InvalidNodeTypeError):
-            service.add_node(
-                tree.id,
-                NodeCreate(title="Bad Root", node_type="solution"),
-            )
-
-    def test_duplicate_root_rejected(self, service: TreeService, sample_project):
-        tree = service.create_tree(TreeCreate(name="Test", project_id=sample_project.id))
-        service.add_node(
-            tree.id, NodeCreate(title="Root", node_type="outcome")
+        sol = service.add_node(
+            tree.id,
+            NodeCreate(title="Solution Root", node_type="solution"),
         )
-        with pytest.raises(DuplicateRootError):
-            service.add_node(
-                tree.id, NodeCreate(title="Root 2", node_type="outcome")
-            )
+        assert sol.node_type == "solution"
+        assert sol.parent_id is None
+
+    def test_multiple_roots_allowed(self, service: TreeService, sample_project):
+        """Multiple roots in the same tree (forest) are allowed."""
+        tree = service.create_tree(TreeCreate(name="Test", project_id=sample_project.id))
+        root1 = service.add_node(
+            tree.id, NodeCreate(title="Root 1", node_type="outcome")
+        )
+        root2 = service.add_node(
+            tree.id, NodeCreate(title="Root 2", node_type="outcome")
+        )
+        assert root1.parent_id is None
+        assert root2.parent_id is None
+        roots = service.repo.get_root_nodes(tree.id)
+        assert len(roots) == 2
 
     def test_outcome_accepts_opportunity(self, service: TreeService, sample_project):
         tree = service.create_tree(TreeCreate(name="Test", project_id=sample_project.id))
@@ -309,11 +314,16 @@ class TestMoveSubtree:
         moved = service.get_node(st["sol1"].id)
         assert moved.parent_id == st["outcome"].id
 
-    def test_move_root_rejected(self, service: TreeService, sample_tree):
-        st = sample_tree
-        # Cannot move the root node (it has no parent)
-        with pytest.raises(InvalidMoveError, match="Cannot move the root"):
-            service.move_subtree(st["outcome"].id, st["opp1"].id)
+    def test_move_root_to_another_node(self, service: TreeService, sample_project):
+        """Root nodes can now be moved (attached) to another node."""
+        tree = service.create_tree(TreeCreate(name="Test", project_id=sample_project.id))
+        root1 = service.add_node(tree.id, NodeCreate(title="Root 1", node_type="outcome"))
+        root2 = service.add_node(tree.id, NodeCreate(title="Root 2", node_type="opportunity"))
+        service.move_subtree(root2.id, root1.id)
+        moved = service.get_node(root2.id)
+        assert moved.parent_id == root1.id
+        roots = service.repo.get_root_nodes(tree.id)
+        assert len(roots) == 1
 
     def test_move_cross_tree_rejected(self, service: TreeService, sample_tree):
         st = sample_tree
@@ -363,10 +373,11 @@ class TestMergeTrees:
         # Merge source into target under root
         service.merge_trees(src.id, tgt.id, tgt_root.id)
 
-        # Verify the merged tree: target root + copied source opportunity = 2 nodes
+        # Verify the merged tree: target root + copied source root + source opportunity = 3 nodes
         full = service.get_full_tree(tgt.id)
-        assert len(full.nodes) == 2
+        assert len(full.nodes) == 3
         titles = {n.title for n in full.nodes}
+        assert "Source Outcome" in titles
         assert "Source Opportunity" in titles
 
     def test_merge_empty_source(self, service: TreeService, sample_project):
@@ -764,3 +775,73 @@ class TestSnapshotWithTags:
         ]
         assert len(restored_edge) == 1
         assert restored_edge[0].evidence == "Original evidence"
+
+
+class TestMultiRoot:
+    """Tests for multi-root (forest) support."""
+
+    def test_multi_root_sort_order(self, service: TreeService, sample_project):
+        """Multiple roots get sequential sort_order values."""
+        tree = service.create_tree(TreeCreate(name="Forest", project_id=sample_project.id))
+        r1 = service.add_node(tree.id, NodeCreate(title="Root A", node_type="outcome"))
+        r2 = service.add_node(tree.id, NodeCreate(title="Root B", node_type="opportunity"))
+        r3 = service.add_node(tree.id, NodeCreate(title="Root C", node_type="solution"))
+        assert r1.sort_order == 0
+        assert r2.sort_order == 1
+        assert r3.sort_order == 2
+
+    def test_reorder_root_nodes(self, service: TreeService, sample_project):
+        """Root nodes can be reordered with left/right."""
+        tree = service.create_tree(TreeCreate(name="Forest", project_id=sample_project.id))
+        r1 = service.add_node(tree.id, NodeCreate(title="Root A", node_type="outcome"))
+        r2 = service.add_node(tree.id, NodeCreate(title="Root B", node_type="opportunity"))
+        r3 = service.add_node(tree.id, NodeCreate(title="Root C", node_type="solution"))
+
+        # Move Root C left (swap with Root B)
+        service.reorder_sibling(r3.id, "left")
+        roots = service.repo.get_root_nodes(tree.id)
+        titles = [r.title for r in roots]
+        assert titles == ["Root A", "Root C", "Root B"]
+
+    def test_get_root_nodes(self, service: TreeService, sample_project):
+        """get_root_nodes returns all roots in order."""
+        tree = service.create_tree(TreeCreate(name="Forest", project_id=sample_project.id))
+        service.add_node(tree.id, NodeCreate(title="First", node_type="outcome"))
+        service.add_node(tree.id, NodeCreate(title="Second", node_type="solution"))
+        service.add_node(tree.id, NodeCreate(title="Third", node_type="experiment"))
+        roots = service.repo.get_root_nodes(tree.id)
+        assert len(roots) == 3
+        assert [r.title for r in roots] == ["First", "Second", "Third"]
+
+    def test_multi_root_snapshot_restore(self, service: TreeService, sample_project):
+        """Snapshot/restore preserves all roots."""
+        tree = service.create_tree(TreeCreate(name="Forest", project_id=sample_project.id))
+        r1 = service.add_node(tree.id, NodeCreate(title="Root 1", node_type="outcome"))
+        r2 = service.add_node(tree.id, NodeCreate(title="Root 2", node_type="solution"))
+        service.add_node(tree.id, NodeCreate(title="Child of R1", node_type="opportunity", parent_id=r1.id))
+
+        snap = service.repo.create_snapshot(tree.id, "multi-root snapshot")
+        # Delete one root
+        service.remove_node(r2.id)
+        assert len(service.repo.get_root_nodes(tree.id)) == 1
+
+        # Restore
+        service.repo.restore_snapshot(snap["id"])
+        roots = service.repo.get_root_nodes(tree.id)
+        assert len(roots) == 2
+        full = service.get_full_tree(tree.id)
+        assert len(full.nodes) == 3
+
+    def test_attach_root_reduces_root_count(self, service: TreeService, sample_project):
+        """Attaching one root to another reduces the root count."""
+        tree = service.create_tree(TreeCreate(name="Forest", project_id=sample_project.id))
+        r1 = service.add_node(tree.id, NodeCreate(title="Root 1", node_type="outcome"))
+        r2 = service.add_node(tree.id, NodeCreate(title="Root 2", node_type="solution"))
+        r3 = service.add_node(tree.id, NodeCreate(title="Root 3", node_type="experiment"))
+        assert len(service.repo.get_root_nodes(tree.id)) == 3
+
+        # Attach r2 to r1
+        service.move_subtree(r2.id, r1.id)
+        roots = service.repo.get_root_nodes(tree.id)
+        assert len(roots) == 2
+        assert service.get_node(r2.id).parent_id == r1.id
