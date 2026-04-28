@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { margin: 0; padding: 0; background: #1e1e2e; }
+pre {
+  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #cdd6f4;
+  background: #1e1e2e;
+  padding: 24px;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+</style>
+</head>
+<body>
+<pre>$ ost list
+Opportunity Solution Trees                           
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ ID          ┃ Name           ┃ Project     ┃ Description    ┃ Created        ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ 02a70164... │ Customer       │ 646f86b6... │ Improving      │ 2026-04-28     │
+│             │ Retention      │             │ repeat         │ 20:55:12       │
+│             │ Strategy       │             │ purchase rate  │                │
+│             │                │             │ from 28% to    │                │
+│             │                │             │ 40%            │                │
+│ 94965e14... │ Mobile App     │ 646f86b6... │ Improving      │ 2026-04-28     │
+│             │ Redesign       │             │ mobile         │ 20:55:12       │
+│             │                │             │ conversion and │                │
+│             │                │             │ engagement     │                │
+│ a34eb04f... │ Checkout       │ 646f86b6... │ Reducing cart  │ 2026-04-28     │
+│             │ Conversion     │             │ abandonment    │ 20:55:12       │
+│             │ Optimization   │             │ and improving  │                │
+│             │                │             │ checkout flow  │                │
+│ 6bed428d... │ Onboarding     │ 7134b926... │ Reducing       │ 2026-04-28     │
+│             │ Time-to-Value  │             │ onboarding     │ 20:55:12       │
+│             │                │             │ from 45 to 21  │                │
+│             │                │             │ days           │                │
+│ 1d7c1080... │ Portal         │ 7fb5976b... │ Increasing     │ 2026-04-28     │
+│             │ Adoption       │             │ patient portal │ 20:55:12       │
+│             │ Strategy       │             │ adoption from  │                │
+│             │                │             │ 22% to 50%     │                │
+│ f724ae51... │ Developer      │ 3c5cbabb... │ Making         │ 2026-04-28     │
+│             │ Experience     │             │ integration    │ 20:55:12       │
+│             │ Improvements   │             │ faster and     │                │
+│             │                │             │ easier for     │                │
+│             │                │             │ developers     │                │
+│ 03788dbe... │ Course         │ bda761d8... │ Improving      │ 2026-04-28     │
+│             │ Completion     │             │ completion     │ 20:55:12       │
+│             │ Rate           │             │ from 18% to    │                │
+│             │                │             │ 35%            │                │
+└─────────────┴────────────────┴─────────────┴────────────────┴────────────────┘
+
+$ ost stats 02a70164...
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Customer Retention Strategy                                                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+      Node Counts by Type       
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Type                 ┃ Count ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
+│ 🎯 outcome           │     1 │
+│ 🔍 opportunity       │     3 │
+│ 🔎 child_opportunity │     4 │
+│ 💡 solution          │     7 │
+│ 🧪 experiment        │     7 │
+│                      │       │
+│ Total                │    22 │
+└──────────────────────┴───────┘
+       Edge Statistics       
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
+┃ Metric            ┃ Value ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
+│ Total edges       │     0 │
+│ Risky assumptions │     0 │
+└───────────────────┴───────┘
+    Tree Structure    
+┏━━━━━━━━━━━━┳━━━━━━━┓
+┃ Metric     ┃ Value ┃
+┡━━━━━━━━━━━━╇━━━━━━━┩
+│ Root nodes │     1 │
+│ Max depth  │     5 │
+│ Leaf nodes │     7 │
+└────────────┴───────┘
+
+$ ost validate 02a70164...
+Validation Results                               
+┏━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Severity ┃ Rule    ┃ Message                    ┃ Suggestion                 ┃
+┡━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ WARNING  │ fan_out │ &#x27;Order confirmation lacks  │ Add more children under    │
+│          │         │ personalization&#x27; has only  │ &#x27;Order confirmation lacks  │
+│          │         │ 1 child. Consider          │ personalization&#x27; to        │
+│          │         │ decomposing further — the  │ explore alternatives.      │
+│          │         │ tree should fan out.       │                            │
+│ WARNING  │ fan_out │ &#x27;Search results don&#x27;t      │ Add more children under    │
+│          │         │ learn from purchase        │ &#x27;Search results don&#x27;t      │
+│          │         │ history&#x27; has only 1 child. │ learn from purchase        │
+│          │         │ Consider decomposing       │ history&#x27; to explore        │
+│          │         │ further — the tree should  │ alternatives.              │
+│          │         │ fan out.                   │                            │
+│ WARNING  │ fan_out │ &#x27;No &#x27;browse by             │ Add more children under    │
+│          │         │ mood/occasion&#x27; feature&#x27;    │ &#x27;No &#x27;browse by             │
+│          │         │ has only 1 child. Consider │ mood/occasion&#x27; feature&#x27; to │
+│          │         │ decomposing further — the  │ explore alternatives.      │
+│          │         │ tree should fan out.       │                            │
+└──────────┴─────────┴────────────────────────────┴────────────────────────────┘
+✓ Tree is valid (warnings only).
+</pre>
+</body>
+</html>

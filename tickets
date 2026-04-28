@@ -635,3 +635,77 @@ Final verdict: 0 P0, 0 P1, 5x P2 (all cosmetic/enhancement). STABLE — 3 review
 
 Files changed (10): tree_service.py, repository.py, exceptions.py, nodes.py (router), chat.py, tools.py (LLM), main.py (CLI), tree-layout.ts, TreeCanvas.tsx, test_tree_service.py, test_api.py
 --- END DIARY ---
+
+25. No changes to the app, rather: 
+You
+So I would like to create a promotional video for this app. I want to highlight a few points that this app allows, and ideally for each of these points I would like a quick screenshot / demonstration with the relevant elements marked. I am not sure if you can actually make a video -- probably not. But it is an open source project, so it does not have to be super professional. A few clean slides would also do the trick and might actually be better. 
+
+Points I want to make:
+1. All your opportunity solution trees in one place: Connect a database that is shared among team members. 
+
+2. Record, keep track of and share your assumptions and your evidence -- directly in the tree.
+
+3. Self-hosted / own your data — For an open-source tool aimed at product teams, this matters. No vendor lock-in, runs on
+  your infra, data stays with you
+
+4. Include project context, and chat with your tree (bring your favourite LLM!)
+
+5. CLI Tooling for tree creation and manipulation -- ready for integration in your AI apps. 
+
+6. Integration with Git: Simple to push tree JSONs to a git repo for version control -- or just download your JSON!
+
+7. Tag your bubbles, and filter by tags. 
+
+8. Add your own custom bubbles. 
+
+9. Flexibel layout options: Style your bubbles the way you like them: Borders and fill colors can be chosen as you wish. 
+
+10. Flexibility: Move bubbles left to right, and move whole subtrees around if you decide to restructure the tree.
+
+11. Viewing the tree: Fold in and out the various levels. 
+
+I want you to:
+- Create a new database -- do not destroy the current one though; I need a new one to not show any productive trees. 
+- Then create a bunch of trees of various levels of complexity, say 5 projects on the side; we will showcase everything  in one project, so only one project needs trees inside, say 3 different ones. 
+- Include creation of context, etc. 
+- Then go ahead and create screenshots of the app using the new db using Playwright (high-res) for each of the 11 showcases above. If you think that a screenshot is not helpful (perhaps for CLI/API topic), then flag it and do not produce a screenshot. 
+- Later I will create a slide deck for these capabilities; do not worry about this for now. Clear?
+
+Do not touch the main code, please.
+
+[STATUS: COMPLETE]
+
+--- DIARY (Ticket #25) ---
+Implementation:
+- Created promo/populate_demo.py script that generates a fresh ost_promo.db without touching production ost.db
+- Demo data: 5 projects, 3 trees in main "Acme E-Commerce" project (Customer Retention 22 nodes, Mobile App 13 nodes, Checkout Conversion 14 nodes with multi-root KPI/Metric/Outcome hierarchy), 4 additional projects with small trees
+- Rich demo data includes: project context, tree context, 6 tags (Validated, High Risk, Q2 2026, Q3 2026, Data-driven, UX Research) with colors and fill styles, custom bubble types (KPI, Metric), per-node style overrides (fill colors, border overrides, edge thickness), assumptions and evidence on all nodes
+- Took 13 high-res Playwright screenshots (1920x1080) for all 11 showcase points
+
+Screenshots produced (in promo/):
+  01_all_trees_in_one_place.png — Sidebar with 5 projects, Acme expanded showing 3 trees
+  02_assumptions_and_evidence.png — Node detail panel showing assumption + evidence text + tags + focus view
+  02_tree_overview.png — Full tree view (Customer Retention, 22 nodes)
+  03_self_hosted_hero.png — Clean full-canvas view of a styled tree (hero shot)
+  04_project_context_and_chat.png — Context tab with project context + tree context + chat panel
+  05_cli_tooling.png — Terminal-style screenshot of ost list, ost stats, ost validate commands
+  06_git_integration.png — Git tab in bottom panel with remote URL, branch, token guidance
+  07_tag_filtering.png — "Validated" tag filter active, showing filtered nodes + ancestors
+  08_custom_bubbles_and_tags.png — Context panel showing bubble type defaults (KPI, Metric custom) + tags with colors
+  08b_custom_bubbles_multiroot.png — Checkout tree with KPI/Metric custom types and multi-root layout
+  09_flexible_styling.png — Full tree with varied colors: blue/green/yellow fills, red borders, tag badges, edge thickness
+  10_context_menu_move.png — Right-click context menu showing Style Override, Attach to, Add Child (all types), Move, Delete
+  11_level_collapse.png — Tree collapsed to "Level 1/4" showing only outcome + opportunities
+
+Notes:
+- Point 3 (self-hosted) is more conceptual; screenshot 03 shows a clean hero view that works well for this slide
+- Point 5 (CLI) uses an HTML-rendered terminal screenshot since Playwright can't capture actual terminals
+- No main code was touched; all files are in promo/ directory
+- Production database (ost.db) was not modified; demo uses ost_promo.db
+
+Files created (all in promo/):
+  populate_demo.py — Python script to create demo database
+  cli_terminal.html — HTML rendering of CLI output for screenshot
+  13x PNG screenshots
+
+--- END DIARY ---
