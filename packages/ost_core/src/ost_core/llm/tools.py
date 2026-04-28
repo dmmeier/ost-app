@@ -1,6 +1,6 @@
 """Tool definitions for the OST AI chat agent.
 
-These tool definitions are shared between the MCP server and the chat endpoint.
+These tool definitions are used by the chat endpoint.
 They define what operations the AI can perform on the tree.
 """
 

@@ -4,16 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Full-stack Opportunity Solution Tree (OST) app for product discovery. Core logic in Python, web frontend in Next.js, exposed via REST API, MCP server, and CLI.
+Full-stack Opportunity Solution Tree (OST) app for product discovery. Core logic in Python, web frontend in Next.js, exposed via REST API and CLI.
 
 ## Architecture
 
-**UV Workspace Monorepo** with four packages:
+**UV Workspace Monorepo** with three packages:
 
 - `packages/ost_core` — Core library: SQLAlchemy models, repository (closure table), services, validation engine
 - `services/api` — FastAPI REST API (port 8000)
 - `services/cli` — Typer CLI tool (`ost` command)
-- `services/mcp` — FastMCP server for AI tool access
 - `frontend/` — Next.js 16 + React 19 + ReactFlow + Zustand + TanStack Query
 
 **Data model**: Trees contain Nodes (outcome > opportunity > child_opportunity > solution > experiment) with assumptions stored directly on each node. Closure table enables efficient ancestor/descendant queries.
@@ -91,6 +90,6 @@ frontend/src/
 -- Use agent teams in most cases; make sure you have a Product manager, a product designer, an engineer, a quality assurance / testing engineer as well as a code quality engineer working together. 
 -- for each item run at least 5-10 improvement loops, where the PM and product designer work together (using playwright mcp) to play through concrete examples; they should involve other expert agents as required. When things are noticed that are not optimal from a logical or user perspective, then this should be fixed. Afterwards, a new improvement cycle should start. Only stop improving once things are stable. 
 -- keep a running diary of your notes in "tickets"; it is crucial that you keep tabs on which elements of the ticket backlog are in progress and which ones are completed. Do not remove the original tickets though; just make sure they are clearly annotated with current status to avoid confusion. 
--- Make sure you keep api, cli, mcp in Sync if relevant changes are made. As a rule, everything should be available through these interfaces EXCEPT clearly only visual things (like a color change of a node, for instance, is not necessary to be able to do via api/cli/mcp). Of course you can choose to implement such visual features via apis etc, so it is not forbidden to use these interfaces for graphical elements. 
+-- Make sure you keep api and cli in sync if relevant changes are made. As a rule, everything should be available through these interfaces EXCEPT clearly only visual things (like a color change of a node, for instance, is not necessary to be able to do via api/cli). Of course you can choose to implement such visual features via apis etc, so it is not forbidden to use these interfaces for graphical elements. 
 -- Once you are happy with all changes, commit and push to github
 -- After each ticket, make sure you clear context and keep going
