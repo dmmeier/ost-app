@@ -688,7 +688,8 @@ Screenshots produced (in promo/):
   02_tree_overview.png — Full tree view (Customer Retention, 22 nodes)
   03_self_hosted_hero.png — Clean full-canvas view of a styled tree (hero shot)
   04_project_context_and_chat.png — Context tab with project context + tree context + chat panel
-  05_cli_tooling.png — Terminal-style screenshot of ost list, ost stats, ost validate commands
+  04_chat_interaction.png — Chat with AI: user asks to validate tree, AI responds with structure, warnings, recommendations; follow-up adds experiment
+  05_cli_tooling.png — Clean terminal-style screenshot of ost list, ost show, ost validate, ost export commands
   06_git_integration.png — Git tab in bottom panel with remote URL, branch, token guidance
   07_tag_filtering.png — "Validated" tag filter active, showing filtered nodes + ancestors
   08_custom_bubbles_and_tags.png — Context panel showing bubble type defaults (KPI, Metric custom) + tags with colors
@@ -699,13 +700,14 @@ Screenshots produced (in promo/):
 
 Notes:
 - Point 3 (self-hosted) is more conceptual; screenshot 03 shows a clean hero view that works well for this slide
-- Point 5 (CLI) uses an HTML-rendered terminal screenshot since Playwright can't capture actual terminals
+- Point 4 (chat): 04_chat_interaction.png shows fake chat messages injected via DOM for promo purposes (no LLM call)
+- Point 5 (CLI) uses a clean hand-formatted HTML terminal (cli_terminal.html) rendered via Playwright
 - No main code was touched; all files are in promo/ directory
 - Production database (ost.db) was not modified; demo uses ost_promo.db
 
 Files created (all in promo/):
   populate_demo.py — Python script to create demo database
   cli_terminal.html — HTML rendering of CLI output for screenshot
-  13x PNG screenshots
+  14x PNG screenshots
 
 --- END DIARY ---
