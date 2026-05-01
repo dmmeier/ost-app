@@ -711,3 +711,44 @@ Files created (all in promo/):
   14x PNG screenshots
 
 --- END DIARY ---
+
+26. Fix: Complete tree export/import with all styling data [STATUS: COMPLETE]
+Tree export (git commit, JSON download) and import were missing project-level styling metadata. Exported JSON contained node-level fields but omitted tag definitions (colors, fill styles, font_light) and bubble type defaults (border colors, widths, labels, font_light). On re-import, even node-level styling fields present in the JSON were discarded.
+
+Two issues fixed:
+1. Export gap: Git commit/download JSON didn't include tag definitions or bubble_defaults
+2. Import gap: import_tree() ignored node overrides, edge_thickness, sort_order, tags, edge status/thickness, and node archived status
+
+--- DIARY (Ticket #26) ---
+Implementation:
+- Backend: Added export_tree() method on TreeService that enriches TreeWithNodes.model_dump() with bubble_defaults and project_tags (name, color, fill_style, font_light). Rewrote import_tree() to restore all fields: node overrides (border_color, border_width, fill_color, fill_style, font_light), edge_thickness, sort_order (via sorted BFS), tags, bubble_defaults, edge hypothesis status/thickness, node archived status, and agent_knowledge.
+- API: Added GET /trees/{id}/export endpoint returning enriched JSON. Git commit endpoint now uses service.export_tree().
+- CLI: Export command and git commit command both use service.export_tree(). Fixed Rich console.print() corrupting JSON output (replaced with plain print()).
+- Frontend: Added api.trees.exportTree() method. TreeSelector export button now calls /trees/{id}/export instead of /trees/{id}.
+- Tests: 16 new round-trip tests in TestExportImportRoundTrip class (bubble_defaults, project_tags, node_overrides, tags, sort_order, edge_status, edge_thickness, multi_root, custom_node_type, agent_knowledge, archived_status, backwards_compat, duplicate_tags). 267 total passing.
+
+Key fixes during review cycles:
+- P0: CLI Rich console.print() word-wraps and strips bracket-like markup, producing invalid JSON. Fixed with plain print().
+- P0: Frontend export called api.trees.get() (no project-level data). Added /export endpoint and exportTree() client method.
+- P1: Fill style validation rejected DB values like "lines_right" not in VALID_FILL_STYLES. Import now sanitizes: invalid fill_style dropped to None.
+- Medium: Edge status (validated/invalidated) reset to "untested" on import. Fixed via post-creation update_edge() call.
+- Low: Edge thickness not passed on import. Fixed.
+- Low: Node archived status lost on import. Fixed via post-creation update_node() call.
+
+Review cycles:
+- Cycle 1 (PM): Found P0 (CLI JSON corruption) + P1 (fill_style validation). Fixed.
+- Cycle 2 (Designer): Found P0 (frontend missing export endpoint). Fixed.
+- Cycle 3 (OST Expert): Found medium (edge status lost), low (edge thickness, node archived status). Fixed.
+- Cycle 4 (PM): CLEAN. Full round-trip verified: 57 nodes, tags, bubble_defaults, all overrides match.
+- Cycle 5 (Designer): CLEAN. All 3 export consumers verified, 267 tests pass, TypeScript clean.
+
+Files changed (8):
+  packages/ost_core/src/ost_core/services/tree_service.py — export_tree() + import_tree() rewrite
+  packages/ost_core/src/ost_core/db/repository.py — edge_thickness pass-through in add_node
+  services/api/src/ost_api/routers/trees.py — GET /trees/{id}/export endpoint
+  services/api/src/ost_api/routers/git.py — use service.export_tree()
+  services/cli/src/ost_cli/main.py — use service.export_tree(), plain print()
+  frontend/src/lib/api-client.ts — exportTree() method
+  frontend/src/components/panels/TreeSelector.tsx — use exportTree()
+  packages/ost_core/tests/test_tree_service.py — 16 round-trip tests
+--- END DIARY ---

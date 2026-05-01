@@ -170,8 +170,7 @@ async def git_commit(
     except ProjectNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    full_tree = service.get_full_tree(body.tree_id)
-    tree_json = full_tree.model_dump(mode="json")
+    tree_json = service.export_tree(body.tree_id)
 
     commit_msg = body.commit_message or f"Update {tree.name}"
 

@@ -42,6 +42,15 @@ def get_tree(tree_id: UUID, service: TreeService = Depends(get_service)):
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
 
+@router.get("/{tree_id}/export")
+def export_tree(tree_id: UUID, service: TreeService = Depends(get_service)):
+    """Export a tree with full project-level styling metadata (tags, bubble_defaults)."""
+    try:
+        return service.export_tree(tree_id)
+    except TreeNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
+
+
 @router.patch("/{tree_id}", response_model=Tree)
 def update_tree(
     tree_id: UUID, data: TreeUpdate, service: TreeService = Depends(get_service)

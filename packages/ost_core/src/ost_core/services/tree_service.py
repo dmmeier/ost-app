@@ -174,6 +174,42 @@ class TreeService:
     def get_edges_for_tree(self, tree_id: UUID) -> list[EdgeHypothesis]:
         return self.repo.get_edges_for_tree(tree_id)
 
+    # ── Export tree to JSON ──────────────────────────────────
+
+    def export_tree(self, tree_id: UUID) -> dict:
+        """Export tree with full project-level styling metadata.
+
+        Returns a dict suitable for JSON serialization that includes:
+        - All node data (including overrides, edge_thickness, sort_order, tags)
+        - project_tags: tag definitions with colors, fill styles, font_light
+        - bubble_defaults: project bubble type defaults
+        """
+        full_tree = self.get_full_tree(tree_id)
+        data = full_tree.model_dump(mode="json")
+
+        tree = self.get_tree(tree_id)
+        project = self.get_project(tree.project_id)
+
+        # Add bubble_defaults
+        if project.bubble_defaults:
+            data["bubble_defaults"] = {
+                k: v.model_dump() for k, v in project.bubble_defaults.items()
+            }
+
+        # Add tag definitions
+        tags = self.list_tags(tree.project_id)
+        data["project_tags"] = [
+            {
+                "name": t.name,
+                "color": t.color,
+                "fill_style": t.fill_style,
+                "font_light": t.font_light,
+            }
+            for t in tags
+        ]
+
+        return data
+
     # ── Import tree from JSON ─────────────────────────────────
 
     def import_tree(
@@ -181,8 +217,10 @@ class TreeService:
     ) -> TreeWithNodes:
         """Import a tree from exported JSON data (TreeWithNodes format).
 
-        Creates a fresh tree with new IDs, recreating the node hierarchy
-        and edge hypotheses using an old→new ID mapping.
+        Creates a fresh tree with new IDs, recreating the node hierarchy,
+        edge hypotheses, tags, and project-level styling using an old→new
+        ID mapping.  Backwards-compatible with old exports that lack
+        project_tags / bubble_defaults keys.
         """
         from collections import deque
 
@@ -202,6 +240,34 @@ class TreeService:
         if agent_knowledge:
             self.update_tree(new_tree.id, TreeUpdate(agent_knowledge=agent_knowledge))
 
+        # ── Restore bubble_defaults (imported values take precedence) ──
+        imported_defaults = tree_data.get("bubble_defaults")
+        if imported_defaults:
+            project = self.get_project(project_id)
+            current = dict(project.bubble_defaults or {})
+            for k, v in imported_defaults.items():
+                current[k] = BubbleTypeDefault(**(v if isinstance(v, dict) else v.model_dump()))
+            self.update_project(project_id, ProjectUpdate(bubble_defaults=current))
+
+        # ── Restore project tags ──
+        from ost_core.models.tag import VALID_FILL_STYLES
+
+        for tag_data in tree_data.get("project_tags", []):
+            existing = self.get_tag_by_name(project_id, tag_data["name"])
+            if not existing:
+                # Sanitize fill_style: drop values not in VALID_FILL_STYLES
+                raw_fill = tag_data.get("fill_style")
+                fill_style = raw_fill if raw_fill in VALID_FILL_STYLES else None
+                self.create_tag(
+                    project_id,
+                    TagCreate(
+                        name=tag_data["name"],
+                        color=tag_data.get("color", "#6b7280"),
+                        fill_style=fill_style,
+                        font_light=tag_data.get("font_light", False),
+                    ),
+                )
+
         nodes = tree_data.get("nodes", [])
         edges = tree_data.get("edges", [])
 
@@ -211,11 +277,16 @@ class TreeService:
         # Build old_id → new_id mapping via BFS
         id_map: dict[str, UUID] = {}
 
-        # Build children lookup from source data
+        # Build children lookup from source data, sorted by sort_order
+        # to preserve sibling ordering on import
         children_of: dict[str | None, list[dict]] = {}
         for n in nodes:
             parent_key = str(n["parent_id"]) if n.get("parent_id") else None
             children_of.setdefault(parent_key, []).append(n)
+
+        # Sort each sibling group by sort_order to preserve ordering
+        for key in children_of:
+            children_of[key].sort(key=lambda nd: (nd.get("sort_order", 0), str(nd.get("created_at", ""))))
 
         # BFS starting from root (parent_id=None)
         queue: deque[str | None] = deque([None])
@@ -234,17 +305,36 @@ class TreeService:
                         parent_id=mapped_parent,
                         assumption=node_data.get("assumption", ""),
                         evidence=node_data.get("evidence", ""),
+                        override_border_color=node_data.get("override_border_color"),
+                        override_border_width=node_data.get("override_border_width"),
+                        override_fill_color=node_data.get("override_fill_color"),
+                        override_fill_style=node_data.get("override_fill_style"),
+                        override_font_light=node_data.get("override_font_light"),
+                        edge_thickness=node_data.get("edge_thickness"),
                     ),
                 )
                 id_map[old_id] = new_node.id
                 queue.append(old_id)
+
+                # Restore node status if archived
+                node_status = node_data.get("status")
+                if node_status and node_status != "active":
+                    self.update_node(new_node.id, NodeUpdate(status=node_status))
+
+        # ── Restore node tags ──
+        for node_data in nodes:
+            old_id = str(node_data["id"])
+            new_node_id = id_map.get(old_id)
+            if new_node_id:
+                for tag_name in node_data.get("tags", []):
+                    self.add_tag_to_node_by_name(new_node_id, tag_name, project_id)
 
         # Recreate edges using mapped IDs
         for edge_data in edges:
             old_parent = str(edge_data["parent_node_id"])
             old_child = str(edge_data["child_node_id"])
             if old_parent in id_map and old_child in id_map:
-                self.set_edge_hypothesis(
+                edge = self.set_edge_hypothesis(
                     EdgeHypothesisCreate(
                         parent_node_id=id_map[old_parent],
                         child_node_id=id_map[old_child],
@@ -252,8 +342,16 @@ class TreeService:
                         hypothesis_type=HypothesisType(edge_data["hypothesis_type"]),
                         is_risky=edge_data.get("is_risky", False),
                         evidence=edge_data.get("evidence", ""),
+                        thickness=edge_data.get("thickness"),
                     )
                 )
+                # Restore edge status if not default
+                edge_status = edge_data.get("status")
+                if edge_status and edge_status != "untested":
+                    self.update_edge(
+                        edge.id,
+                        EdgeHypothesisUpdate(status=edge_status),
+                    )
 
         return self.get_full_tree(new_tree.id)
 

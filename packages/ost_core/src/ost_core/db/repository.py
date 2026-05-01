@@ -253,6 +253,7 @@ class TreeRepository:
                 override_fill_color=data.override_fill_color,
                 override_fill_style=data.override_fill_style,
                 override_font_light=data.override_font_light,
+                edge_thickness=data.edge_thickness,
                 sort_order=sort_order,
                 assumption=data.assumption or "",
                 evidence=data.evidence or "",

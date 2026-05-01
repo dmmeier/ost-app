@@ -456,11 +456,11 @@ def export_tree(
     tree_id: str = typer.Argument(..., help="Tree ID (or prefix)"),
     format: str = typer.Option("json", help="Export format: json"),
 ):
-    """Export a tree as JSON."""
+    """Export a tree as JSON (includes project tags and bubble defaults)."""
     service = _get_service()
-    full_tree = service.get_full_tree(_resolve_tree_id(tree_id))
-    data = full_tree.model_dump(mode="json")
-    console.print(json.dumps(data, indent=2))
+    data = service.export_tree(_resolve_tree_id(tree_id))
+    # Use plain print to avoid Rich markup processing and word-wrapping
+    print(json.dumps(data, indent=2))
 
 
 @app.command("import-tree")
@@ -1006,8 +1006,7 @@ def git_commit(
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
 
-    full_tree = service.get_full_tree(tid)
-    tree_json = full_tree.model_dump(mode="json")
+    tree_json = service.export_tree(tid)
 
     commit_msg = message or f"Update {tree.name}"
 

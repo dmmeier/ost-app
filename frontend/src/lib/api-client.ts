@@ -36,6 +36,7 @@ export const api = {
       return fetchAPI<Tree[]>(`/trees/${params}`);
     },
     get: (id: string) => fetchAPI<TreeWithNodes>(`/trees/${id}`),
+    exportTree: (id: string) => fetchAPI<Record<string, unknown>>(`/trees/${id}/export`),
     create: (data: TreeCreate) => fetchAPI<Tree>("/trees/", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: TreeUpdate) => fetchAPI<Tree>(`/trees/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => fetchAPI<void>(`/trees/${id}`, { method: "DELETE" }),

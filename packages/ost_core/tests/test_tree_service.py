@@ -14,12 +14,14 @@ from ost_core.models import (
     EdgeHypothesisUpdate,
     HypothesisType,
     NodeCreate,
+    NodeUpdate,
     ProjectCreate,
     ProjectUpdate,
     Tag,
     TagCreate,
     TagUpdate,
     TreeCreate,
+    TreeUpdate,
 )
 from ost_core.services.tree_service import TreeService
 
@@ -894,3 +896,408 @@ class TestMultiRoot:
         roots = service.repo.get_root_nodes(tree.id)
         assert len(roots) == 2
         assert service.get_node(r2.id).parent_id == r1.id
+
+
+class TestExportImportRoundTrip:
+    """Tests for export_tree() and import_tree() round-trip fidelity."""
+
+    def test_export_includes_bubble_defaults(self, service: TreeService, sample_tree):
+        st = sample_tree
+        defaults = {
+            "outcome": BubbleTypeDefault(border_color="#ff0000", border_width=3.0, font_light=True),
+            "solution": BubbleTypeDefault(border_color="#00ff00", border_width=1.5, label="My Sol"),
+        }
+        service.update_project(st["project"].id, ProjectUpdate(bubble_defaults=defaults))
+
+        data = service.export_tree(st["tree"].id)
+        assert "bubble_defaults" in data
+        assert data["bubble_defaults"]["outcome"]["border_color"] == "#ff0000"
+        assert data["bubble_defaults"]["outcome"]["font_light"] is True
+        assert data["bubble_defaults"]["solution"]["label"] == "My Sol"
+
+    def test_export_includes_project_tags(self, service: TreeService, sample_tree):
+        st = sample_tree
+        service.create_tag(st["project"].id, TagCreate(name="Sprint1", color="#ef4444", font_light=True))
+        service.create_tag(st["project"].id, TagCreate(name="UX", color="#22c55e", fill_style="solid"))
+
+        data = service.export_tree(st["tree"].id)
+        assert "project_tags" in data
+        tag_names = {t["name"] for t in data["project_tags"]}
+        assert tag_names == {"Sprint1", "UX"}
+
+        sprint_tag = next(t for t in data["project_tags"] if t["name"] == "Sprint1")
+        assert sprint_tag["color"] == "#ef4444"
+        assert sprint_tag["font_light"] is True
+
+        ux_tag = next(t for t in data["project_tags"] if t["name"] == "UX")
+        assert ux_tag["fill_style"] == "solid"
+
+    def test_export_includes_node_overrides(self, service: TreeService, sample_tree):
+        st = sample_tree
+        service.update_node(
+            st["opp1"].id,
+            NodeUpdate(
+                override_border_color="#abcdef",
+                override_fill_color="#123456",
+                override_fill_style="solid",
+                override_font_light=True,
+                edge_thickness=5,
+            ),
+        )
+
+        data = service.export_tree(st["tree"].id)
+        opp1_data = next(n for n in data["nodes"] if n["title"] == "Users struggle to complete tasks")
+        assert opp1_data["override_border_color"] == "#abcdef"
+        assert opp1_data["override_fill_color"] == "#123456"
+        assert opp1_data["override_fill_style"] == "solid"
+        assert opp1_data["override_font_light"] is True
+        assert opp1_data["edge_thickness"] == 5
+
+    def test_import_restores_node_overrides(self, service: TreeService, sample_project):
+        """Import should preserve node-level styling overrides."""
+        # Create a source tree with overrides
+        tree = service.create_tree(TreeCreate(name="Styled", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        child = service.add_node(
+            tree.id,
+            NodeCreate(
+                title="Styled Child",
+                node_type="opportunity",
+                parent_id=root.id,
+                override_border_color="#ff0000",
+                override_border_width=4.0,
+                override_fill_color="#00ff00",
+                override_fill_style="solid",
+                override_font_light=True,
+                edge_thickness=3,
+            ),
+        )
+
+        # Export and reimport
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Import Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        styled = next(n for n in imported.nodes if n.title == "Styled Child")
+        assert styled.override_border_color == "#ff0000"
+        assert styled.override_border_width == 4.0
+        assert styled.override_fill_color == "#00ff00"
+        assert styled.override_fill_style == "solid"
+        assert styled.override_font_light is True
+        assert styled.edge_thickness == 3
+
+    def test_import_restores_tags(self, service: TreeService, sample_project):
+        """Import should recreate project tags and node-tag associations."""
+        tree = service.create_tree(TreeCreate(name="Tagged", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        child = service.add_node(
+            tree.id,
+            NodeCreate(title="Tagged Child", node_type="opportunity", parent_id=root.id),
+        )
+
+        # Create tags and assign
+        service.create_tag(sample_project.id, TagCreate(name="P0", color="#ef4444", font_light=True))
+        service.add_tag_to_node_by_name(child.id, "P0", sample_project.id)
+
+        # Export and reimport
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Import Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        # Verify tag definition was created in new project
+        new_tags = service.list_tags(new_project.id)
+        assert any(t.name == "P0" and t.color == "#ef4444" and t.font_light is True for t in new_tags)
+
+        # Verify node-tag association
+        tagged_child = next(n for n in imported.nodes if n.title == "Tagged Child")
+        assert "P0" in tagged_child.tags
+
+    def test_import_restores_bubble_defaults(self, service: TreeService, sample_project):
+        """Import should merge bubble_defaults into the target project."""
+        tree = service.create_tree(TreeCreate(name="Bubble", project_id=sample_project.id))
+        service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+
+        # Set custom bubble defaults
+        defaults = {
+            "outcome": BubbleTypeDefault(border_color="#aabbcc", border_width=3.0),
+            "my_custom": BubbleTypeDefault(border_color="#ddeeff", border_width=1.0, label="Custom"),
+        }
+        service.update_project(sample_project.id, ProjectUpdate(bubble_defaults=defaults))
+
+        # Export and reimport
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Import Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        # Verify bubble defaults were imported
+        new_proj = service.get_project(new_project.id)
+        assert new_proj.bubble_defaults is not None
+        assert "my_custom" in new_proj.bubble_defaults
+        assert new_proj.bubble_defaults["my_custom"].border_color == "#ddeeff"
+        assert new_proj.bubble_defaults["my_custom"].label == "Custom"
+
+    def test_import_preserves_sort_order(self, service: TreeService, sample_project):
+        """Import should preserve sibling ordering via sort_order."""
+        tree = service.create_tree(TreeCreate(name="Ordered", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        service.add_node(
+            tree.id, NodeCreate(title="First", node_type="opportunity", parent_id=root.id)
+        )
+        service.add_node(
+            tree.id, NodeCreate(title="Second", node_type="opportunity", parent_id=root.id)
+        )
+        service.add_node(
+            tree.id, NodeCreate(title="Third", node_type="opportunity", parent_id=root.id)
+        )
+
+        # Reorder: move Third to first position
+        full = service.get_full_tree(tree.id)
+        third_node = next(n for n in full.nodes if n.title == "Third")
+        service.reorder_sibling(third_node.id, "left")  # Third ↔ Second
+        service.reorder_sibling(third_node.id, "left")  # Third ↔ First
+
+        # Export
+        data = service.export_tree(tree.id)
+
+        # Import into new project
+        new_project = service.create_project(ProjectCreate(name="Import Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        # Children of root should be in order: Third, First, Second
+        imported_root = next(n for n in imported.nodes if n.title == "Root")
+        children = [n for n in imported.nodes if n.parent_id == imported_root.id]
+        children.sort(key=lambda n: n.sort_order)
+        assert [c.title for c in children] == ["Third", "First", "Second"]
+
+    def test_full_round_trip(self, service: TreeService, sample_tree):
+        """Full round-trip: export a styled tree, import, verify everything."""
+        st = sample_tree
+
+        # Add styling
+        defaults = {
+            "outcome": BubbleTypeDefault(border_color="#ff0000", border_width=3.0, font_light=True),
+        }
+        service.update_project(st["project"].id, ProjectUpdate(bubble_defaults=defaults))
+
+        service.update_node(
+            st["sol1"].id,
+            NodeUpdate(override_fill_color="#aabbcc", override_fill_style="solid", edge_thickness=4),
+        )
+
+        service.create_tag(st["project"].id, TagCreate(name="Critical", color="#ef4444", font_light=True))
+        service.add_tag_to_node_by_name(st["opp1"].id, "Critical", st["project"].id)
+
+        # Export
+        data = service.export_tree(st["tree"].id)
+
+        # Import into fresh project
+        new_project = service.create_project(ProjectCreate(name="Round Trip Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        # Verify node count
+        assert len(imported.nodes) == 16
+        assert len(imported.edges) == 2
+
+        # Verify node overrides
+        sol1_imported = next(n for n in imported.nodes if n.title == "Add onboarding wizard")
+        assert sol1_imported.override_fill_color == "#aabbcc"
+        assert sol1_imported.override_fill_style == "solid"
+        assert sol1_imported.edge_thickness == 4
+
+        # Verify tags
+        opp1_imported = next(n for n in imported.nodes if n.title == "Users struggle to complete tasks")
+        assert "Critical" in opp1_imported.tags
+
+        # Verify tag definition
+        new_tags = service.list_tags(new_project.id)
+        critical = next(t for t in new_tags if t.name == "Critical")
+        assert critical.color == "#ef4444"
+        assert critical.font_light is True
+
+        # Verify bubble defaults
+        new_proj = service.get_project(new_project.id)
+        assert new_proj.bubble_defaults is not None
+        assert new_proj.bubble_defaults["outcome"].border_color == "#ff0000"
+        assert new_proj.bubble_defaults["outcome"].font_light is True
+
+    def test_import_backwards_compatible(self, service: TreeService, sample_project):
+        """Old exports without project_tags/bubble_defaults still import fine."""
+        old_format = {
+            "name": "Legacy Export",
+            "description": "From old version",
+            "tree_context": "",
+            "nodes": [
+                {
+                    "id": "aaaa-1111",
+                    "parent_id": None,
+                    "title": "Old Root",
+                    "node_type": "outcome",
+                    "description": "A root node",
+                },
+                {
+                    "id": "bbbb-2222",
+                    "parent_id": "aaaa-1111",
+                    "title": "Old Child",
+                    "node_type": "opportunity",
+                    "description": "A child",
+                },
+            ],
+            "edges": [],
+        }
+
+        imported = service.import_tree(sample_project.id, old_format)
+        assert len(imported.nodes) == 2
+        assert imported.name == "Legacy Export"
+
+    def test_import_preserves_edge_status(self, service: TreeService, sample_project):
+        """Edge hypothesis status (validated/invalidated) should survive round-trip."""
+        tree = service.create_tree(TreeCreate(name="Edge Status", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        child = service.add_node(
+            tree.id,
+            NodeCreate(title="Child", node_type="opportunity", parent_id=root.id),
+        )
+
+        # Create an edge and validate it
+        edge = service.set_edge_hypothesis(
+            EdgeHypothesisCreate(
+                parent_node_id=root.id,
+                child_node_id=child.id,
+                hypothesis="Users need this",
+                hypothesis_type=HypothesisType.PROBLEM,
+                is_risky=True,
+                evidence="Survey data",
+            )
+        )
+        service.update_edge(edge.id, EdgeHypothesisUpdate(status="validated"))
+
+        # Export and reimport
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        assert len(imported.edges) == 1
+        imp_edge = imported.edges[0]
+        assert imp_edge.hypothesis == "Users need this"
+        assert imp_edge.status == "validated"
+        assert imp_edge.is_risky is True
+        assert imp_edge.evidence == "Survey data"
+
+    def test_import_preserves_edge_thickness(self, service: TreeService, sample_project):
+        """Edge thickness on hypothesis records should survive round-trip."""
+        tree = service.create_tree(TreeCreate(name="Thick", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        child = service.add_node(
+            tree.id,
+            NodeCreate(title="Child", node_type="opportunity", parent_id=root.id),
+        )
+
+        edge = service.set_edge_hypothesis(
+            EdgeHypothesisCreate(
+                parent_node_id=root.id,
+                child_node_id=child.id,
+                hypothesis="Important",
+                hypothesis_type=HypothesisType.PROBLEM,
+                thickness=5,
+            )
+        )
+
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        assert imported.edges[0].thickness == 5
+
+    def test_import_multi_root_tree(self, service: TreeService, sample_project):
+        """Multi-root (forest) trees should import correctly."""
+        tree = service.create_tree(TreeCreate(name="Forest", project_id=sample_project.id))
+        r1 = service.add_node(tree.id, NodeCreate(title="Root A", node_type="outcome"))
+        r2 = service.add_node(tree.id, NodeCreate(title="Root B", node_type="solution"))
+        c1 = service.add_node(
+            tree.id, NodeCreate(title="Child of A", node_type="opportunity", parent_id=r1.id)
+        )
+
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        assert len(imported.nodes) == 3
+        roots = [n for n in imported.nodes if n.parent_id is None]
+        assert len(roots) == 2
+        root_titles = {r.title for r in roots}
+        assert root_titles == {"Root A", "Root B"}
+
+    def test_import_custom_node_type(self, service: TreeService, sample_project):
+        """Custom node types should round-trip and auto-register in target project."""
+        tree = service.create_tree(TreeCreate(name="Custom", project_id=sample_project.id))
+        service.add_node(tree.id, NodeCreate(title="Widget", node_type="my_widget"))
+
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        assert len(imported.nodes) == 1
+        assert imported.nodes[0].node_type == "my_widget"
+
+        # Verify auto-registered in target project's bubble_defaults
+        proj = service.get_project(new_project.id)
+        assert proj.bubble_defaults is not None
+        assert "my_widget" in proj.bubble_defaults
+
+    def test_import_preserves_agent_knowledge(self, service: TreeService, sample_project):
+        """agent_knowledge should be preserved on import."""
+        tree = service.create_tree(TreeCreate(name="Knowledge", project_id=sample_project.id))
+        service.update_tree(tree.id, TreeUpdate(agent_knowledge="Some learned context"))
+        service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        # Get the tree metadata (not just nodes)
+        new_tree = service.get_tree(imported.id)
+        assert new_tree.agent_knowledge == "Some learned context"
+
+    def test_import_preserves_node_archived_status(self, service: TreeService, sample_project):
+        """Archived nodes should stay archived after import."""
+        tree = service.create_tree(TreeCreate(name="Archived", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        child = service.add_node(
+            tree.id,
+            NodeCreate(title="Archived Child", node_type="opportunity", parent_id=root.id),
+        )
+        service.update_node(child.id, NodeUpdate(status="archived"))
+
+        data = service.export_tree(tree.id)
+        new_project = service.create_project(ProjectCreate(name="Target"))
+        imported = service.import_tree(new_project.id, data)
+
+        archived = next(n for n in imported.nodes if n.title == "Archived Child")
+        assert archived.status == "archived"
+
+    def test_import_duplicate_tag_name_uses_existing(self, service: TreeService, sample_project):
+        """If target project already has a tag with same name, use existing tag (don't crash)."""
+        tree = service.create_tree(TreeCreate(name="Tags", project_id=sample_project.id))
+        root = service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+
+        service.create_tag(sample_project.id, TagCreate(name="P0", color="#ef4444"))
+        service.add_tag_to_node_by_name(root.id, "P0", sample_project.id)
+
+        data = service.export_tree(tree.id)
+
+        # Create target project with a pre-existing "P0" tag (different color)
+        target_project = service.create_project(ProjectCreate(name="Target"))
+        service.create_tag(target_project.id, TagCreate(name="P0", color="#00ff00"))
+
+        imported = service.import_tree(target_project.id, data)
+
+        # Node should be tagged
+        tagged_root = next(n for n in imported.nodes if n.title == "Root")
+        assert "P0" in tagged_root.tags
+
+        # Target project should still only have 1 "P0" tag (not duplicated)
+        tags = service.list_tags(target_project.id)
+        p0_tags = [t for t in tags if t.name == "P0"]
+        assert len(p0_tags) == 1
+        # The existing tag's color should be preserved (not overwritten)
+        assert p0_tags[0].color == "#00ff00"
