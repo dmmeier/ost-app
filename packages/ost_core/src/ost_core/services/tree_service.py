@@ -183,12 +183,17 @@ class TreeService:
         - All node data (including overrides, edge_thickness, sort_order, tags)
         - project_tags: tag definitions with colors, fill styles, font_light
         - bubble_defaults: project bubble type defaults
+        - project_context: project-level context text
         """
         full_tree = self.get_full_tree(tree_id)
         data = full_tree.model_dump(mode="json")
 
         tree = self.get_tree(tree_id)
         project = self.get_project(tree.project_id)
+
+        # Add project_context
+        if project.project_context:
+            data["project_context"] = project.project_context
 
         # Add bubble_defaults
         if project.bubble_defaults:
@@ -239,6 +244,13 @@ class TreeService:
         agent_knowledge = tree_data.get("agent_knowledge")
         if agent_knowledge:
             self.update_tree(new_tree.id, TreeUpdate(agent_knowledge=agent_knowledge))
+
+        # ── Restore project_context if present and project has none ──
+        imported_project_context = tree_data.get("project_context")
+        if imported_project_context:
+            project = self.get_project(project_id)
+            if not project.project_context:
+                self.update_project(project_id, ProjectUpdate(project_context=imported_project_context))
 
         # ── Restore bubble_defaults (imported values take precedence) ──
         imported_defaults = tree_data.get("bubble_defaults")

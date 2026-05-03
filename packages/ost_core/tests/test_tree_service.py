@@ -1301,3 +1301,46 @@ class TestExportImportRoundTrip:
         assert len(p0_tags) == 1
         # The existing tag's color should be preserved (not overwritten)
         assert p0_tags[0].color == "#00ff00"
+
+    def test_export_includes_project_context(self, service: TreeService, sample_tree):
+        """export_tree includes project_context when set."""
+        tree = sample_tree["tree"]
+        project = sample_tree["project"]
+        service.update_project(project.id, ProjectUpdate(project_context="We are a B2B SaaS company."))
+        data = service.export_tree(tree.id)
+        assert data["project_context"] == "We are a B2B SaaS company."
+
+    def test_export_omits_project_context_when_empty(self, service: TreeService, sample_tree):
+        """export_tree does not include project_context key when it's empty."""
+        tree = sample_tree["tree"]
+        data = service.export_tree(tree.id)
+        assert "project_context" not in data
+
+    def test_import_restores_project_context(self, service: TreeService, sample_project):
+        """import_tree restores project_context when target project has none."""
+        # Create a source tree with project_context, export, then import into fresh project
+        service.update_project(sample_project.id, ProjectUpdate(project_context="Imported context about our users."))
+        tree = service.create_tree(TreeCreate(name="Source", project_id=sample_project.id))
+        service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        data = service.export_tree(tree.id)
+
+        # Import into a new project with no context
+        target_project = service.create_project(ProjectCreate(name="Target"))
+        service.import_tree(target_project.id, data)
+        project = service.get_project(target_project.id)
+        assert project.project_context == "Imported context about our users."
+
+    def test_import_does_not_overwrite_existing_project_context(self, service: TreeService, sample_project):
+        """import_tree does not overwrite existing project_context."""
+        # Source project has context
+        service.update_project(sample_project.id, ProjectUpdate(project_context="Source context."))
+        tree = service.create_tree(TreeCreate(name="Source", project_id=sample_project.id))
+        service.add_node(tree.id, NodeCreate(title="Root", node_type="outcome"))
+        data = service.export_tree(tree.id)
+
+        # Target project already has its own context
+        target_project = service.create_project(ProjectCreate(name="Target", description=""))
+        service.update_project(target_project.id, ProjectUpdate(project_context="Existing context."))
+        service.import_tree(target_project.id, data)
+        project = service.get_project(target_project.id)
+        assert project.project_context == "Existing context."
