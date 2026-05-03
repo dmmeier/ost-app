@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,9 +13,13 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# CORS origins: configurable via CORS_ORIGINS env var (comma-separated)
+_default_origins = ["http://localhost:3000"]
+_cors_origins = os.environ.get("CORS_ORIGINS", "").split(",") if os.environ.get("CORS_ORIGINS") else _default_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

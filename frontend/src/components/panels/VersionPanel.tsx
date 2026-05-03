@@ -41,20 +41,6 @@ function absoluteTime(dateStr: string): string {
   });
 }
 
-function diffSummary(
-  snap: TreeSnapshot,
-  current: { nodeCount: number; edgeCount: number }
-): string {
-  const nodeDiff = current.nodeCount - snap.node_count;
-  const edgeDiff = current.edgeCount - snap.edge_count;
-  const parts: string[] = [];
-  if (nodeDiff > 0) parts.push(`+${nodeDiff}n`);
-  else if (nodeDiff < 0) parts.push(`${nodeDiff}n`);
-  if (edgeDiff > 0) parts.push(`+${edgeDiff}e`);
-  else if (edgeDiff < 0) parts.push(`${edgeDiff}e`);
-  if (parts.length === 0) return "no changes";
-  return parts.join(", ") + " since";
-}
 
 export function VersionPanel({ tree }: VersionPanelProps) {
   const queryClient = useQueryClient();
@@ -122,7 +108,6 @@ export function VersionPanel({ tree }: VersionPanelProps) {
     setSelectedSnapshotId((prev) => (prev === snapId ? null : snapId));
   };
 
-  const currentState = { nodeCount: tree.nodes.length, edgeCount: tree.edges.length };
 
   const timeline = (
     <div className="p-3 space-y-3 overflow-y-auto h-full">
@@ -148,9 +133,6 @@ export function VersionPanel({ tree }: VersionPanelProps) {
             {isSaving ? "..." : "Commit"}
           </Button>
         </div>
-        <p className="text-[10px] text-gray-400 mt-0.5">
-          Current: {tree.nodes.length} nodes, {tree.edges.length} edges
-        </p>
       </div>
 
       {/* Version history — compact timeline */}
@@ -172,9 +154,6 @@ export function VersionPanel({ tree }: VersionPanelProps) {
               <div className="flex items-center gap-3 relative py-1.5">
                 <div className="w-[14px] h-[14px] rounded-full bg-blue-500 border-2 border-white shadow-sm z-10 shrink-0" />
                 <span className="text-xs font-medium text-blue-600">Current state</span>
-                <span className="text-[10px] text-gray-400">
-                  {tree.nodes.length}n, {tree.edges.length}e
-                </span>
                 <span className="text-[10px] text-gray-400 ml-auto">now</span>
               </div>
 
@@ -205,14 +184,6 @@ export function VersionPanel({ tree }: VersionPanelProps) {
                   >
                     {snap.message}
                   </span>
-                  <span className="text-[10px] text-gray-400 shrink-0">
-                    {snap.node_count}n, {snap.edge_count}e
-                  </span>
-                  {!selectedSnapshotId && (
-                    <span className="text-[10px] text-gray-400 italic shrink-0">
-                      {diffSummary(snap, currentState)}
-                    </span>
-                  )}
                   {confirmRestoreId === snap.id ? (
                     <span
                       className="flex items-center gap-1 ml-auto shrink-0"

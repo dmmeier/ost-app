@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16.7-alpine
+    image: postgres:16-alpine
     container_name: ost-postgres
     environment:
       POSTGRES_DB: ost
@@ -29,15 +27,12 @@ services:
     environment:
       DATABASE_URL: postgresql://ost_user:${POSTGRES_PASSWORD:-ost_password_change_me}@postgres:5432/ost
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CORS_ORIGINS: "http://localhost:3000"
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./packages:/app/packages
-      - ./services:/app/services
-      - ./pyproject.toml:/app/pyproject.toml
     restart: unless-stopped
 
   # Frontend (Next.js)
@@ -46,8 +41,6 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     container_name: ost-frontend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:
