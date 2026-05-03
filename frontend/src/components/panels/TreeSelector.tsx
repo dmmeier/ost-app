@@ -500,7 +500,7 @@ function ProjectAccordion({
                 }`}
               >
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width={14} height={14} className="shrink-0"><circle cx="32" cy="32" r="32" fill="#0d9488"/><circle cx="32" cy="18" r="5" fill="#fff"/><path d="M32 23L32 32M32 32L18 42M32 32L32 42M32 32L46 42" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" fill="none"/><circle cx="18" cy="45" r="4" fill="#fff"/><circle cx="32" cy="45" r="4" fill="#fff"/><circle cx="46" cy="45" r="4" fill="#fff"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width={14} height={14} className="shrink-0 text-[#0d9488]"><circle cx="32" cy="18" r="5" fill="currentColor"/><path d="M32 23L32 32M32 32L18 42M32 32L32 42M32 32L46 42" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" fill="none"/><circle cx="18" cy="45" r="4" fill="currentColor"/><circle cx="32" cy="45" r="4" fill="currentColor"/><circle cx="46" cy="45" r="4" fill="currentColor"/></svg>
                   {editingTreeId === tree.id ? (
                     <input
                       className="text-sm bg-white border rounded px-1 py-0.5 w-full"
