@@ -146,7 +146,68 @@ If the project already has design tokens (Tailwind config, CSS Modules, theme ob
 
 ---
 
-## Recommended HTML head block
+## Top-bar treatment
+
+The app's top bar (wordmark + breadcrumbs + right-side actions) sits on a **near-black** background. This gives the product a slick, modern pro-tool feel and lets the teal disc in the wordmark visually anchor every screen. The tree canvas below stays light, so the dark bar reads as architecture rather than decoration.
+
+**Spec:**
+
+| Property | Value |
+|---|---|
+| Background | `#1a1a1a` (`var(--ost-ink)`) — near-black, not pure `#000` |
+| Bottom border | none (the value contrast against the canvas is enough); optional `1px solid rgba(255,255,255,0.06)` for subtle definition |
+| Height | 56–64px (keep current — don't change) |
+| Wordmark | `wordmark-on-dark.svg` (disc stays teal, "OST" white, "app" light gray) |
+| Breadcrumb — current page | `#ffffff` |
+| Breadcrumb — parent crumbs | `#9ca3af` (`var(--ost-muted)`) |
+| Breadcrumb separator (`›`) | `#4b5563` |
+| Right-side actions (Settings, etc.) | `#ffffff` text/icons |
+| Right-side hover state | background `rgba(255, 255, 255, 0.08)`, radius `8px` |
+| Active "Chat" pill | teal `#0d9488` background, white text — keep as-is, contrast against black is great |
+| Focus ring | `2px solid #5eead4` (teal-300) for visibility on dark |
+
+**CSS:**
+
+```css
+.app-header {
+  background: var(--ost-ink);            /* #1a1a1a */
+  color: #ffffff;
+  /* optional hairline: */
+  /* border-bottom: 1px solid rgba(255, 255, 255, 0.06); */
+}
+
+.app-header .breadcrumb-current { color: #ffffff; }
+.app-header .breadcrumb-parent  { color: var(--ost-muted); }   /* #6b7280 also acceptable; #9ca3af reads better on black */
+.app-header .breadcrumb-sep     { color: #4b5563; }
+
+.app-header .header-action {
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.app-header .header-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.app-header .header-action:focus-visible {
+  outline: 2px solid #5eead4;
+  outline-offset: 2px;
+}
+```
+
+**Why this works:**
+- The teal disc on near-black is the most visually striking placement of the brand — it sings.
+- A dark architectural bar makes the white canvas read clearly as the working surface.
+- Future-proofs dark mode: the header already lives there.
+- Near-black (`#1a1a1a`) softens the slickness so the product still feels approachable, not corporate.
+
+**Don't:**
+- Don't use pure `#000` — it's harsher and less modern than `#1a1a1a`. Linear, Notion, and most modern pro tools use a near-black for exactly this reason.
+- Don't use the teal `#0d9488` as the header background — it would compete with the node-type color legend immediately below, and the disc would dissolve.
+- Don't apply the dark treatment to the project sidebar — keep that surface white/paper. Only the top horizontal bar is dark.
+- Don't add gradients, glows, or inner shadows. Flat near-black, full stop.
+- Don't swap the wordmark for the light-mode variant — use `wordmark-on-dark.svg` so the text colors are correct.
+
+---
 
 Drop this into the root layout (`frontend/src/app/layout.tsx` or equivalent):
 
