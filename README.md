@@ -40,7 +40,7 @@ cd opportunity-solution-trees
 
 # Install Python dependencies
 curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync
+uv sync --all-packages
 ```
 
 ### 2. Start the backend
