@@ -103,7 +103,7 @@ export function SettingsDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-xs h-8 px-2">
+        <Button variant="ghost" size="sm" className="text-xs h-8 px-2 text-gray-300 hover:bg-white/10 hover:text-white">
           Settings
         </Button>
       </DialogTrigger>
