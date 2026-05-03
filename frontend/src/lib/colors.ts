@@ -9,12 +9,13 @@ export const NODE_COLORS: Record<string, { bg: string; border: string; text: str
 };
 
 // Default hex colors matching the Tailwind classes above (used when no project defaults are set)
+// Desaturated ~15% from original to reduce visual noise and let content stand out
 export const DEFAULT_BUBBLE_DEFAULTS: BubbleDefaults = {
-  outcome: { border_color: "#93c5fd", border_width: 2 },
-  opportunity: { border_color: "#fdba74", border_width: 2 },
-  child_opportunity: { border_color: "#fcd34d", border_width: 2 },
-  solution: { border_color: "#6ee7b7", border_width: 2 },
-  experiment: { border_color: "#c4b5fd", border_width: 2 },
+  outcome: { border_color: "#a0c4e8", border_width: 2 },
+  opportunity: { border_color: "#e8b88a", border_width: 2 },
+  child_opportunity: { border_color: "#e5cc6a", border_width: 2 },
+  solution: { border_color: "#82d4ad", border_width: 2 },
+  experiment: { border_color: "#bfb5e4", border_width: 2 },
 };
 
 // Standard color palette for the color picker (16 colors)

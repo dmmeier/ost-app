@@ -200,9 +200,9 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
   const renderRawMessage = (msg: ChatMessage, idx: number) => {
     if (msg.role === "user") {
       return (
-        <div key={idx} className="rounded border border-blue-200 bg-blue-50 p-2">
-          <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">User</p>
-          <pre className="text-[10px] text-blue-900 whitespace-pre-wrap font-mono leading-tight">
+        <div key={idx} className="rounded border border-[#0d9488]/30 bg-[#e6f4f3] p-2">
+          <p className="text-[9px] font-bold text-[#0b7a70] uppercase mb-1">User</p>
+          <pre className="text-[10px] text-gray-900 whitespace-pre-wrap font-mono leading-tight">
             {msg.content}
           </pre>
         </div>
@@ -355,7 +355,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
                   <div
                     className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                       msg.role === "user"
-                        ? "bg-blue-400 text-white"
+                        ? "bg-[#0d9488] text-white"
                         : "bg-gray-100 text-gray-900"
                     }`}
                   >
@@ -457,6 +457,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
             size="sm"
+            className="bg-[#0d9488] hover:bg-[#0b7a70] text-white"
           >
             {isLoading ? "Sending..." : "Send"}
           </Button>

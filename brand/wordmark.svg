@@ -1,8 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" font-family="&#39;IBM Plex Sans&#39;, system-ui, sans-serif">
+  
   <circle cx="32" cy="32" r="32" fill="#0d9488"></circle>
   <circle cx="32" cy="18" r="5" fill="#ffffff"></circle>
   <path d="M 32 23 L 32 32 M 32 32 L 18 42 M 32 32 L 32 42 M 32 32 L 46 42" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" fill="none"></path>
   <circle cx="18" cy="45" r="4" fill="#ffffff"></circle>
   <circle cx="32" cy="45" r="4" fill="#ffffff"></circle>
   <circle cx="46" cy="45" r="4" fill="#ffffff"></circle>
+  
+  <text x="80" y="42" font-size="36" font-weight="600" letter-spacing="-0.72" fill="#1a1a1a">OST</text>
+  <text x="160" y="42" font-size="36" font-weight="400" letter-spacing="-0.72" fill="#6b7280">app</text>
 </svg>

@@ -137,7 +137,7 @@ export function NodeTagsSection({
               <button
                 onClick={handleCreateAndAdd}
                 disabled={!newTagName.trim()}
-                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 shrink-0"
+                className="text-xs px-2 py-1 bg-[#0d9488] text-white rounded hover:bg-[#0b7a70] disabled:opacity-50 shrink-0"
               >
                 Add
               </button>

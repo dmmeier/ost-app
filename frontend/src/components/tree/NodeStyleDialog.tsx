@@ -230,7 +230,7 @@ export function NodeStyleDialog({
                     onClick={() => setFillStyle(opt.value)}
                     className={`flex flex-col items-center gap-1 p-2 rounded border text-[10px] ${
                       isActive
-                        ? "border-blue-400 bg-blue-50 text-blue-700"
+                        ? "border-[#0d9488] bg-[#e6f4f3] text-[#0b7a70]"
                         : "border-gray-200 hover:border-gray-300 text-gray-500"
                     }`}
                   >

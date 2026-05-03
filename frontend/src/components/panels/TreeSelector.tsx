@@ -14,7 +14,6 @@ import { api } from "@/lib/api-client";
 import { Project } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TreeIcon } from "@/components/ui/tree-icon";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -326,7 +325,7 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
                   />
                   <label
                     htmlFor="import-tree-file"
-                    className="cursor-pointer text-sm text-gray-500 hover:text-blue-500"
+                    className="cursor-pointer text-sm text-gray-500 hover:text-[#0d9488]"
                   >
                     {importFile ? (
                       <span className="text-gray-900 font-medium">{importFile.name}</span>
@@ -451,7 +450,7 @@ function ProjectAccordion({
                 e.stopPropagation();
                 onStartEdit();
               }}
-              className="text-gray-400 hover:text-blue-500 p-0.5 rounded hover:bg-blue-50"
+              className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
               title="Rename project"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -496,12 +495,12 @@ function ProjectAccordion({
                 onClick={() => onSelectTree(tree.id)}
                 className={`flex items-center justify-between pl-5 pr-2 py-1.5 cursor-pointer text-sm ${
                   selectedTreeId === tree.id
-                    ? "bg-blue-50 text-blue-700 border-l-2 border-blue-500"
+                    ? "bg-[#e6f4f3] text-[#0b7a70] border-l-2 border-[#0d9488]"
                     : "hover:bg-gray-50"
                 }`}
               >
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <TreeIcon size={14} className="shrink-0 text-teal-600" />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width={14} height={14} className="shrink-0"><circle cx="32" cy="32" r="32" fill="#0d9488"/><circle cx="32" cy="18" r="5" fill="#fff"/><path d="M32 23L32 32M32 32L18 42M32 32L32 42M32 32L46 42" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" fill="none"/><circle cx="18" cy="45" r="4" fill="#fff"/><circle cx="32" cy="45" r="4" fill="#fff"/><circle cx="46" cy="45" r="4" fill="#fff"/></svg>
                   {editingTreeId === tree.id ? (
                     <input
                       className="text-sm bg-white border rounded px-1 py-0.5 w-full"
@@ -525,7 +524,7 @@ function ProjectAccordion({
                       e.stopPropagation();
                       onStartTreeEdit(tree.id, tree.name);
                     }}
-                    className="text-gray-400 hover:text-blue-500 p-0.5 rounded hover:bg-blue-50"
+                    className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
                     title="Rename tree"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -544,7 +543,7 @@ function ProjectAccordion({
                         URL.revokeObjectURL(url);
                       });
                     }}
-                    className="text-gray-400 hover:text-blue-500 p-0.5 rounded hover:bg-blue-50"
+                    className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
                     title="Export as JSON"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
@@ -582,7 +581,7 @@ function ProjectAccordion({
           ))}
           <button
             onClick={onNewTree}
-            className="w-full text-left pl-6 pr-2 py-1.5 text-xs text-gray-400 hover:text-blue-500 hover:bg-gray-50"
+            className="w-full text-left pl-6 pr-2 py-1.5 text-xs text-gray-400 hover:text-[#0d9488] hover:bg-gray-50"
           >
             + New Tree
           </button>

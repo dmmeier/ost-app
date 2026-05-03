@@ -1,0 +1,23 @@
+/* OST app — brand tokens
+ * Drop into your global CSS or import as a partial.
+ */
+:root {
+  /* Primary */
+  --ost-teal: #0d9488;       /* teal-600 — disc, primary actions, links */
+  --ost-teal-deep: #0b7a70;  /* hover / pressed */
+  --ost-teal-tint: #e6f4f3;  /* subtle backgrounds */
+
+  /* Ink & paper */
+  --ost-ink: #1a1a1a;        /* body text, wordmark on light */
+  --ost-muted: #6b7280;      /* secondary text, "app" in wordmark */
+  --ost-paper: #ffffff;      /* surfaces */
+  --ost-line: #e5e1d8;       /* hairlines on warm bg */
+
+  /* Type */
+  --ost-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --ost-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Wordmark spec */
+  --ost-wordmark-weight: 600;
+  --ost-wordmark-tracking: -0.02em;
+}

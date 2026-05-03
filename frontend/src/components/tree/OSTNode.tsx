@@ -109,7 +109,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
     >
       <Handle type="target" position={Position.Top} className="!bg-gray-400" />
       {nodeData.index != null && (
-        <span className={`absolute top-1.5 right-2 text-[10px] rounded px-1 min-w-[18px] text-center ${fontLight ? "text-white/50 bg-white/10" : "text-gray-400 bg-gray-50"}`}>
+        <span className={`absolute top-1.5 right-2 text-[10px] rounded px-1 min-w-[18px] text-center ${fontLight ? "text-white/50 bg-white/10" : "text-gray-500 bg-gray-50"}`}>
           #{nodeData.index}
         </span>
       )}
@@ -135,7 +135,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         </span>
       )}
       {nodeData.description && (
-        <div className={`text-xs mt-1 line-clamp-2 ${fontLight ? "text-white/80" : "text-gray-500"}`}>{nodeData.description}</div>
+        <div className={`text-xs mt-1 line-clamp-2 ${fontLight ? "text-white/80" : "text-gray-600"}`}>{nodeData.description}</div>
       )}
       {/* Tag chips */}
       {nodeData.tags && nodeData.tags.length > 0 && (
@@ -145,7 +145,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
             return (
               <span
                 key={tag}
-                className="text-[9px] px-1.5 py-0.5 rounded-full border"
+                className="text-[10px] px-1.5 py-0.5 rounded-full border"
                 style={tagColor ? {
                   backgroundColor: tagColor + "20",
                   borderColor: tagColor,
@@ -161,7 +161,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
             );
           })}
           {nodeData.tags.length > 3 && (
-            <span className="text-[9px] text-gray-400">+{nodeData.tags.length - 3}</span>
+            <span className="text-[10px] text-gray-500">+{nodeData.tags.length - 3}</span>
           )}
         </div>
       )}
@@ -183,7 +183,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           // Children hidden by global depth — show expand button
           return (
             <button
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-blue-400 rounded-full w-6 h-6 flex items-center justify-center text-xs text-blue-500 hover:bg-blue-50 shadow-sm z-10"
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpandBeyondDepth(id);
@@ -198,7 +198,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           // Children visible via per-node expansion — show collapse button
           return (
             <button
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-blue-400 rounded-full w-6 h-6 flex items-center justify-center text-xs text-blue-500 hover:bg-blue-50 shadow-sm z-10"
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpandBeyondDepth(id);

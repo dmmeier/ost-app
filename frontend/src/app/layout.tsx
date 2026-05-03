@@ -1,22 +1,30 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ost-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ost-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
+
+export const viewport: Viewport = {
+  themeColor: "#0d9488",
+};
 
 export const metadata: Metadata = {
-  title: "OST - Opportunity Solution Trees",
+  title: "OST app",
   description: "Create, track, and refine Opportunity Solution Trees",
+  icons: { icon: "/favicon.svg" },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
@@ -27,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} antialiased`}
       >
         <Providers>
           {children}

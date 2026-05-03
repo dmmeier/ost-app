@@ -64,7 +64,7 @@ export function AddChildForm({
           <Button
             onClick={handleAddChild}
             disabled={!newNodeTitle || !newNodeType || addNode.isPending}
-            className="bg-gray-800 hover:bg-gray-700 text-white text-xs h-7 px-3"
+            className="bg-[#0d9488] hover:bg-[#0b7a70] text-white text-xs h-7 px-3"
           >
             {addNode.isPending ? "..." : "Add"}
           </Button>

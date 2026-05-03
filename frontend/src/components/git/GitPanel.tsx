@@ -245,7 +245,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
                 setShowNewAuthor(true);
                 setSelectedAuthorIdx(null);
               }}
-              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              className="text-xs text-[#0d9488] hover:text-[#0b7a70] flex items-center gap-1"
             >
               <span className="text-base leading-none">+</span> New author
             </button>
@@ -336,7 +336,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
             disabled={!canCommit}
             className={`w-full py-2 rounded text-sm font-medium transition-colors ${
               canCommit
-                ? "bg-gray-800 text-white hover:bg-gray-700"
+                ? "bg-[#0d9488] text-white hover:bg-[#0b7a70]"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >

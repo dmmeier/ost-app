@@ -152,8 +152,8 @@ export function VersionPanel({ tree }: VersionPanelProps) {
             <div className="space-y-0">
               {/* Current state */}
               <div className="flex items-center gap-3 relative py-1.5">
-                <div className="w-[14px] h-[14px] rounded-full bg-blue-500 border-2 border-white shadow-sm z-10 shrink-0" />
-                <span className="text-xs font-medium text-blue-600">Current state</span>
+                <div className="w-[14px] h-[14px] rounded-full bg-[#0d9488] border-2 border-white shadow-sm z-10 shrink-0" />
+                <span className="text-xs font-medium text-[#0b7a70]">Current state</span>
                 <span className="text-[10px] text-gray-400 ml-auto">now</span>
               </div>
 
@@ -163,7 +163,7 @@ export function VersionPanel({ tree }: VersionPanelProps) {
                   key={snap.id}
                   className={`flex items-center gap-2 relative py-1.5 border-b border-gray-100 last:border-0 cursor-pointer rounded transition-colors ${
                     selectedSnapshotId === snap.id
-                      ? "bg-blue-50 border-blue-200"
+                      ? "bg-[#e6f4f3] border-[#0d9488]/30"
                       : "hover:bg-gray-50"
                   }`}
                   onClick={() => handleSnapshotClick(snap.id)}
@@ -171,13 +171,13 @@ export function VersionPanel({ tree }: VersionPanelProps) {
                   <div
                     className={`w-[14px] h-[14px] rounded-full border-2 z-10 shrink-0 ${
                       selectedSnapshotId === snap.id
-                        ? "bg-blue-500 border-blue-300"
+                        ? "bg-[#0d9488] border-[#0d9488]/50"
                         : "bg-white border-gray-300"
                     }`}
                   />
                   <span
                     className={`text-xs font-medium truncate min-w-0 ${
-                      selectedSnapshotId === snap.id ? "text-blue-700" : "text-gray-700"
+                      selectedSnapshotId === snap.id ? "text-[#0b7a70]" : "text-gray-700"
                     }`}
                     style={{ maxWidth: selectedSnapshotId ? "120px" : "200px" }}
                     title={snap.message}
@@ -212,7 +212,7 @@ export function VersionPanel({ tree }: VersionPanelProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-[10px] h-5 px-1.5 text-blue-600 ml-auto shrink-0"
+                      className="text-[10px] h-5 px-1.5 text-[#0d9488] ml-auto shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         setConfirmRestoreId(snap.id);

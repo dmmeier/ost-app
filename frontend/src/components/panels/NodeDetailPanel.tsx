@@ -238,7 +238,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                             : ""
                     }
                     rows={2}
-                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488]"
                   />
                 </div>
                 <div>
@@ -250,7 +250,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                     onChange={(e) => handleEvidenceChange(e.target.value)}
                     placeholder="Supporting data, observations, statements, research..."
                     rows={2}
-                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488]"
                   />
                 </div>
               </div>

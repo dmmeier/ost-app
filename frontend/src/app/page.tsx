@@ -6,11 +6,12 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { useTree, useAutoValidate } from "@/hooks/use-tree";
+import { useTree, useAutoValidate, useProjectList } from "@/hooks/use-tree";
 import { useTreeStore } from "@/stores/tree-store";
 import { TreeCanvas } from "@/components/tree/TreeCanvas";
-import { TreeIcon } from "@/components/ui/tree-icon";
 import { TreeSelector } from "@/components/panels/TreeSelector";
+import { Wordmark } from "@/components/brand/Wordmark";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { NodeDetailPanel } from "@/components/panels/NodeDetailPanel";
 import { ContextPanel } from "@/components/panels/ContextPanel";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -75,9 +76,9 @@ export default function Home() {
     <div className="h-screen flex flex-col">
       {/* Header */}
       <header className="h-12 border-b flex items-center justify-between px-4 bg-white shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="font-bold text-lg">OST</h1>
-          <span className="text-sm text-gray-500">Opportunity Solution Trees</span>
+        <div className="flex items-center gap-3 min-w-0">
+          <Wordmark height={28} className="shrink-0" />
+          <Breadcrumbs tree={tree ?? null} />
         </div>
         <div className="flex items-center gap-2">
           {tree && (
@@ -143,7 +144,7 @@ export default function Home() {
                   {!selectedTreeId ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
                       <div className="text-center max-w-md">
-                        <TreeIcon size={48} className="mx-auto mb-4 text-gray-300" />
+                        <BrandMark size={48} className="mx-auto mb-4 opacity-25 text-[#0d9488]" />
                         <p className="text-lg mb-2">Select or create a tree to get started</p>
                         <p className="text-sm">Create a project first, then add trees within it using the sidebar</p>
                       </div>
@@ -176,7 +177,10 @@ export default function Home() {
                         <ChatPanel treeId={tree.id} projectId={tree.project_id} />
                       ) : (
                         <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                          <p>Select a tree to start chatting</p>
+                          <div className="text-center">
+                            <BrandMark size={32} className="mx-auto mb-2 opacity-20 text-[#0d9488]" />
+                            <p>Select a tree to start chatting</p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -220,7 +224,7 @@ export default function Home() {
                           onClick={() => setBottomPanel(tab.key)}
                           className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
                             bottomPanel === tab.key
-                              ? "bg-gray-700 text-white"
+                              ? "bg-[#0d9488] text-white"
                               : "text-gray-600 hover:bg-gray-100"
                           }`}
                         >
@@ -266,9 +270,7 @@ function EmptyTreePrompt({ treeId }: { treeId: string }) {
   return (
     <div className="h-full flex items-center justify-center text-gray-400">
       <div className="text-center max-w-lg">
-        <div className="mb-4 opacity-40">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto text-gray-400"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-        </div>
+        <BrandMark size={48} className="mx-auto mb-4 opacity-30 text-[#0d9488]" />
         <p className="text-lg font-medium text-gray-600 mb-2">Start with your Outcome</p>
         <p className="text-sm text-gray-500 mb-1">
           An <strong>Outcome</strong> is the measurable business result you want to achieve.
@@ -279,6 +281,20 @@ function EmptyTreePrompt({ treeId }: { treeId: string }) {
         </p>
         <AddRootNodeButton treeId={treeId} />
       </div>
+    </div>
+  );
+}
+
+function Breadcrumbs({ tree }: { tree: { name: string; project_id: string } | null }) {
+  const { data: projects } = useProjectList();
+  if (!tree) return null;
+  const project = projects?.find((p) => p.id === tree.project_id);
+  if (!project) return null;
+  return (
+    <div className="flex items-center gap-1.5 text-sm min-w-0 overflow-hidden">
+      <span className="text-gray-500 truncate max-w-[120px]" title={project.name}>{project.name}</span>
+      <span className="text-gray-300 shrink-0">&rsaquo;</span>
+      <span className="text-gray-700 font-medium truncate max-w-[160px]" title={tree.name}>{tree.name}</span>
     </div>
   );
 }

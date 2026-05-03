@@ -130,7 +130,7 @@ export function SettingsDialog() {
                       disabled={saving}
                       className={`flex-1 text-xs rounded-md border px-3 py-2 transition-colors ${
                         settings.llm_provider === p
-                          ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                          ? "border-[#0d9488] bg-[#e6f4f3] text-[#0b7a70] font-medium"
                           : "border-gray-200 text-gray-600 hover:border-gray-300"
                       }`}
                     >

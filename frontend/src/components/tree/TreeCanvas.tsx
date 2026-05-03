@@ -827,6 +827,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   // Search functionality
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Ctrl+F keyboard shortcut for search
@@ -990,52 +991,71 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         </div>
       )}
 
-      {/* Legend + tag filter */}
-      <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)" }}>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
-          {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((t) => (
-            <div key={t} className="flex items-center gap-1">
-              <div
-                className="w-2.5 h-2.5 rounded-sm"
-                style={{ backgroundColor: effectiveBubbleDefaults[t]?.border_color ?? DEFAULT_BUBBLE_DEFAULTS[t as keyof typeof DEFAULT_BUBBLE_DEFAULTS]?.border_color ?? "#94a3b8" }}
-              />
-              <span className="text-gray-600">{getNodeLabel(t, effectiveBubbleDefaults)}</span>
-              {stats.typeCounts[t] && <span className="text-gray-400">({stats.typeCounts[t]})</span>}
-            </div>
-          ))}
-        </div>
-        {allTags.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] text-gray-400">Tags:</span>
-            {allTags.map((t) => {
-              const isActive = activeTagFilters.has(t);
-              const tagObj = projectTags?.find((pt) => pt.name === t);
-              const tagColor = tagObj?.color ?? "#6b7280";
-              return (
-                <button
-                  key={t}
-                  onClick={() => toggleTagFilter(t)}
-                  className={`text-[11px] px-1.5 py-0.5 rounded-full border cursor-pointer transition-colors ${
-                    isActive
-                      ? ""
-                      : "bg-white hover:border-gray-400"
-                  }`}
-                  style={isActive ? {
-                    backgroundColor: tagColor + "20",
-                    borderColor: tagColor,
-                    color: tagColor,
-                  } : {
-                    borderColor: tagColor + "60",
-                    color: tagColor,
-                  }}
-                >
-                  {t}
-                </button>
-              );
-            })}
+      {/* Legend + tag filter (collapsible) */}
+      {legendCollapsed ? (
+        <button
+          onClick={() => setLegendCollapsed(false)}
+          className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-1.5 text-[11px] text-gray-500 hover:text-gray-700 hover:bg-white transition-colors flex items-center gap-1"
+        >
+          Legend <span className="text-[9px]">&#9654;</span>
+        </button>
+      ) : (
+        <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)" }}>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-semibold uppercase text-gray-400">Legend</span>
+            <button
+              onClick={() => setLegendCollapsed(true)}
+              className="text-gray-400 hover:text-gray-600 text-sm leading-none"
+              title="Collapse legend"
+            >
+              &times;
+            </button>
           </div>
-        )}
-      </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+            {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((t) => (
+              <div key={t} className="flex items-center gap-1">
+                <div
+                  className="w-2.5 h-2.5 rounded-sm"
+                  style={{ backgroundColor: effectiveBubbleDefaults[t]?.border_color ?? DEFAULT_BUBBLE_DEFAULTS[t as keyof typeof DEFAULT_BUBBLE_DEFAULTS]?.border_color ?? "#94a3b8" }}
+                />
+                <span className="text-gray-600">{getNodeLabel(t, effectiveBubbleDefaults)}</span>
+                {stats.typeCounts[t] && <span className="text-gray-400">({stats.typeCounts[t]})</span>}
+              </div>
+            ))}
+          </div>
+          {allTags.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-gray-400">Tags:</span>
+              {allTags.map((t) => {
+                const isActive = activeTagFilters.has(t);
+                const tagObj = projectTags?.find((pt) => pt.name === t);
+                const tagColor = tagObj?.color ?? "#6b7280";
+                return (
+                  <button
+                    key={t}
+                    onClick={() => toggleTagFilter(t)}
+                    className={`text-[11px] px-1.5 py-0.5 rounded-full border cursor-pointer transition-colors ${
+                      isActive
+                        ? ""
+                        : "bg-white hover:border-gray-400"
+                    }`}
+                    style={isActive ? {
+                      backgroundColor: tagColor + "20",
+                      borderColor: tagColor,
+                      color: tagColor,
+                    } : {
+                      borderColor: tagColor + "60",
+                      color: tagColor,
+                    }}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
 
       <ReactFlow
@@ -1134,7 +1154,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                   if (e.key === "Escape") setReparentNodeId(null);
                 }}
                 placeholder="e.g. 5"
-                className="w-full border rounded px-2 py-1.5 text-sm mb-2 outline-none focus:ring-1 focus:ring-blue-400"
+                className="w-full border rounded px-2 py-1.5 text-sm mb-2 outline-none focus:ring-1 focus:ring-[#0d9488]"
               />
               {reparentError && (
                 <p className="text-xs text-red-600 mb-2">{reparentError}</p>
@@ -1149,7 +1169,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                 <button
                   onClick={handleReparentSubmit}
                   disabled={!reparentInput.trim() || moveNode.isPending}
-                  className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs rounded bg-[#0d9488] text-white hover:bg-[#0b7a70] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {moveNode.isPending ? "Moving…" : "Move"}
                 </button>
@@ -1267,7 +1287,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               key={t}
               onClick={() => handleSetEdgeThickness(t)}
               className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                edgeContextMenu.currentThickness === t ? "bg-blue-50 text-blue-700" : ""
+                edgeContextMenu.currentThickness === t ? "bg-[#e6f4f3] text-[#0b7a70]" : ""
               }`}
             >
               <div
