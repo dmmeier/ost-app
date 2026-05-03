@@ -28,6 +28,28 @@ This folder contains the favicon, wordmark, and brand tokens for the **OST app**
 
 ---
 
+## ⚠️ Mark-vs-glyph hierarchy (read this before placing icons in the UI)
+
+There are three forms of the mark and they are **not interchangeable**. Misusing them dilutes the brand.
+
+| Form | File | Means | Use it for |
+|---|---|---|---|
+| **Disc + white tree** | `favicon.svg` | "This is the OST product" | Browser favicon, top-bar wordmark, app icon, OS dock, OG image, login splash |
+| **Flat teal tree** | `mark-monochrome.svg` | "This is a tree (instance)" | Sidebar tree-row icons, breadcrumbs referencing a tree, empty states, inline references |
+| **Flat white tree** | `mark-white.svg` | "This is a tree, on a dark/teal surface" | Same as flat teal, but on dark mode or solid teal backgrounds |
+
+**The rule:** the **disc form appears once per screen** (the product wordmark in the top-left). Every other "tree" reference inside the app — sidebar items, breadcrumbs, empty states, anywhere the UI is talking about *a* tree rather than *the* product — uses the **flat glyph**.
+
+**Concretely:**
+- ✅ Top header wordmark → disc form (`wordmark.svg`)
+- ✅ Browser tab → disc form (`favicon.svg`)
+- ✅ Sidebar row "Customer Retention Strategy" → flat teal glyph (`mark-monochrome.svg`)
+- ✅ Empty state "Select or create a tree" → flat teal glyph
+- ❌ Do **not** put the disc-form next to every tree in the sidebar. The disc is the product, not a tree instance.
+- ❌ Do **not** use the flat glyph as a favicon — it lacks a contained shape and reads weakly at 16px.
+
+---
+
 ## File-by-file usage
 
 ### `favicon.svg` — primary favicon
@@ -47,7 +69,9 @@ For Next.js App Router you can also drop it as `frontend/src/app/icon.svg` — N
 ---
 
 ### `mark-monochrome.svg` — flat teal mark
-**Use when:** you need just the tree glyph (no disc) in the brand teal. Examples: empty-state illustrations, loading spinners, sidebar collapsed-state, decorative section dividers, watermark behind tree visualizations.
+**Use when:** referencing *a tree instance* — sidebar tree-row icons, breadcrumbs that name a tree, empty states ("Select or create a tree"), inline mentions, decorative section dividers, watermark behind tree visualizations.
+
+**This is the icon to use next to every tree row in the sidebar.** Not the disc.
 
 **Do not** use this as a favicon — it lacks a contained shape and looks weak at small sizes.
 
