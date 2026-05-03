@@ -292,9 +292,9 @@ function Breadcrumbs({ tree }: { tree: { name: string; project_id: string } | nu
   if (!project) return null;
   return (
     <div className="flex items-center gap-1.5 text-sm min-w-0 overflow-hidden">
-      <span className="text-gray-400 truncate max-w-[120px]" title={project.name}>{project.name}</span>
+      <span className="text-gray-400 truncate max-w-[200px]" title={project.name}>{project.name}</span>
       <span className="text-gray-600 shrink-0">&rsaquo;</span>
-      <span className="text-gray-200 font-medium truncate max-w-[160px]" title={tree.name}>{tree.name}</span>
+      <span className="text-gray-200 font-medium truncate max-w-[240px]" title={tree.name}>{tree.name}</span>
     </div>
   );
 }
