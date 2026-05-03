@@ -63,13 +63,12 @@ Open http://localhost:3000 in your browser.
 
 ### 4. (Optional) Enable AI chat
 
-Set your Anthropic API key to enable the AI coach and builder chat:
+To use the AI coach and builder chat, provide your Anthropic API key. You can do this either way:
 
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
+- **In the app**: Open the Settings dialog in the UI and enter your API key there
+- **Via environment variable**: `export ANTHROPIC_API_KEY="sk-ant-..."` (requires backend restart)
 
-Then restart the backend. The app works fully without this — you just won't have the AI chat features.
+The app works fully without this — you just won't have the AI chat features.
 
 ---
 
