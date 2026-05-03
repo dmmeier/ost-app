@@ -752,3 +752,58 @@ Files changed (8):
   frontend/src/components/panels/TreeSelector.tsx — use exportTree()
   packages/ost_core/tests/test_tree_service.py — 16 round-trip tests
 --- END DIARY ---
+
+27. Branding topics: [STATUS: COMPLETE]
+0 -- Have a look at the app using either playwright or the promo screenshots (ideally both).
+  a designer has designed further elements (see folder "brand" and the readme in there).
+Follow these design guidelines in the app everywhere.
+
+Further details:
+
+Header / branding:
+1 -- Top-left wordmark is currently OST Opportunity Solution Trees in plain text. This is the most visible piece of branding in the product and right now it's the weakest. Drop in wordmark.svg (the disc + "OST app" lockup), or at minimum put the disc-favicon next to the existing text. Free brand reinforcement on every screen.
+2 -- The header has a lot of empty space between the wordmark and the right-side actions (Chat, Settings). Consider pulling project breadcrumbs in there (e.g. Acme E-Commerce › Customer Retention Strategy) — gives the user constant orientation and fills the void.
+
+Color discipline:
+3 -- The legend already uses 7+ saturated colors (Outcome, Opportunity, Child Opportunity, Solution, Experiment, KPI, Metric) plus another row of tag colors. The tree itself then uses red/green/yellow/purple/blue node fills. This is a lot of color, and it's the dominant visual layer. The brand teal almost disappears against it.
+Recommendation: keep teal reserved for product chrome and primary actions only — the disc, the "Send" button, active sidebar items, links. Don't let teal compete with node-type colors. Right now Start Building an OST is mustard/amber; that's fine, but the active sidebar item should be teal-tinted, and the current selected-tree highlight is blue-grey — I'd make that teal too. Reinforces the brand subtly across the UI.
+4 -- The node-type palette itself is reasonable but a touch saturated and "Trello-ish." If you want a more refined feel later, desaturate by ~15%.
+5 -- Empty state (screenshot 02)
+The placeholder tree icon used in the empty state is a different glyph than the favicon. Replace it with the new mark (mark-monochrome.svg) — same metaphor everywhere. Currently you'd have three tree icons: the favicon, the empty-state icon, and the actual product (real trees). Unifying the first two strengthens the identity.
+The "Select or create a tree to get started" copy is fine. The chat panel shows "Select a tree to start chatting" — also fine, but the two empty states feel disconnected. A single illustrative empty state spanning both panes would feel more intentional.
+
+Typography:
+6 -- The product appears to use a generic system sans. Once you commit to IBM Plex Sans for the wordmark, use it (or pair it with a workhorse like Inter) for the UI as well — otherwise the wordmark feels like a sticker pasted onto a different design. If Plex Sans body feels too "technical" at small sizes, use Plex Sans for headers and Inter for body; both pair cleanly.
+7 -- Tree-node body text is very small and at low contrast (light gray on light fills). At a glance I can't read most of it. Worth a contrast pass — WCAG AA minimum.
+Density & layout
+8 -- The legend row at the top of the canvas is information-dense and slightly cramped. Consider moving it to a collapsible panel or the right edge of the canvas — it competes with the tree itself for attention.
+
+--- DIARY (Ticket #27) ---
+Implementation:
+- Phase 1 (Foundation): Replaced Geist fonts with IBM Plex Sans (400/500/600/700) + IBM Plex Mono (400/500). Updated CSS vars to --font-ost-sans / --font-ost-mono. Added brand tokens (--ost-teal, --ost-teal-deep, --ost-teal-tint, --ost-ink, --ost-muted). Replaced favicon with teal disc + white tree. Added PWA manifest. Moved themeColor to viewport export (Next.js best practice).
+- Phase 2 (Header): Created Wordmark.tsx (inline SVG from brand/wordmark.svg, IBM Plex Sans reference, height prop). Created BrandMark.tsx (monochrome tree mark, currentColor, size prop). Header now shows wordmark + breadcrumbs (ProjectName > TreeName).
+- Phase 3 (Color Discipline): Replaced all blue product chrome with brand teal (#0d9488) across 16 files. Affected: bottom panel tabs, sidebar selected tree, chat send button + user bubbles, settings provider selection, add child form, git commit button + new author link, version timeline dots/selected, node style dialog fill selection, reparent input/button, edge thickness selection, tag add button, focus rings. Kept blue only on "has assumption" semantic badge.
+- Phase 4 (Empty States): Replaced generic TreeIcon / concentric circles SVG with BrandMark in all 3 empty states (no tree selected, empty tree prompt, chat no-tree). TreeSelector tree icon replaced with inline brand favicon at 14px.
+- Phase 5 (Node Text Contrast): Description text gray-500 → gray-600. Index badge gray-400 → gray-500. Tag chips 9px → 10px. Tag overflow 9px/gray-400 → 10px/gray-500.
+- Phase 6 (Legend Collapse): Added legendCollapsed local state. When collapsed: compact "Legend ▶" button. When expanded: title row + close × button + existing content.
+- Phase 7 (Node Palette Desaturation): DEFAULT_BUBBLE_DEFAULTS colors desaturated ~15% (only affects new projects).
+- Depth expand/collapse buttons changed from blue to teal.
+
+Verification:
+- TypeScript: npx tsc --noEmit — PASS (0 errors)
+- Python tests: 267 passing (no backend changes)
+- Next.js build: npm run build — PASS (0 warnings after viewport fix)
+- Remaining blue references: Only "has assumption" indicator (intentional, semantic)
+
+Files changed (21 modified, 5 new):
+  layout.tsx, globals.css, icon.svg, page.tsx — foundation + header + empty states
+  Wordmark.tsx (NEW), BrandMark.tsx (NEW) — brand components
+  favicon.svg (NEW), site.webmanifest (NEW), mark-monochrome.svg (NEW) — public assets
+  ChatPanel.tsx, GitPanel.tsx, NodeDetailPanel.tsx, TreeSelector.tsx, VersionPanel.tsx — teal chrome
+  AddChildForm.tsx, NodeTagsSection.tsx, SettingsDialog.tsx, NodeStyleDialog.tsx — teal chrome
+  OSTNode.tsx — contrast pass + teal expand buttons
+  TreeCanvas.tsx — legend collapse + teal edge selection + teal reparent
+  colors.ts — desaturated palette
+
+Note: Playwright MCP browser was unavailable for visual review (persistent "browser closed" error). All verification done via TypeScript compilation, production build, and manual HTML output inspection.
+--- END DIARY ---
