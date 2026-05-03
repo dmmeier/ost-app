@@ -1,5 +1,5 @@
 # Pin to exact Node.js version to avoid dependency drift
-FROM node:22-alpine
+FROM node:22.22.2-alpine
 
 WORKDIR /app
 

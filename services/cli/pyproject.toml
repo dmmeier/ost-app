@@ -5,8 +5,8 @@ description = "CLI tool for Opportunity Solution Trees"
 requires-python = ">=3.12"
 dependencies = [
     "ost-core",
-    "typer>=0.12",
-    "rich>=13.0",
+    "typer==0.24.1",
+    "rich==14.3.3",
 ]
 
 [project.optional-dependencies]
