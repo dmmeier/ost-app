@@ -75,9 +75,9 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="h-12 border-b flex items-center justify-between px-4 bg-[#e6f4f3] shrink-0">
+      <header className="h-12 border-b border-gray-800 flex items-center justify-between px-4 bg-[#1a1a1a] shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <Wordmark height={28} className="shrink-0" />
+          <Wordmark height={28} className="shrink-0" variant="dark" />
           <Breadcrumbs tree={tree ?? null} />
         </div>
         <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export default function Home() {
               className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
                 chatPanelOpen
                   ? "bg-[#0d9488] text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  : "text-gray-300 hover:bg-white/10"
               }`}
               title={chatPanelOpen ? "Hide chat panel" : "Show chat panel"}
             >
@@ -292,9 +292,9 @@ function Breadcrumbs({ tree }: { tree: { name: string; project_id: string } | nu
   if (!project) return null;
   return (
     <div className="flex items-center gap-1.5 text-sm min-w-0 overflow-hidden">
-      <span className="text-gray-500 truncate max-w-[120px]" title={project.name}>{project.name}</span>
-      <span className="text-gray-300 shrink-0">&rsaquo;</span>
-      <span className="text-gray-700 font-medium truncate max-w-[160px]" title={tree.name}>{tree.name}</span>
+      <span className="text-gray-400 truncate max-w-[120px]" title={project.name}>{project.name}</span>
+      <span className="text-gray-600 shrink-0">&rsaquo;</span>
+      <span className="text-gray-200 font-medium truncate max-w-[160px]" title={tree.name}>{tree.name}</span>
     </div>
   );
 }

@@ -3,11 +3,16 @@
 interface WordmarkProps {
   height?: number;
   className?: string;
+  variant?: "light" | "dark";
 }
 
-export function Wordmark({ height = 28, className = "" }: WordmarkProps) {
+export function Wordmark({ height = 28, className = "", variant = "light" }: WordmarkProps) {
   // Aspect ratio from brand SVG: 220w x 64h
   const width = (height / 64) * 220;
+  // On dark backgrounds: "OST" is white, "app" is light gray
+  // On light backgrounds: "OST" is ink (#1a1a1a), "app" is muted (#6b7280)
+  const ostColor = variant === "dark" ? "#ffffff" : "#1a1a1a";
+  const appColor = variant === "dark" ? "#9ca3af" : "#6b7280";
 
   return (
     <svg
@@ -31,10 +36,10 @@ export function Wordmark({ height = 28, className = "" }: WordmarkProps) {
       <circle cx="18" cy="45" r="4" fill="#ffffff" />
       <circle cx="32" cy="45" r="4" fill="#ffffff" />
       <circle cx="46" cy="45" r="4" fill="#ffffff" />
-      <text x="80" y="42" fontSize="36" fontWeight="600" letterSpacing="-0.72" fill="#1a1a1a">
+      <text x="80" y="42" fontSize="36" fontWeight="600" letterSpacing="-0.72" fill={ostColor}>
         OST
       </text>
-      <text x="160" y="42" fontSize="36" fontWeight="400" letterSpacing="-0.72" fill="#6b7280">
+      <text x="160" y="42" fontSize="36" fontWeight="400" letterSpacing="-0.72" fill={appColor}>
         app
       </text>
     </svg>
