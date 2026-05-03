@@ -827,7 +827,6 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   // Search functionality
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
-  const [legendCollapsed, setLegendCollapsed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Ctrl+F keyboard shortcut for search
@@ -991,26 +990,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         </div>
       )}
 
-      {/* Legend + tag filter (collapsible) */}
-      {legendCollapsed ? (
-        <button
-          onClick={() => setLegendCollapsed(false)}
-          className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-1.5 text-[11px] text-gray-500 hover:text-gray-700 hover:bg-white transition-colors flex items-center gap-1"
-        >
-          Legend <span className="text-[9px]">&#9654;</span>
-        </button>
-      ) : (
-        <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)" }}>
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-[10px] font-semibold uppercase text-gray-400">Legend</span>
-            <button
-              onClick={() => setLegendCollapsed(true)}
-              className="text-gray-400 hover:text-gray-600 text-sm leading-none"
-              title="Collapse legend"
-            >
-              &times;
-            </button>
-          </div>
+      {/* Legend + tag filter */}
+      <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)" }}>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
             {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((t) => (
               <div key={t} className="flex items-center gap-1">
@@ -1054,8 +1035,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               })}
             </div>
           )}
-        </div>
-      )}
+      </div>
 
 
       <ReactFlow

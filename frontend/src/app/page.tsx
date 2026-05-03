@@ -75,7 +75,7 @@ export default function Home() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="h-12 border-b flex items-center justify-between px-4 bg-white shrink-0">
+      <header className="h-12 border-b flex items-center justify-between px-4 bg-[#e6f4f3] shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <Wordmark height={28} className="shrink-0" />
           <Breadcrumbs tree={tree ?? null} />
