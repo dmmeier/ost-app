@@ -74,6 +74,8 @@ The app works fully without this — you just won't have the AI chat features.
 
 ## Docker (Quick Start with PostgreSQL)
 
+The Docker Compose setup runs a PostgreSQL database (not SQLite). Data is persisted in a Docker volume.
+
 ### Prerequisites
 
 - Docker & Docker Compose
