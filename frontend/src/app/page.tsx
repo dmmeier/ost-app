@@ -86,7 +86,7 @@ export default function Home() {
               onClick={() => setChatPanelOpen(!chatPanelOpen)}
               className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
                 chatPanelOpen
-                  ? "bg-teal-500 text-white"
+                  ? "bg-[#0d9488] text-white"
                   : "text-gray-600 hover:bg-gray-100"
               }`}
               title={chatPanelOpen ? "Hide chat panel" : "Show chat panel"}
