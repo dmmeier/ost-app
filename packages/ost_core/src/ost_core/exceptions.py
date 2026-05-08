@@ -64,6 +64,19 @@ class DuplicateRootError(OSTError):
         super().__init__(f"Tree {tree_id} already has a root (Outcome) node")
 
 
+class VersionConflictError(OSTError):
+    """Raised when an update targets a stale version of an entity."""
+    def __init__(self, entity_type: str, entity_id, expected: int, actual: int):
+        self.entity_type = entity_type
+        self.entity_id = entity_id
+        self.expected_version = expected
+        self.actual_version = actual
+        super().__init__(
+            f"{entity_type} {entity_id} was modified (expected version {expected}, "
+            f"found {actual}). Refresh and try again."
+        )
+
+
 class GitNotConfiguredError(OSTError):
     def __init__(self):
         super().__init__("Git remote URL not configured. Set OST_GIT_REMOTE_URL in .env")

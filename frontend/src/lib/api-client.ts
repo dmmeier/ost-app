@@ -2,6 +2,15 @@ import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCrea
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const isFormData = options?.body instanceof FormData;
   const headers: Record<string, string> = isFormData
@@ -13,7 +22,7 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || `API error: ${res.status}`);
+    throw new ApiError(error.detail || `API error: ${res.status}`, res.status);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -37,6 +46,7 @@ export const api = {
     },
     get: (id: string) => fetchAPI<TreeWithNodes>(`/trees/${id}`),
     exportTree: (id: string) => fetchAPI<Record<string, unknown>>(`/trees/${id}/export`),
+    getVersion: (id: string) => fetchAPI<{ version: number }>(`/trees/${id}/version`),
     create: (data: TreeCreate) => fetchAPI<Tree>("/trees/", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: TreeUpdate) => fetchAPI<Tree>(`/trees/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) => fetchAPI<void>(`/trees/${id}`, { method: "DELETE" }),

@@ -77,6 +77,11 @@ interface TreeStore {
   // Compact layout toggle
   compactLayout: boolean;
   setCompactLayout: (compact: boolean) => void;
+
+  // Conflict warning (optimistic locking)
+  conflictWarning: string | null;
+  setConflictWarning: (msg: string | null) => void;
+  clearConflictWarning: () => void;
 }
 
 export const useTreeStore = create<TreeStore>((set) => ({
@@ -195,6 +200,10 @@ export const useTreeStore = create<TreeStore>((set) => ({
 
   compactLayout: false,
   setCompactLayout: (compact) => set({ compactLayout: compact }),
+
+  conflictWarning: null,
+  setConflictWarning: (msg) => set({ conflictWarning: msg }),
+  clearConflictWarning: () => set({ conflictWarning: null }),
 
   expandedBeyondDepth: new Set(),
   toggleExpandBeyondDepth: (nodeId) =>

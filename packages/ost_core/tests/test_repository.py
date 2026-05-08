@@ -537,3 +537,188 @@ class TestFontLight:
         assert tag.font_light is False
         updated = repo.update_tag(tag.id, TagUpdate(font_light=True))
         assert updated.font_light is True
+
+
+class TestOptimisticLocking:
+    def test_version_starts_at_1(self, repo: TreeRepository, project):
+        """New tree and node both start at version 1."""
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        node = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        assert node.version == 1
+        fetched_tree = repo.get_tree(tree.id)
+        # Tree version is > 1 because add_node bumps it, but the tree itself starts at 1
+        # After create_tree it's 1, after add_node it's 2
+        assert fetched_tree.version >= 1
+
+    def test_update_node_bumps_node_version(self, repo: TreeRepository, project):
+        """update_node increments the node's version."""
+        from ost_core.models import NodeUpdate
+
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        node = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        assert node.version == 1
+        updated = repo.update_node(node.id, NodeUpdate(title="Updated"))
+        assert updated.version == 2
+
+    def test_update_node_bumps_tree_version(self, repo: TreeRepository, project):
+        """update_node also increments the tree's version."""
+        from ost_core.models import NodeUpdate
+
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        node = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        tree_version_before = repo.get_tree_version(tree.id)
+        repo.update_node(node.id, NodeUpdate(title="Updated"))
+        tree_version_after = repo.get_tree_version(tree.id)
+        assert tree_version_after == tree_version_before + 1
+
+    def test_add_node_bumps_tree_version(self, repo: TreeRepository, project):
+        """Adding a child node bumps the tree version."""
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        root = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        tree_version_before = repo.get_tree_version(tree.id)
+        repo.add_node(
+            tree.id,
+            NodeCreate(title="Child", node_type="opportunity", parent_id=root.id),
+        )
+        tree_version_after = repo.get_tree_version(tree.id)
+        assert tree_version_after == tree_version_before + 1
+
+    def test_remove_node_bumps_tree_version(self, repo: TreeRepository, project):
+        """Removing a node bumps the tree version."""
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        root = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        child = repo.add_node(
+            tree.id,
+            NodeCreate(title="Child", node_type="opportunity", parent_id=root.id),
+        )
+        tree_version_before = repo.get_tree_version(tree.id)
+        repo.remove_node(child.id, cascade=True)
+        tree_version_after = repo.get_tree_version(tree.id)
+        assert tree_version_after == tree_version_before + 1
+
+    def test_move_subtree_bumps_tree_version(self, repo: TreeRepository, project):
+        """move_subtree bumps the tree version."""
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        root = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        opp1 = repo.add_node(
+            tree.id,
+            NodeCreate(title="Opp 1", node_type="opportunity", parent_id=root.id),
+        )
+        opp2 = repo.add_node(
+            tree.id,
+            NodeCreate(title="Opp 2", node_type="opportunity", parent_id=root.id),
+        )
+        child = repo.add_node(
+            tree.id,
+            NodeCreate(
+                title="Child of Opp1",
+                node_type="child_opportunity",
+                parent_id=opp1.id,
+            ),
+        )
+        tree_version_before = repo.get_tree_version(tree.id)
+        repo.move_subtree(child.id, opp2.id)
+        tree_version_after = repo.get_tree_version(tree.id)
+        assert tree_version_after == tree_version_before + 1
+
+    def test_reorder_sibling_bumps_tree_version(self, repo: TreeRepository, project):
+        """reorder_sibling bumps the tree version."""
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        root = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        opp1 = repo.add_node(
+            tree.id,
+            NodeCreate(title="Opp 1", node_type="opportunity", parent_id=root.id),
+        )
+        opp2 = repo.add_node(
+            tree.id,
+            NodeCreate(title="Opp 2", node_type="opportunity", parent_id=root.id),
+        )
+        tree_version_before = repo.get_tree_version(tree.id)
+        repo.reorder_sibling(opp1.id, "right")
+        tree_version_after = repo.get_tree_version(tree.id)
+        assert tree_version_after == tree_version_before + 1
+
+    def test_update_node_version_conflict(self, repo: TreeRepository, project):
+        """Passing a stale version to update_node raises VersionConflictError."""
+        from ost_core.models import NodeUpdate
+        from ost_core.exceptions import VersionConflictError
+
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        node = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        assert node.version == 1
+        # First update succeeds with correct version
+        updated = repo.update_node(node.id, NodeUpdate(title="V2", version=1))
+        assert updated.version == 2
+        # Second update with stale version=1 should fail
+        with pytest.raises(VersionConflictError) as exc_info:
+            repo.update_node(node.id, NodeUpdate(title="V3", version=1))
+        assert exc_info.value.entity_type == "Node"
+        assert exc_info.value.expected_version == 1
+        assert exc_info.value.actual_version == 2
+
+    def test_update_node_version_none_skips_check(self, repo: TreeRepository, project):
+        """version=None means no version check is performed (backwards compat)."""
+        from ost_core.models import NodeUpdate
+
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        node = repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        # Update without version (None) should always succeed
+        updated = repo.update_node(node.id, NodeUpdate(title="V2"))
+        assert updated.version == 2
+        # Update again without version should still succeed
+        updated2 = repo.update_node(node.id, NodeUpdate(title="V3"))
+        assert updated2.version == 3
+
+    def test_update_tree_bumps_version(self, repo: TreeRepository, project):
+        """update_tree increments the tree's version."""
+        from ost_core.models import TreeUpdate
+
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        assert tree.version == 1
+        updated = repo.update_tree(tree.id, TreeUpdate(name="Updated"))
+        assert updated.version == 2
+
+    def test_update_tree_version_conflict(self, repo: TreeRepository, project):
+        """Passing a stale version to update_tree raises VersionConflictError."""
+        from ost_core.models import TreeUpdate
+        from ost_core.exceptions import VersionConflictError
+
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        assert tree.version == 1
+        # First update with correct version
+        updated = repo.update_tree(tree.id, TreeUpdate(name="V2", version=1))
+        assert updated.version == 2
+        # Second update with stale version=1 should fail
+        with pytest.raises(VersionConflictError) as exc_info:
+            repo.update_tree(tree.id, TreeUpdate(name="V3", version=1))
+        assert exc_info.value.entity_type == "Tree"
+        assert exc_info.value.expected_version == 1
+        assert exc_info.value.actual_version == 2
+
+    def test_get_tree_version(self, repo: TreeRepository, project):
+        """get_tree_version returns the correct version value."""
+        tree = repo.create_tree(TreeCreate(name="Test", project_id=project.id))
+        assert repo.get_tree_version(tree.id) == 1
+        # Add a node to bump version
+        repo.add_node(
+            tree.id, NodeCreate(title="Root", node_type="outcome")
+        )
+        assert repo.get_tree_version(tree.id) == 2

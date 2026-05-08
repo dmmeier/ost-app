@@ -61,6 +61,7 @@ class TreeRow(Base):
     agent_knowledge: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     project: Mapped["ProjectRow"] = relationship(back_populates="trees")
     nodes: Mapped[list["NodeRow"]] = relationship(
@@ -93,6 +94,7 @@ class NodeRow(Base):
     evidence: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     tree: Mapped["TreeRow"] = relationship(back_populates="nodes")
     parent: Mapped["NodeRow | None"] = relationship(

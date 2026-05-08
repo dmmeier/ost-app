@@ -77,6 +77,10 @@ class TreeService:
     def delete_tree(self, tree_id: UUID) -> None:
         self.repo.delete_tree(tree_id)
 
+    def get_tree_version(self, tree_id: UUID) -> int:
+        """Get just the version number for a tree (lightweight polling)."""
+        return self.repo.get_tree_version(tree_id)
+
     def get_full_tree(self, tree_id: UUID) -> TreeWithNodes:
         return self.repo.get_full_tree(tree_id)
 

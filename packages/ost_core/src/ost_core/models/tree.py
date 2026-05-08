@@ -25,6 +25,7 @@ class TreeUpdate(BaseModel):
     description: str | None = None
     tree_context: str | None = None
     agent_knowledge: str | None = None
+    version: int | None = None  # For optimistic locking; when set, repo checks version match
 
 
 class Tree(BaseModel):
@@ -36,6 +37,7 @@ class Tree(BaseModel):
     description: str = ""
     tree_context: str = ""
     agent_knowledge: str = ""
+    version: int = 1
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

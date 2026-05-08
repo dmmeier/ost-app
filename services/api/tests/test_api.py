@@ -1158,3 +1158,91 @@ class TestFontLightAPI:
         )
         assert r.status_code == 200
         assert r.json()["override_font_light"] is None
+
+
+class TestOptimisticLockingAPI:
+    """Tests for optimistic locking (version fields) via the API."""
+
+    def test_get_tree_includes_version(self, client):
+        """GET /trees/{id} response includes a version field."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        r = client.get(f"/api/v1/trees/{tree['id']}")
+        assert r.status_code == 200
+        data = r.json()
+        assert "version" in data
+        assert isinstance(data["version"], int)
+        assert data["version"] >= 1
+
+    def test_node_response_includes_version(self, client):
+        """Node in tree response includes a version field."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        node = client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Root", "node_type": "outcome"},
+        ).json()
+        assert "version" in node
+        assert node["version"] == 1
+
+    def test_update_node_conflict_409(self, client):
+        """PATCH /nodes/{id} with stale version returns 409."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        node = client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Root", "node_type": "outcome"},
+        ).json()
+        assert node["version"] == 1
+        # First update with correct version succeeds
+        r = client.patch(
+            f"/api/v1/nodes/{node['id']}",
+            json={"title": "Updated", "version": 1},
+        )
+        assert r.status_code == 200
+        assert r.json()["version"] == 2
+        # Second update with stale version=1 should return 409
+        r2 = client.patch(
+            f"/api/v1/nodes/{node['id']}",
+            json={"title": "Conflict", "version": 1},
+        )
+        assert r2.status_code == 409
+
+    def test_update_node_no_version_succeeds(self, client):
+        """PATCH /nodes/{id} without version field succeeds (backwards compat)."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        node = client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Root", "node_type": "outcome"},
+        ).json()
+        # Update without version field should succeed
+        r = client.patch(
+            f"/api/v1/nodes/{node['id']}",
+            json={"title": "No Version Check"},
+        )
+        assert r.status_code == 200
+        assert r.json()["title"] == "No Version Check"
+        assert r.json()["version"] == 2
+
+    def test_get_tree_version_endpoint(self, client):
+        """GET /trees/{id}/version returns {"version": N}."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        r = client.get(f"/api/v1/trees/{tree['id']}/version")
+        assert r.status_code == 200
+        data = r.json()
+        assert "version" in data
+        assert data["version"] == 1
+
+    def test_add_node_increments_tree_version(self, client):
+        """POST /nodes increments the tree's version."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        v1 = client.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
+        client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Root", "node_type": "outcome"},
+        )
+        v2 = client.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
+        assert v2 == v1 + 1

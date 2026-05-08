@@ -10,6 +10,7 @@ from ost_core.exceptions import (
     InvalidNodeTypeError,
     NodeNotFoundError,
     TreeNotFoundError,
+    VersionConflictError,
 )
 from ost_core.models import Node, NodeCreate, NodeUpdate
 from ost_core.services.tree_service import TreeService
@@ -50,6 +51,8 @@ def update_node(
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     except InvalidNodeTypeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except VersionConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.delete("/{node_id}", status_code=204)

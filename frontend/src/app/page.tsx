@@ -7,6 +7,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { useTree, useAutoValidate, useProjectList } from "@/hooks/use-tree";
+import { useTreePolling } from "@/hooks/use-tree-polling";
 import { useTreeStore } from "@/stores/tree-store";
 import { TreeCanvas } from "@/components/tree/TreeCanvas";
 import { TreeSelector } from "@/components/panels/TreeSelector";
@@ -45,7 +46,12 @@ export default function Home() {
     setChatPanelOpen,
     sidebarOpen,
     setSidebarOpen,
+    conflictWarning,
+    clearConflictWarning,
   } = useTreeStore();
+
+  // Poll for remote version changes
+  useTreePolling(selectedTreeId, tree?.version);
 
   // Keep store's currentTree in sync with fetched tree data
   useEffect(() => {
@@ -72,8 +78,24 @@ export default function Home() {
     }
   }, [selectedNodeId, setBottomPanelOpen, setBottomPanel]);
 
+  // Auto-dismiss conflict warning after 5 seconds
+  useEffect(() => {
+    if (conflictWarning) {
+      const timer = setTimeout(clearConflictWarning, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [conflictWarning, clearConflictWarning]);
+
   return (
     <div className="h-screen flex flex-col">
+      {/* Conflict warning toast */}
+      {conflictWarning && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-amber-100 border border-amber-400 text-amber-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 max-w-lg">
+          <span className="text-sm">{conflictWarning}</span>
+          <button onClick={clearConflictWarning} className="ml-2 text-amber-600 hover:text-amber-800 font-bold">&times;</button>
+        </div>
+      )}
+
       {/* Header */}
       <header className="h-12 border-b border-gray-800 flex items-center justify-between px-4 bg-[#1a1a1a] shrink-0">
         <div className="flex items-center gap-3 min-w-0">

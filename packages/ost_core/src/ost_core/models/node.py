@@ -100,6 +100,7 @@ class NodeUpdate(BaseModel):
     edge_thickness: Optional[int] = None  # 0 to clear
     assumption: Optional[str] = None
     evidence: Optional[str] = None
+    version: Optional[int] = None  # For optimistic locking; when set, repo checks version match
 
     @field_validator("node_type")
     @classmethod
@@ -129,6 +130,7 @@ class Node(BaseModel):
     edge_thickness: Optional[int] = None
     assumption: str = ""
     evidence: str = ""
+    version: int = 1
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

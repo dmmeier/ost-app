@@ -2,9 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { NodeCreate, NodeUpdate, ProjectCreate, ProjectUpdate, TreeCreate, TreeUpdate, TreeWithNodes, BubbleDefaults } from "@/lib/types";
 import { useTreeStore } from "@/stores/tree-store";
+
+function isConflictError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409;
+}
 
 // ── Project hooks ────────────────────────────────────────────
 
@@ -102,11 +106,18 @@ export function useCreateTree() {
 
 export function useUpdateTree(treeId: string) {
   const queryClient = useQueryClient();
+  const setConflictWarning = useTreeStore((s) => s.setConflictWarning);
   return useMutation({
     mutationFn: (data: TreeUpdate) => api.trees.update(treeId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tree", treeId] });
       queryClient.invalidateQueries({ queryKey: ["trees"] });
+    },
+    onError: (error) => {
+      if (isConflictError(error)) {
+        setConflictWarning("The tree was modified by someone else. Your changes could not be saved. The tree has been refreshed.");
+        queryClient.invalidateQueries({ queryKey: ["tree", treeId] });
+      }
     },
   });
 }
@@ -148,10 +159,17 @@ export function useAddNode(treeId: string) {
 
 export function useUpdateNode(treeId: string) {
   const queryClient = useQueryClient();
+  const setConflictWarning = useTreeStore((s) => s.setConflictWarning);
   return useMutation({
     mutationFn: ({ nodeId, data }: { nodeId: string; data: NodeUpdate }) =>
       api.nodes.update(nodeId, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tree", treeId] }),
+    onError: (error) => {
+      if (isConflictError(error)) {
+        setConflictWarning("This node was modified by someone else. Your changes could not be saved. The tree has been refreshed.");
+        queryClient.invalidateQueries({ queryKey: ["tree", treeId] });
+      }
+    },
   });
 }
 

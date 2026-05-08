@@ -23,6 +23,7 @@ from ost_core.exceptions import (
     NodeNotFoundError,
     ProjectNotFoundError,
     TreeNotFoundError,
+    VersionConflictError,
 )
 from ost_core.models import (
     BubbleTypeDefault,
@@ -54,6 +55,36 @@ class TreeRepository:
 
     def _session(self) -> Session:
         return self._session_factory()
+
+    # ── Version helpers ───────────────────────────────────────
+
+    @staticmethod
+    def _bump_tree_version(session: Session, tree_id: str) -> None:
+        """Increment the tree's version counter (call inside an open session)."""
+        tree = session.get(TreeRow, tree_id)
+        if tree:
+            tree.version = (tree.version or 1) + 1
+            tree.updated_at = datetime.now(UTC)
+
+    @staticmethod
+    def _check_node_version(row: NodeRow, expected: int | None) -> None:
+        """Raise VersionConflictError if expected version doesn't match."""
+        if expected is not None and (row.version or 1) != expected:
+            raise VersionConflictError("Node", row.id, expected, row.version or 1)
+
+    @staticmethod
+    def _check_tree_version(row: TreeRow, expected: int | None) -> None:
+        """Raise VersionConflictError if expected version doesn't match."""
+        if expected is not None and (row.version or 1) != expected:
+            raise VersionConflictError("Tree", row.id, expected, row.version or 1)
+
+    def get_tree_version(self, tree_id: UUID) -> int:
+        """Get just the version number for a tree (lightweight polling)."""
+        with self._session() as session:
+            row = session.get(TreeRow, str(tree_id))
+            if not row:
+                raise TreeNotFoundError(tree_id)
+            return row.version or 1
 
     # ── Project CRUD ──────────────────────────────────────────
 
@@ -179,6 +210,7 @@ class TreeRepository:
             row = session.get(TreeRow, str(tree_id))
             if not row:
                 raise TreeNotFoundError(tree_id)
+            self._check_tree_version(row, data.version)
             if data.name is not None:
                 row.name = data.name
             if data.description is not None:
@@ -187,6 +219,7 @@ class TreeRepository:
                 row.tree_context = data.tree_context
             if data.agent_knowledge is not None:
                 row.agent_knowledge = data.agent_knowledge
+            row.version = (row.version or 1) + 1
             row.updated_at = datetime.now(UTC)
             session.commit()
             session.refresh(row)
@@ -264,6 +297,9 @@ class TreeRepository:
             # Maintain closure table
             self._add_closure_entries(session, node_id, str(data.parent_id) if data.parent_id else None)
 
+            # Bump tree version
+            self._bump_tree_version(session, str(tree_id))
+
             session.commit()
             session.refresh(row)
             return self._node_from_row(row)
@@ -293,6 +329,7 @@ class TreeRepository:
             row = session.get(NodeRow, str(node_id))
             if not row:
                 raise NodeNotFoundError(node_id)
+            self._check_node_version(row, data.version)
             if data.title is not None:
                 row.title = data.title
             if data.description is not None:
@@ -318,7 +355,10 @@ class TreeRepository:
                 row.assumption = data.assumption
             if data.evidence is not None:
                 row.evidence = data.evidence
+            row.version = (row.version or 1) + 1
             row.updated_at = datetime.now(UTC)
+            # Bump tree version too
+            self._bump_tree_version(session, row.tree_id)
             session.commit()
             session.refresh(row)
             return self._node_from_row(row)
@@ -328,6 +368,7 @@ class TreeRepository:
             row = session.get(NodeRow, str(node_id))
             if not row:
                 raise NodeNotFoundError(node_id)
+            tree_id = row.tree_id
 
             if cascade:
                 # Get all descendants via closure table and delete them
@@ -360,6 +401,8 @@ class TreeRepository:
                 )
             )
             session.delete(row)
+            # Bump tree version
+            self._bump_tree_version(session, tree_id)
             session.commit()
 
     # ── Tree queries (closure table) ───────────────────────────
@@ -494,6 +537,7 @@ class TreeRepository:
                 description=tree.description,
                 tree_context=tree.tree_context,
                 agent_knowledge=tree.agent_knowledge,
+                version=tree.version,
                 created_at=tree.created_at,
                 updated_at=tree.updated_at,
                 nodes=nodes,
@@ -552,6 +596,10 @@ class TreeRepository:
                 thickness=data.thickness,
             )
             session.add(row)
+            # Bump tree version via parent node
+            parent_node = session.get(NodeRow, str(data.parent_node_id))
+            if parent_node:
+                self._bump_tree_version(session, parent_node.tree_id)
             session.commit()
             session.refresh(row)
             return self._edge_from_row(row)
@@ -597,6 +645,10 @@ class TreeRepository:
             if data.thickness is not None:
                 row.thickness = data.thickness if data.thickness > 0 else None
             row.updated_at = datetime.now(UTC)
+            # Bump tree version via parent node
+            parent_node = session.get(NodeRow, row.parent_node_id)
+            if parent_node:
+                self._bump_tree_version(session, parent_node.tree_id)
             session.commit()
             session.refresh(row)
             return self._edge_from_row(row)
@@ -607,6 +659,10 @@ class TreeRepository:
             row = session.get(EdgeHypothesisRow, str(edge_id))
             if not row:
                 raise EdgeNotFoundError(edge_id)
+            # Bump tree version via parent node
+            parent_node = session.get(NodeRow, row.parent_node_id)
+            if parent_node:
+                self._bump_tree_version(session, parent_node.tree_id)
             session.delete(row)
             session.commit()
 
@@ -697,7 +753,10 @@ class TreeRepository:
 
             # Update the node's parent_id
             node.parent_id = str(new_parent_id)
+            node.version = (node.version or 1) + 1
             node.updated_at = datetime.now(UTC)
+            # Bump tree version
+            self._bump_tree_version(session, node.tree_id)
             session.commit()
 
     def archive_subtree(self, node_id: UUID) -> None:
@@ -777,8 +836,12 @@ class TreeRepository:
             # Swap sort_order values
             other = siblings[swap_idx]
             node.sort_order, other.sort_order = other.sort_order, node.sort_order
+            node.version = (node.version or 1) + 1
+            other.version = (other.version or 1) + 1
             node.updated_at = datetime.now(UTC)
             other.updated_at = datetime.now(UTC)
+            # Bump tree version
+            self._bump_tree_version(session, node.tree_id)
             session.commit()
 
     # ── Closure table maintenance ──────────────────────────────
@@ -836,6 +899,7 @@ class TreeRepository:
             description=row.description,
             tree_context=row.tree_context,
             agent_knowledge=row.agent_knowledge,
+            version=row.version or 1,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -859,6 +923,7 @@ class TreeRepository:
             edge_thickness=row.edge_thickness,
             assumption=row.assumption or "",
             evidence=row.evidence or "",
+            version=row.version or 1,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -959,6 +1024,10 @@ class TreeRepository:
             ).scalars().first()
             if not existing:
                 session.add(NodeTagRow(node_id=str(node_id), tag_id=str(tag_id)))
+                # Bump tree version
+                node_row = session.get(NodeRow, str(node_id))
+                if node_row:
+                    self._bump_tree_version(session, node_row.tree_id)
                 session.commit()
 
     def remove_tag_from_node(self, node_id: UUID, tag_id: UUID) -> None:
@@ -971,6 +1040,10 @@ class TreeRepository:
                     )
                 )
             )
+            # Bump tree version
+            node_row = session.get(NodeRow, str(node_id))
+            if node_row:
+                self._bump_tree_version(session, node_row.tree_id)
             session.commit()
 
     def get_node_tags(self, node_id: UUID) -> list[Tag]:
@@ -1329,9 +1402,13 @@ class TreeRepository:
 
             # Update tree metadata
             tree_row = session.get(TreeRow, str(tree_id))
-            if tree_row and "tree_context" in data:
-                tree_row.tree_context = data.get("tree_context", "")
-                tree_row.agent_knowledge = data.get("agent_knowledge", "")
+            if tree_row:
+                if "tree_context" in data:
+                    tree_row.tree_context = data.get("tree_context", "")
+                    tree_row.agent_knowledge = data.get("agent_knowledge", "")
+                # Bump tree version
+                tree_row.version = (tree_row.version or 1) + 1
+                tree_row.updated_at = datetime.now(UTC)
 
             session.commit()
 

@@ -586,6 +586,7 @@ def show_node(
         f"[bold]Description:[/bold] {node.description or '-'}\n"
         f"[bold]Assumption:[/bold] {node.assumption or '-'}\n"
         f"[bold]Evidence:[/bold] {node.evidence or '-'}\n"
+        f"[bold]Version:[/bold] {node.version}\n"
         f"[bold]Created:[/bold] {str(node.created_at)[:19]}",
         border_style=color.replace("bold ", "") if color else "white",
     ))
@@ -704,13 +705,24 @@ def edit(
     status: Optional[str] = typer.Option(None, help="New status (active, archived)"),
     assumption: Optional[str] = typer.Option(None, help="Assumption explaining why this node matters for its parent"),
     evidence: Optional[str] = typer.Option(None, help="Supporting data, research, or observations"),
+    version: Optional[int] = typer.Option(None, help="Expected version for conflict detection"),
 ):
     """Edit a node's title, description, status, assumption, or evidence."""
+    from ost_core.exceptions import VersionConflictError
+
     service = _get_service()
-    node = service.update_node(
-        UUID(node_id),
-        NodeUpdate(title=title, description=description, status=status, assumption=assumption, evidence=evidence),
-    )
+    try:
+        node = service.update_node(
+            UUID(node_id),
+            NodeUpdate(
+                title=title, description=description, status=status,
+                assumption=assumption, evidence=evidence, version=version,
+            ),
+        )
+    except VersionConflictError as e:
+        console.print(f"[red]Conflict:[/red] {e}")
+        console.print("[yellow]The node was modified by someone else. Refresh and try again.[/yellow]")
+        raise typer.Exit(1)
     color = NODE_COLORS.get(node.node_type, "")
     console.print(f"[green]Updated:[/green] [{color}]{node.title}[/{color}] ({node.id})")
 

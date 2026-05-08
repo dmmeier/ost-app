@@ -48,6 +48,7 @@ export interface Tree {
   description: string;
   tree_context: string;
   agent_knowledge: string;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +71,7 @@ export interface Node {
   edge_thickness: number | null;
   assumption: string;
   evidence: string;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +140,7 @@ export interface NodeUpdate {
   override_fill_color?: string | null;
   override_fill_style?: string | null;
   override_font_light?: boolean | null;
+  version?: number;
 }
 
 export interface TreeCreate {
@@ -151,6 +154,7 @@ export interface TreeUpdate {
   name?: string;
   description?: string;
   tree_context?: string;
+  version?: number;
 }
 
 export interface TreeSnapshot {

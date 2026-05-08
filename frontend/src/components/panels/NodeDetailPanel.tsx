@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTreeStore } from "@/stores/tree-store";
 import { useDeleteNode } from "@/hooks/use-tree";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
 import { TreeWithNodes } from "@/lib/types";
 import { NODE_COLORS, NODE_LABELS, getNodeLabel, getNodeColor } from "@/lib/colors";
 import { STANDARD_NODE_TYPES } from "@/lib/types";
@@ -25,6 +25,7 @@ interface NodeDetailPanelProps {
 export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
   const queryClient = useQueryClient();
   const { selectedNodeId, setSelectedNodeId, setChatInitialMessage, setCenterOnNodeId } = useTreeStore();
+  const setConflictWarning = useTreeStore((s) => s.setConflictWarning);
   const deleteNode = useDeleteNode(tree.id);
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -36,30 +37,63 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
   const assumptionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const evidenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Dirty flags: prevent poll-triggered refreshes from overwriting in-progress edits
+  const dirtyAssumptionRef = useRef(false);
+  const dirtyEvidenceRef = useRef(false);
+
   const selectedNode = tree.nodes.find((n) => n.id === selectedNodeId);
 
-  // Sync draft state when selected node changes
+  // Sync draft state when selected node changes (skip if user is actively editing)
+  const prevNodeIdRef = useRef(selectedNodeId);
   useEffect(() => {
-    setAssumptionDraft(selectedNode?.assumption ?? "");
-    setEvidenceDraft(selectedNode?.evidence ?? "");
+    const nodeChanged = prevNodeIdRef.current !== selectedNodeId;
+    prevNodeIdRef.current = selectedNodeId;
+
+    // Always sync when switching nodes
+    if (nodeChanged) {
+      dirtyAssumptionRef.current = false;
+      dirtyEvidenceRef.current = false;
+      setAssumptionDraft(selectedNode?.assumption ?? "");
+      setEvidenceDraft(selectedNode?.evidence ?? "");
+      return;
+    }
+
+    // Only sync from server if the field is NOT dirty (user isn't actively editing)
+    if (!dirtyAssumptionRef.current) {
+      setAssumptionDraft(selectedNode?.assumption ?? "");
+    }
+    if (!dirtyEvidenceRef.current) {
+      setEvidenceDraft(selectedNode?.evidence ?? "");
+    }
   }, [selectedNodeId, selectedNode?.assumption, selectedNode?.evidence]);
 
-  // Auto-save assumption
+  // Auto-save assumption (with version for optimistic locking)
   const saveAssumption = useCallback(
     async (value: string) => {
       if (!selectedNode) return;
       try {
-        await api.nodes.update(selectedNode.id, { assumption: value });
+        await api.nodes.update(selectedNode.id, {
+          assumption: value,
+          version: selectedNode.version,
+        });
+        dirtyAssumptionRef.current = false;
         queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
       } catch (err) {
-        console.error("Failed to save assumption:", err);
+        if (err instanceof ApiError && err.status === 409) {
+          setConflictWarning("This node was modified by someone else. Your assumption text has been preserved — please review and re-save.");
+          queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+          // Keep draft text so user doesn't lose their work
+        } else {
+          console.error("Failed to save assumption:", err);
+        }
       }
     },
-    [selectedNode, tree.id, queryClient]
+    [selectedNode, tree.id, queryClient, setConflictWarning]
   );
 
   const handleAssumptionChange = useCallback(
     (value: string) => {
+      dirtyAssumptionRef.current = true;
       setAssumptionDraft(value);
       if (assumptionTimerRef.current) clearTimeout(assumptionTimerRef.current);
       assumptionTimerRef.current = setTimeout(() => saveAssumption(value), 800);
@@ -67,22 +101,33 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
     [saveAssumption]
   );
 
-  // Auto-save evidence
+  // Auto-save evidence (with version for optimistic locking)
   const saveEvidence = useCallback(
     async (value: string) => {
       if (!selectedNode) return;
       try {
-        await api.nodes.update(selectedNode.id, { evidence: value });
+        await api.nodes.update(selectedNode.id, {
+          evidence: value,
+          version: selectedNode.version,
+        });
+        dirtyEvidenceRef.current = false;
         queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
       } catch (err) {
-        console.error("Failed to save evidence:", err);
+        if (err instanceof ApiError && err.status === 409) {
+          setConflictWarning("This node was modified by someone else. Your evidence text has been preserved — please review and re-save.");
+          queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+          // Keep draft text so user doesn't lose their work
+        } else {
+          console.error("Failed to save evidence:", err);
+        }
       }
     },
-    [selectedNode, tree.id, queryClient]
+    [selectedNode, tree.id, queryClient, setConflictWarning]
   );
 
   const handleEvidenceChange = useCallback(
     (value: string) => {
+      dirtyEvidenceRef.current = true;
       setEvidenceDraft(value);
       if (evidenceTimerRef.current) clearTimeout(evidenceTimerRef.current);
       evidenceTimerRef.current = setTimeout(() => saveEvidence(value), 800);
@@ -170,8 +215,16 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
             <InlineEditableText
               value={selectedNode.title}
               onSave={async (newTitle) => {
-                await api.nodes.update(selectedNode.id, { title: newTitle });
-                queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+                try {
+                  await api.nodes.update(selectedNode.id, { title: newTitle, version: selectedNode.version });
+                  queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+                } catch (err) {
+                  if (err instanceof ApiError && err.status === 409) {
+                    setConflictWarning("This node was modified by someone else. Please refresh and try again.");
+                    queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+                  }
+                  throw err;
+                }
               }}
               className="text-lg font-semibold flex-1 min-w-0 break-words"
             />
@@ -197,8 +250,16 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
               <InlineEditableText
                 value={selectedNode.description || ""}
                 onSave={async (newDesc) => {
-                  await api.nodes.update(selectedNode.id, { description: newDesc });
-                  queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+                  try {
+                    await api.nodes.update(selectedNode.id, { description: newDesc, version: selectedNode.version });
+                    queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+                  } catch (err) {
+                    if (err instanceof ApiError && err.status === 409) {
+                      setConflictWarning("This node was modified by someone else. Please refresh and try again.");
+                      queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+                    }
+                    throw err;
+                  }
                 }}
                 className="text-sm text-gray-600"
                 multiline

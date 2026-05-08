@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from ost_core.db.repository import TreeRepository
-from ost_core.exceptions import TreeNotFoundError
+from ost_core.exceptions import TreeNotFoundError, VersionConflictError
 from ost_core.models import Tree, TreeCreate, TreeUpdate, TreeWithNodes
 from ost_core.services.tree_service import TreeService
 from ost_api.deps import get_repo, get_service
@@ -51,6 +51,14 @@ def export_tree(tree_id: UUID, service: TreeService = Depends(get_service)):
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
 
+@router.get("/{tree_id}/version")
+def get_tree_version(tree_id: UUID, service: TreeService = Depends(get_service)):
+    try:
+        return {"version": service.get_tree_version(tree_id)}
+    except TreeNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
+
+
 @router.patch("/{tree_id}", response_model=Tree)
 def update_tree(
     tree_id: UUID, data: TreeUpdate, service: TreeService = Depends(get_service)
@@ -59,6 +67,8 @@ def update_tree(
         return service.update_tree(tree_id, data)
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
+    except VersionConflictError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.delete("/{tree_id}", status_code=204)
