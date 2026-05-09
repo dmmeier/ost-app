@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { TreeWithNodes, ActivityLog } from "@/lib/types";
 import { useTreeStore } from "@/stores/tree-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface ActivityPanelProps {
   tree: TreeWithNodes;
@@ -103,6 +105,8 @@ function ActionIcon({ action }: { action: string }) {
 
 export function ActivityPanel({ tree }: ActivityPanelProps) {
   const { setSelectedNodeId, setCenterOnNodeId } = useTreeStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const [filter, setFilter] = useState<"all" | "mine">("all");
 
   const { data: entries, isLoading } = useQuery({
     queryKey: ["activity", tree.id, tree.version],
@@ -111,6 +115,12 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
   });
 
   const nodeIds = new Set(tree.nodes.map((n) => n.id));
+
+  const filteredEntries = entries
+    ? filter === "mine" && user
+      ? entries.filter((e) => e.user_id === user.id)
+      : entries
+    : [];
 
   const handleClick = (entry: ActivityLog) => {
     if (entry.resource_type === "node" && entry.resource_id && nodeIds.has(entry.resource_id)) {
@@ -130,48 +140,88 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
 
   if (!entries || entries.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400">
-        <div className="text-center px-4">
-          <p className="text-sm">No activity yet</p>
-          <p className="text-xs mt-1">Changes will appear here as you edit.</p>
+      <div className="h-full flex flex-col">
+        <div className="flex items-center justify-between px-3 pt-3 pb-1">
+          <p className="text-xs text-gray-400">Recent changes in this tree, newest first.</p>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-gray-400">
+          <div className="text-center px-4">
+            <p className="text-sm">No activity yet</p>
+            <p className="text-xs mt-1">Changes will appear here as you edit.</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-3 space-y-0.5 overflow-y-auto h-full">
-      <p className="text-xs text-gray-400 mb-2">
-        Recent changes in this tree, newest first.
-      </p>
-      {entries.map((entry) => {
-        const clickable = isClickable(entry);
-        return (
-          <div
-            key={entry.id}
-            onClick={() => handleClick(entry)}
-            className={`flex items-center gap-2 py-1.5 px-2 rounded text-xs transition-colors ${
-              clickable
-                ? "cursor-pointer hover:bg-gray-50"
-                : ""
-            }`}
-          >
-            <ActionIcon action={entry.action} />
-            <span className="text-gray-700 min-w-0 truncate flex-1" title={entry.summary}>
-              <span className="font-medium text-gray-900">
-                {entry.user_display_name || "Someone"}
-              </span>{" "}
-              {entry.summary}
-            </span>
-            <span
-              className="text-[10px] text-gray-400 shrink-0 cursor-help"
-              title={absoluteTime(entry.created_at)}
+    <div className="h-full flex flex-col">
+      <div className="flex items-center justify-between px-3 pt-3 pb-1 shrink-0">
+        <p className="text-xs text-gray-400">Recent changes in this tree, newest first.</p>
+        {isAuthenticated && user && (
+          <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
+            <button
+              onClick={() => setFilter("all")}
+              className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                filter === "all"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
             >
-              {relativeTime(entry.created_at)}
-            </span>
+              All
+            </button>
+            <button
+              onClick={() => setFilter("mine")}
+              className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                filter === "mine"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Mine
+            </button>
           </div>
-        );
-      })}
+        )}
+      </div>
+      {filteredEntries.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-gray-400">
+          <div className="text-center px-4">
+            <p className="text-sm">No changes by you yet</p>
+            <p className="text-xs mt-1">Your edits will appear here.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
+          {filteredEntries.map((entry) => {
+            const clickable = isClickable(entry);
+            return (
+              <div
+                key={entry.id}
+                onClick={() => handleClick(entry)}
+                className={`flex items-center gap-2 py-1.5 px-2 rounded text-xs transition-colors ${
+                  clickable
+                    ? "cursor-pointer hover:bg-gray-50"
+                    : ""
+                }`}
+              >
+                <ActionIcon action={entry.action} />
+                <span className="text-gray-700 min-w-0 truncate flex-1" title={entry.summary}>
+                  <span className="font-medium text-gray-900">
+                    {entry.user_display_name || "Someone"}
+                  </span>{" "}
+                  {entry.summary}
+                </span>
+                <span
+                  className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                  title={absoluteTime(entry.created_at)}
+                >
+                  {relativeTime(entry.created_at)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

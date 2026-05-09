@@ -1798,6 +1798,77 @@ No backend changes needed — API endpoints and ActivityLog type already existed
 Files changed (3): tree-store.ts, page.tsx, ActivityPanel.tsx (NEW)
 --- END DIARY ---
 
+32b. Activity feed: "My changes" / "All changes" filter toggle [STATUS: COMPLETE]
+Depends on: Ticket 32
+
+Context:
+When multiple people work on the same tree simultaneously, the activity feed can
+get noisy. Users should be able to toggle between seeing all changes vs only their
+own changes. This is a pure frontend filter — the API still returns all entries,
+and conflict detection (optimistic locking from Ticket 28) remains completely
+independent of the filter.
+
+Design decisions:
+- Add a small toggle in the ActivityPanel header: "All" / "Mine" (two compact
+  buttons or a segmented control, similar to coach/builder toggle in chat).
+- Default: "All" — seeing teammates' changes is more valuable by default.
+- Filter is client-side only: compare entry.user_id against the current user's
+  ID from useAuthStore().
+- When filtered to "Mine" and there are no entries from the current user, show
+  a distinct empty state: "No changes by you yet."
+- When auth is not active (open mode), hide the toggle entirely since there are
+  no distinct users.
+- State is local to the component (useState) — no need to persist preference.
+
+Phase 1: Implementation
+
+  1a. ActivityPanel.tsx
+  - Import useAuthStore to get current user ID
+  - Add filter state: useState<"all" | "mine">("all")
+  - Render toggle buttons in header row (next to description text)
+  - Filter entries array before rendering based on filter + user.id
+  - Adjust empty state message when filter is "mine"
+  - Hide toggle when user is null (open mode / unauthenticated)
+
+  Files: ActivityPanel.tsx
+
+Phase 2: Review Cycles (5+)
+
+  1. Verify toggle renders and defaults to "All"
+  2. Switch to "Mine", verify only current user's entries shown
+  3. Switch back to "All", verify all entries reappear
+  4. Verify "no changes by you" empty state when filter is "mine" and user has
+     no activity
+  5. Verify toggle is hidden in open mode (no auth)
+  6. Verify conflict detection still works regardless of filter setting
+
+Acceptance criteria:
+  1. Toggle appears in Activity tab header when user is authenticated.
+  2. "All" shows all activity entries (default).
+  3. "Mine" shows only entries matching the current user's ID.
+  4. Appropriate empty state for "mine" filter with no user entries.
+  5. Toggle hidden when auth is not active.
+  6. Conflict detection unaffected by filter choice.
+
+--- DIARY (Ticket #32b) ---
+Implementation:
+- Added All/Mine segmented toggle to ActivityPanel header
+- Client-side filtering: compares entry.user_id against current user from useAuthStore
+- Toggle hidden when no entries exist (empty state) or when user is not authenticated (open mode)
+- "Mine" empty state: "No changes by you yet / Your edits will appear here."
+- Default: "All" — seeing teammates' activity is the more useful default
+- No backend changes — pure frontend filter
+
+Review cycles (5):
+- Cycle 1: Toggle renders with "All" selected by default, clean segmented control design
+- Cycle 2: "Mine" filter works — entry by current user still shown when matching
+- Cycle 3: Switching back to "All" restores full list
+- Cycle 4: Empty tree shows no toggle (correct — nothing to filter)
+- Cycle 5: Final visual check — toggle fits naturally in panel header
+
+Files changed (1): ActivityPanel.tsx
+--- END DIARY ---
+
 33. Live presence: Who is active in the tree [STATUS: TODO]
 Depends on: Ticket 29
 
