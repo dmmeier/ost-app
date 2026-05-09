@@ -52,6 +52,8 @@ export interface Tree {
   tree_context: string;
   agent_knowledge: string;
   version: number;
+  last_modified_by: string | null;
+  last_modified_by_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +77,8 @@ export interface Node {
   assumption: string;
   evidence: string;
   version: number;
+  last_modified_by: string | null;
+  last_modified_by_name: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -250,6 +254,22 @@ export interface GitCommitLog {
   file_path: string;
   branch: string;
   remote_url: string;
+  created_at: string;
+}
+
+// ── Activity types ──────────────────────────────────────────
+
+export interface ActivityLog {
+  id: string;
+  user_id: string | null;
+  user_display_name: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  tree_id: string | null;
+  project_id: string | null;
+  summary: string;
+  details: Record<string, any> | null;
   created_at: string;
 }
 

@@ -198,8 +198,17 @@ async def git_commit(
     remote_url = project.git_remote_url or settings.git_remote_url or ""
     branch = project.git_branch or settings.git_branch or "main"
     token = settings.resolved_git_token
-    author_name = body.author_name or settings.user_name or ""
-    author_email = body.author_email or settings.user_email or ""
+    resolved_author_name = body.author_name or settings.user_name or ""
+    resolved_author_email = body.author_email or settings.user_email or ""
+
+    # Pre-fill author info from authenticated user when empty
+    if user and not resolved_author_name:
+        resolved_author_name = user.display_name
+    if user and not resolved_author_email:
+        resolved_author_email = user.email
+
+    author_name = resolved_author_name
+    author_email = resolved_author_email
 
     try:
         result = await asyncio.to_thread(
@@ -239,6 +248,22 @@ async def git_commit(
             )
         except Exception:
             pass  # Don't fail the commit response if logging fails
+
+    # Log activity for the git commit
+    if not result.no_changes:
+        try:
+            service.repo.log_activity_standalone(
+                user_id=str(user.id) if user else None,
+                action="git_committed",
+                resource_type="tree",
+                resource_id=str(tree.id),
+                tree_id=str(tree.id),
+                project_id=str(project.id),
+                summary=f"Git commit: {commit_msg}",
+                details={"commit_sha": result.commit_sha, "branch": result.branch},
+            )
+        except Exception:
+            pass
 
     return GitCommitResponse(
         commit_sha=result.commit_sha,

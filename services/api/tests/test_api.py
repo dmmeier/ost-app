@@ -1353,3 +1353,74 @@ class TestAuthEndpoints:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert r.status_code == 201
+
+
+class TestActivityEndpoints:
+    """Tests for the activity feed API endpoints."""
+
+    def test_activity_endpoint_returns_entries(self, client):
+        """Tree activity endpoint returns entries after node creation."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Test Node", "node_type": "outcome"},
+        )
+        r = client.get(f"/api/v1/trees/{tree['id']}/activity?limit=50")
+        assert r.status_code == 200
+        data = r.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        actions = [entry["action"] for entry in data]
+        assert "node_created" in actions
+
+    def test_project_activity_endpoint(self, client):
+        """Project activity endpoint returns entries after mutations."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Test Node", "node_type": "outcome"},
+        )
+        r = client.get(f"/api/v1/projects/{project['id']}/activity?limit=50")
+        assert r.status_code == 200
+        data = r.json()
+        assert isinstance(data, list)
+        assert len(data) >= 1
+
+    def test_activity_endpoint_empty_tree(self, client):
+        """Tree activity endpoint returns 200 for a tree with no nodes."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        r = client.get(f"/api/v1/trees/{tree['id']}/activity?limit=50")
+        assert r.status_code == 200
+        data = r.json()
+        assert isinstance(data, list)
+
+
+class TestNodeMutationAttribution:
+    """Tests for last_modified_by attribution on node mutations."""
+
+    def test_node_mutation_returns_last_modified_by(self, client):
+        """Node creation response includes last_modified_by field (null in open mode).
+        Full tree GET also includes last_modified_by_name on nodes."""
+        project = _create_project(client)
+        tree = _create_tree(client, project["id"])
+        r = client.post(
+            f"/api/v1/nodes?tree_id={tree['id']}",
+            json={"title": "Test", "node_type": "outcome"},
+        )
+        assert r.status_code == 201
+        node_data = r.json()
+        # Field should exist in the response (null in open mode)
+        assert "last_modified_by" in node_data
+        assert node_data["last_modified_by"] is None
+
+        # Fetch the full tree and verify last_modified_by_name is present on nodes
+        r2 = client.get(f"/api/v1/trees/{tree['id']}")
+        assert r2.status_code == 200
+        tree_data = r2.json()
+        nodes = tree_data["nodes"]
+        assert len(nodes) >= 1
+        for node in nodes:
+            assert "last_modified_by_name" in node

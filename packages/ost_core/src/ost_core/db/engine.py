@@ -81,6 +81,8 @@ def _migrate_add_columns(engine: Engine) -> None:
         with engine.begin() as conn:
             if "version" not in tree_columns:
                 conn.execute(text("ALTER TABLE trees ADD COLUMN version INTEGER DEFAULT 1"))
+            if "last_modified_by" not in tree_columns:
+                conn.execute(text("ALTER TABLE trees ADD COLUMN last_modified_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"))
 
     if "nodes" in inspector.get_table_names():
         node_columns = [c["name"] for c in inspector.get_columns("nodes")]
@@ -105,6 +107,8 @@ def _migrate_add_columns(engine: Engine) -> None:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN override_font_light BOOLEAN"))
             if "version" not in node_columns:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN version INTEGER DEFAULT 1"))
+            if "last_modified_by" not in node_columns:
+                conn.execute(text("ALTER TABLE nodes ADD COLUMN last_modified_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL"))
 
     if "edge_hypotheses" in inspector.get_table_names():
         edge_columns = [c["name"] for c in inspector.get_columns("edge_hypotheses")]

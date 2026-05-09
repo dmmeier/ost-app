@@ -1,5 +1,6 @@
 """Pydantic models for OST nodes, edges, trees, and projects."""
 
+from ost_core.models.activity import ActivityLog
 from ost_core.models.edge import (
     EdgeHypothesis,
     EdgeHypothesisCreate,
@@ -30,6 +31,7 @@ from ost_core.models.member import AddMemberRequest, ProjectMember, UpdateMember
 from ost_core.models.user import User, UserCreate, UserLogin, UserWithToken
 
 __all__ = [
+    "ActivityLog",
     "AddMemberRequest",
     "BubbleTypeDefault",
     "DEFAULT_BUBBLE_DEFAULTS",

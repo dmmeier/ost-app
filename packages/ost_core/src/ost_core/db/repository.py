@@ -7,6 +7,7 @@ from sqlalchemy import and_, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from ost_core.db.schema import (
+    ActivityLogRow,
     ChatMessageRow,
     EdgeHypothesisRow,
     GitCommitLogRow,
@@ -54,9 +55,6 @@ from ost_core.models import (
 )
 
 
-from ost_core.models.member import ProjectMember
-
-
 class TreeRepository:
     def __init__(self, session_factory: sessionmaker[Session]):
         self._session_factory = session_factory
@@ -93,6 +91,106 @@ class TreeRepository:
             if not row:
                 raise TreeNotFoundError(tree_id)
             return row.version or 1
+
+    # ── Activity logging ───────────────────────────────────────
+
+    @staticmethod
+    def _resolve_user_name(session: Session, user_id: str | None) -> str:
+        """Look up display_name from UserRow, return '' if not found."""
+        if not user_id:
+            return ""
+        row = session.get(UserRow, user_id)
+        return row.display_name if row else ""
+
+    @staticmethod
+    def _log_activity(
+        session: Session,
+        *,
+        user_id: str | None,
+        user_display_name: str,
+        action: str,
+        resource_type: str,
+        resource_id: str | None = None,
+        tree_id: str | None = None,
+        project_id: str | None = None,
+        summary: str = "",
+        details: dict | None = None,
+    ) -> None:
+        """Insert an ActivityLogRow within an existing transaction."""
+        session.add(ActivityLogRow(
+            id=str(uuid4()),
+            user_id=user_id,
+            user_display_name=user_display_name,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            tree_id=tree_id,
+            project_id=project_id,
+            summary=summary,
+            details=details,
+        ))
+
+    def list_activity(
+        self,
+        tree_id: UUID | None = None,
+        project_id: UUID | None = None,
+        limit: int = 50,
+    ) -> list:
+        """Read activity feed, filtered by tree_id or project_id."""
+        from ost_core.models.activity import ActivityLog
+        with self._session() as session:
+            stmt = select(ActivityLogRow)
+            if tree_id:
+                stmt = stmt.where(ActivityLogRow.tree_id == str(tree_id))
+            elif project_id:
+                stmt = stmt.where(ActivityLogRow.project_id == str(project_id))
+            stmt = stmt.order_by(ActivityLogRow.created_at.desc()).limit(limit)
+            rows = session.execute(stmt).scalars().all()
+            return [
+                ActivityLog(
+                    id=UUID(r.id),
+                    user_id=UUID(r.user_id) if r.user_id else None,
+                    user_display_name=r.user_display_name,
+                    action=r.action,
+                    resource_type=r.resource_type,
+                    resource_id=UUID(r.resource_id) if r.resource_id else None,
+                    tree_id=UUID(r.tree_id) if r.tree_id else None,
+                    project_id=UUID(r.project_id) if r.project_id else None,
+                    summary=r.summary,
+                    details=r.details,
+                    created_at=r.created_at,
+                )
+                for r in rows
+            ]
+
+    def log_activity_standalone(
+        self,
+        *,
+        user_id: str | None,
+        action: str,
+        resource_type: str,
+        resource_id: str | None = None,
+        tree_id: str | None = None,
+        project_id: str | None = None,
+        summary: str = "",
+        details: dict | None = None,
+    ) -> None:
+        """Log an activity with its own session (for use outside repo transactions)."""
+        with self._session() as session:
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                tree_id=tree_id,
+                project_id=project_id,
+                summary=summary,
+                details=details,
+            )
+            session.commit()
 
     # ── Project CRUD ──────────────────────────────────────────
 
@@ -183,7 +281,7 @@ class TreeRepository:
 
     # ── Tree CRUD ──────────────────────────────────────────────
 
-    def create_tree(self, data: TreeCreate) -> Tree:
+    def create_tree(self, data: TreeCreate, user_id: str | None = None) -> Tree:
         with self._session() as session:
             row = TreeRow(
                 id=str(uuid4()),
@@ -192,7 +290,21 @@ class TreeRepository:
                 description=data.description,
                 tree_context=data.tree_context,
             )
+            if user_id:
+                row.last_modified_by = user_id
             session.add(row)
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="tree_created",
+                resource_type="tree",
+                resource_id=row.id,
+                tree_id=row.id,
+                project_id=str(data.project_id),
+                summary=f"Created tree '{data.name}'",
+            )
             session.commit()
             session.refresh(row)
             return self._tree_from_row(row)
@@ -213,37 +325,71 @@ class TreeRepository:
             rows = session.execute(stmt).scalars().all()
             return [self._tree_from_row(r) for r in rows]
 
-    def update_tree(self, tree_id: UUID, data: TreeUpdate) -> Tree:
+    def update_tree(self, tree_id: UUID, data: TreeUpdate, user_id: str | None = None) -> Tree:
         with self._session() as session:
             row = session.get(TreeRow, str(tree_id))
             if not row:
                 raise TreeNotFoundError(tree_id)
             self._check_tree_version(row, data.version)
+            changed_fields = []
             if data.name is not None:
+                changed_fields.append("name")
                 row.name = data.name
             if data.description is not None:
+                changed_fields.append("description")
                 row.description = data.description
             if data.tree_context is not None:
+                changed_fields.append("tree_context")
                 row.tree_context = data.tree_context
             if data.agent_knowledge is not None:
+                changed_fields.append("agent_knowledge")
                 row.agent_knowledge = data.agent_knowledge
+            if user_id:
+                row.last_modified_by = user_id
             row.version = (row.version or 1) + 1
             row.updated_at = datetime.now(UTC)
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="tree_updated",
+                resource_type="tree",
+                resource_id=str(tree_id),
+                tree_id=str(tree_id),
+                project_id=row.project_id,
+                summary=f"Updated tree '{row.name}'",
+                details={"changed_fields": changed_fields},
+            )
             session.commit()
             session.refresh(row)
             return self._tree_from_row(row)
 
-    def delete_tree(self, tree_id: UUID) -> None:
+    def delete_tree(self, tree_id: UUID, user_id: str | None = None) -> None:
         with self._session() as session:
             row = session.get(TreeRow, str(tree_id))
             if not row:
                 raise TreeNotFoundError(tree_id)
+            tree_name = row.name
+            project_id = row.project_id
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="tree_deleted",
+                resource_type="tree",
+                resource_id=str(tree_id),
+                tree_id=str(tree_id),
+                project_id=project_id,
+                summary=f"Deleted tree '{tree_name}'",
+            )
             session.delete(row)
             session.commit()
 
     # ── Node CRUD ──────────────────────────────────────────────
 
-    def add_node(self, tree_id: UUID, data: NodeCreate) -> Node:
+    def add_node(self, tree_id: UUID, data: NodeCreate, user_id: str | None = None) -> Node:
         with self._session() as session:
             # Verify tree exists
             tree = session.get(TreeRow, str(tree_id))
@@ -299,6 +445,8 @@ class TreeRepository:
                 assumption=data.assumption or "",
                 evidence=data.evidence or "",
             )
+            if user_id:
+                row.last_modified_by = user_id
             session.add(row)
             session.flush()  # Flush so the node row exists before closure table FK references it
 
@@ -307,6 +455,19 @@ class TreeRepository:
 
             # Bump tree version
             self._bump_tree_version(session, str(tree_id))
+
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="node_created",
+                resource_type="node",
+                resource_id=node_id,
+                tree_id=str(tree_id),
+                project_id=tree.project_id,
+                summary=f"Created {data.node_type} node '{data.title}'",
+            )
 
             session.commit()
             session.refresh(row)
@@ -332,19 +493,24 @@ class TreeRepository:
             )
             return [self._node_from_row(r) for r in rows]
 
-    def update_node(self, node_id: UUID, data: NodeUpdate) -> Node:
+    def update_node(self, node_id: UUID, data: NodeUpdate, user_id: str | None = None) -> Node:
         with self._session() as session:
             row = session.get(NodeRow, str(node_id))
             if not row:
                 raise NodeNotFoundError(node_id)
             self._check_node_version(row, data.version)
+            changed_fields = []
             if data.title is not None:
+                changed_fields.append("title")
                 row.title = data.title
             if data.description is not None:
+                changed_fields.append("description")
                 row.description = data.description
             if data.status is not None:
+                changed_fields.append("status")
                 row.status = data.status
             if data.node_type is not None:
+                changed_fields.append("node_type")
                 row.node_type = data.node_type
             # Override fields: empty string "" clears (sets to NULL), non-empty sets value
             if data.override_border_color is not None:
@@ -360,23 +526,57 @@ class TreeRepository:
             if data.edge_thickness is not None:
                 row.edge_thickness = data.edge_thickness or None
             if data.assumption is not None:
+                changed_fields.append("assumption")
                 row.assumption = data.assumption
             if data.evidence is not None:
+                changed_fields.append("evidence")
                 row.evidence = data.evidence
+            if user_id:
+                row.last_modified_by = user_id
             row.version = (row.version or 1) + 1
             row.updated_at = datetime.now(UTC)
             # Bump tree version too
             self._bump_tree_version(session, row.tree_id)
+            tree_row = session.get(TreeRow, row.tree_id)
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="node_updated",
+                resource_type="node",
+                resource_id=str(node_id),
+                tree_id=row.tree_id,
+                project_id=tree_row.project_id if tree_row else None,
+                summary=f"Updated node '{row.title}'",
+                details={"changed_fields": changed_fields},
+            )
             session.commit()
             session.refresh(row)
             return self._node_from_row(row)
 
-    def remove_node(self, node_id: UUID, cascade: bool = True) -> None:
+    def remove_node(self, node_id: UUID, cascade: bool = True, user_id: str | None = None) -> None:
         with self._session() as session:
             row = session.get(NodeRow, str(node_id))
             if not row:
                 raise NodeNotFoundError(node_id)
             tree_id = row.tree_id
+            node_title = row.title
+            tree_row = session.get(TreeRow, tree_id)
+            project_id = tree_row.project_id if tree_row else None
+
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="node_deleted",
+                resource_type="node",
+                resource_id=str(node_id),
+                tree_id=tree_id,
+                project_id=project_id,
+                summary=f"Deleted node '{node_title}'",
+            )
 
             if cascade:
                 # Get all descendants via closure table and delete them
@@ -537,7 +737,25 @@ class TreeRepository:
             )
             edges = [self._edge_from_row(r) for r in edge_rows]
 
+            # Batch-resolve last_modified_by user names
+            modifier_ids = {str(n.last_modified_by) for n in nodes if n.last_modified_by}
+            if tree_row.last_modified_by:
+                modifier_ids.add(tree_row.last_modified_by)
+            if modifier_ids:
+                user_rows = session.execute(
+                    select(UserRow.id, UserRow.display_name).where(UserRow.id.in_(modifier_ids))
+                ).all()
+                user_name_map = {uid: name for uid, name in user_rows}
+                for node in nodes:
+                    if node.last_modified_by:
+                        node.last_modified_by_name = user_name_map.get(str(node.last_modified_by))
+
             tree = self._tree_from_row(tree_row)
+            if tree.last_modified_by:
+                tree_modifier = session.get(UserRow, str(tree.last_modified_by))
+                if tree_modifier:
+                    tree.last_modified_by_name = tree_modifier.display_name
+
             return TreeWithNodes(
                 id=tree.id,
                 project_id=tree.project_id,
@@ -546,6 +764,8 @@ class TreeRepository:
                 tree_context=tree.tree_context,
                 agent_knowledge=tree.agent_knowledge,
                 version=tree.version,
+                last_modified_by=tree.last_modified_by,
+                last_modified_by_name=tree.last_modified_by_name,
                 created_at=tree.created_at,
                 updated_at=tree.updated_at,
                 nodes=nodes,
@@ -697,7 +917,7 @@ class TreeRepository:
 
     # ── Tree operations ────────────────────────────────────────
 
-    def move_subtree(self, node_id: UUID, new_parent_id: UUID) -> None:
+    def move_subtree(self, node_id: UUID, new_parent_id: UUID, user_id: str | None = None) -> None:
         """Move a node and its subtree to a new parent."""
         with self._session() as session:
             node = session.get(NodeRow, str(node_id))
@@ -761,10 +981,26 @@ class TreeRepository:
 
             # Update the node's parent_id
             node.parent_id = str(new_parent_id)
+            if user_id:
+                node.last_modified_by = user_id
             node.version = (node.version or 1) + 1
             node.updated_at = datetime.now(UTC)
             # Bump tree version
             self._bump_tree_version(session, node.tree_id)
+
+            tree_row = session.get(TreeRow, node.tree_id)
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="node_moved",
+                resource_type="node",
+                resource_id=str(node_id),
+                tree_id=node.tree_id,
+                project_id=tree_row.project_id if tree_row else None,
+                summary=f"Moved node '{node.title}' to new parent",
+            )
             session.commit()
 
     def archive_subtree(self, node_id: UUID) -> None:
@@ -787,7 +1023,7 @@ class TreeRepository:
 
     # ── Node reordering ─────────────────────────────────────────
 
-    def reorder_sibling(self, node_id: UUID, direction: str) -> None:
+    def reorder_sibling(self, node_id: UUID, direction: str, user_id: str | None = None) -> None:
         """Swap a node's sort_order with its adjacent sibling.
         direction: 'left' (lower sort_order) or 'right' (higher sort_order).
         """
@@ -844,12 +1080,28 @@ class TreeRepository:
             # Swap sort_order values
             other = siblings[swap_idx]
             node.sort_order, other.sort_order = other.sort_order, node.sort_order
+            if user_id:
+                node.last_modified_by = user_id
             node.version = (node.version or 1) + 1
             other.version = (other.version or 1) + 1
             node.updated_at = datetime.now(UTC)
             other.updated_at = datetime.now(UTC)
             # Bump tree version
             self._bump_tree_version(session, node.tree_id)
+
+            tree_row = session.get(TreeRow, node.tree_id)
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="node_reordered",
+                resource_type="node",
+                resource_id=str(node_id),
+                tree_id=node.tree_id,
+                project_id=tree_row.project_id if tree_row else None,
+                summary=f"Reordered node '{node.title}' {direction}",
+            )
             session.commit()
 
     # ── Closure table maintenance ──────────────────────────────
@@ -908,6 +1160,7 @@ class TreeRepository:
             tree_context=row.tree_context,
             agent_knowledge=row.agent_knowledge,
             version=row.version or 1,
+            last_modified_by=UUID(row.last_modified_by) if row.last_modified_by else None,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -932,6 +1185,7 @@ class TreeRepository:
             assumption=row.assumption or "",
             evidence=row.evidence or "",
             version=row.version or 1,
+            last_modified_by=UUID(row.last_modified_by) if row.last_modified_by else None,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -1026,7 +1280,7 @@ class TreeRepository:
             ).scalars().all()
             return len(rows)
 
-    def add_tag_to_node(self, node_id: UUID, tag_id: UUID) -> None:
+    def add_tag_to_node(self, node_id: UUID, tag_id: UUID, user_id: str | None = None) -> None:
         with self._session() as session:
             existing = session.execute(
                 select(NodeTagRow).where(
@@ -1042,9 +1296,24 @@ class TreeRepository:
                 node_row = session.get(NodeRow, str(node_id))
                 if node_row:
                     self._bump_tree_version(session, node_row.tree_id)
+                    tree_row = session.get(TreeRow, node_row.tree_id)
+                    tag_row = session.get(ProjectTagRow, str(tag_id))
+                    tag_name = tag_row.name if tag_row else str(tag_id)
+                    user_name = self._resolve_user_name(session, user_id)
+                    self._log_activity(
+                        session,
+                        user_id=user_id,
+                        user_display_name=user_name,
+                        action="tag_added",
+                        resource_type="node",
+                        resource_id=str(node_id),
+                        tree_id=node_row.tree_id,
+                        project_id=tree_row.project_id if tree_row else None,
+                        summary=f"Added tag '{tag_name}' to node '{node_row.title}'",
+                    )
                 session.commit()
 
-    def remove_tag_from_node(self, node_id: UUID, tag_id: UUID) -> None:
+    def remove_tag_from_node(self, node_id: UUID, tag_id: UUID, user_id: str | None = None) -> None:
         with self._session() as session:
             session.execute(
                 delete(NodeTagRow).where(
@@ -1058,6 +1327,21 @@ class TreeRepository:
             node_row = session.get(NodeRow, str(node_id))
             if node_row:
                 self._bump_tree_version(session, node_row.tree_id)
+                tree_row = session.get(TreeRow, node_row.tree_id)
+                tag_row = session.get(ProjectTagRow, str(tag_id))
+                tag_name = tag_row.name if tag_row else str(tag_id)
+                user_name = self._resolve_user_name(session, user_id)
+                self._log_activity(
+                    session,
+                    user_id=user_id,
+                    user_display_name=user_name,
+                    action="tag_removed",
+                    resource_type="node",
+                    resource_id=str(node_id),
+                    tree_id=node_row.tree_id,
+                    project_id=tree_row.project_id if tree_row else None,
+                    summary=f"Removed tag '{tag_name}' from node '{node_row.title}'",
+                )
             session.commit()
 
     def get_node_tags(self, node_id: UUID) -> list[Tag]:
@@ -1138,7 +1422,7 @@ class TreeRepository:
 
     # ── Tree Snapshots ───────────────────────────────────────
 
-    def create_snapshot(self, tree_id: UUID, message: str) -> dict:
+    def create_snapshot(self, tree_id: UUID, message: str, user_id: str | None = None) -> dict:
         """Create a point-in-time snapshot of a tree."""
         # Get current tree state
         full_tree = self.get_full_tree(tree_id)
@@ -1174,6 +1458,21 @@ class TreeRepository:
                 snapshot_data=snapshot_data,
             )
             session.add(row)
+
+            tree_row = session.get(TreeRow, str(tree_id))
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="snapshot_created",
+                resource_type="snapshot",
+                resource_id=row.id,
+                tree_id=str(tree_id),
+                project_id=tree_row.project_id if tree_row else None,
+                summary=f"Created snapshot '{message}'",
+            )
+
             session.commit()
             session.refresh(row)
             return {
@@ -1302,7 +1601,7 @@ class TreeRepository:
             ).all()
             return [GitAuthor(name=r[0], email=r[1]) for r in rows]
 
-    def restore_snapshot(self, snapshot_id: str) -> UUID:
+    def restore_snapshot(self, snapshot_id: str, user_id: str | None = None) -> UUID:
         """Restore a tree from a snapshot. Replaces all nodes and edges."""
         snapshot = self.get_snapshot(snapshot_id)
         if not snapshot:
@@ -1427,6 +1726,19 @@ class TreeRepository:
                 # Bump tree version
                 tree_row.version = (tree_row.version or 1) + 1
                 tree_row.updated_at = datetime.now(UTC)
+
+            user_name = self._resolve_user_name(session, user_id)
+            self._log_activity(
+                session,
+                user_id=user_id,
+                user_display_name=user_name,
+                action="snapshot_restored",
+                resource_type="snapshot",
+                resource_id=snapshot_id,
+                tree_id=str(tree_id),
+                project_id=tree_row.project_id if tree_row else None,
+                summary=f"Restored snapshot '{snapshot.get('message', '')}'",
+            )
 
             session.commit()
 
@@ -1590,3 +1902,4 @@ class TreeRepository:
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
+

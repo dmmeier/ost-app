@@ -358,6 +358,9 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
       <div className="pt-1">
         <p className="text-xs text-gray-400">
           ID: {selectedNode.id.slice(0, 8)}... &mdash; {new Date(selectedNode.created_at).toLocaleDateString()}
+          {selectedNode.last_modified_by_name && (
+            <> &mdash; Last edited by {selectedNode.last_modified_by_name}</>
+          )}
         </p>
       </div>
     </div>

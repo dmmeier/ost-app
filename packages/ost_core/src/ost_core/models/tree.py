@@ -38,6 +38,8 @@ class Tree(BaseModel):
     tree_context: str = ""
     agent_knowledge: str = ""
     version: int = 1
+    last_modified_by: UUID | None = None
+    last_modified_by_name: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

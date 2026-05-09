@@ -39,7 +39,7 @@ def add_node(
         service.check_project_permission(
             str(user.id) if user else None, str(tree.project_id), "editor"
         )
-        return service.add_node(tree_id, data)
+        return service.add_node(tree_id, data, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
@@ -67,7 +67,7 @@ def update_node(
 ):
     try:
         _check_node_permission(service, user, node_id, "editor")
-        return service.update_node(node_id, data)
+        return service.update_node(node_id, data, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except NodeNotFoundError:
@@ -87,7 +87,7 @@ def remove_node(
 ):
     try:
         _check_node_permission(service, user, node_id, "editor")
-        service.remove_node(node_id, cascade=cascade)
+        service.remove_node(node_id, cascade=cascade, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except NodeNotFoundError:
@@ -107,7 +107,7 @@ def move_node(
 ):
     try:
         _check_node_permission(service, user, node_id, "editor")
-        service.move_subtree(node_id, body.new_parent_id)
+        service.move_subtree(node_id, body.new_parent_id, user_id=str(user.id) if user else None)
         return {"status": "moved"}
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -132,7 +132,7 @@ def reorder_node(
 ):
     try:
         _check_node_permission(service, user, node_id, "editor")
-        service.reorder_sibling(node_id, body.direction)
+        service.reorder_sibling(node_id, body.direction, user_id=str(user.id) if user else None)
         return {"status": "reordered"}
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
 import { GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog } from "@/lib/types";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface GitPanelProps {
   projectId: string;
@@ -33,6 +34,8 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
   // History state
   const [history, setHistory] = useState<GitCommitLog[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  const authUser = useAuthStore((s) => s.user);
 
   // Debounce timers
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,6 +108,14 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
       }
     })();
   }, [projectId]);
+
+  // Pre-fill author from authenticated user
+  useEffect(() => {
+    if (authUser && !newAuthorName && !newAuthorEmail) {
+      setNewAuthorName(authUser.display_name);
+      setNewAuthorEmail(authUser.email);
+    }
+  }, [authUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounced auto-save for settings
   const saveConfig = useCallback(

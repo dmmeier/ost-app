@@ -109,7 +109,7 @@ def add_tag_to_node(
             node = service.get_node(node_id)
             tree = service.get_tree(node.tree_id)
             project_id = tree.project_id
-        return service.add_tag_to_node_by_name(node_id, data.tag_name, project_id)
+        return service.add_tag_to_node_by_name(node_id, data.tag_name, project_id, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -124,7 +124,7 @@ def remove_tag_from_node(
     """Remove a tag from a node."""
     try:
         _check_tag_node_permission(service, user, node_id, "editor")
-        service.remove_tag_from_node(node_id, tag_id)
+        service.remove_tag_from_node(node_id, tag_id, user_id=str(user.id) if user else None)
         return {"status": "removed"}
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))

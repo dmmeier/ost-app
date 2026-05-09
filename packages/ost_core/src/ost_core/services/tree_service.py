@@ -14,6 +14,7 @@ from ost_core.exceptions import (
     UserNotFoundError,
 )
 from ost_core.models import (
+    ActivityLog,
     EdgeHypothesis,
     EdgeHypothesisCreate,
     EdgeHypothesisUpdate,
@@ -79,8 +80,8 @@ class TreeService:
 
     # ── Tree operations ────────────────────────────────────────
 
-    def create_tree(self, data: TreeCreate) -> Tree:
-        return self.repo.create_tree(data)
+    def create_tree(self, data: TreeCreate, user_id: str | None = None) -> Tree:
+        return self.repo.create_tree(data, user_id=user_id)
 
     def get_tree(self, tree_id: UUID) -> Tree:
         return self.repo.get_tree(tree_id)
@@ -88,11 +89,11 @@ class TreeService:
     def list_trees(self, project_id: UUID | None = None) -> list[Tree]:
         return self.repo.list_trees(project_id=project_id)
 
-    def update_tree(self, tree_id: UUID, data: TreeUpdate) -> Tree:
-        return self.repo.update_tree(tree_id, data)
+    def update_tree(self, tree_id: UUID, data: TreeUpdate, user_id: str | None = None) -> Tree:
+        return self.repo.update_tree(tree_id, data, user_id=user_id)
 
-    def delete_tree(self, tree_id: UUID) -> None:
-        self.repo.delete_tree(tree_id)
+    def delete_tree(self, tree_id: UUID, user_id: str | None = None) -> None:
+        self.repo.delete_tree(tree_id, user_id=user_id)
 
     def get_tree_version(self, tree_id: UUID) -> int:
         """Get just the version number for a tree (lightweight polling)."""
@@ -103,11 +104,11 @@ class TreeService:
 
     # ── Node operations ────────────────────────────────────────
 
-    def add_node(self, tree_id: UUID, data: NodeCreate) -> Node:
+    def add_node(self, tree_id: UUID, data: NodeCreate, user_id: str | None = None) -> Node:
         """Add a node to the tree. Any type can be a root; multiple roots allowed."""
         if data.parent_id is not None:
             self.repo.get_node(data.parent_id)  # verify parent exists
-        node = self.repo.add_node(tree_id, data)
+        node = self.repo.add_node(tree_id, data, user_id=user_id)
 
         # Auto-register custom bubble types in the project's bubble_defaults
         if data.node_type not in STANDARD_NODE_TYPES:
@@ -129,11 +130,11 @@ class TreeService:
     def get_children(self, node_id: UUID) -> list[Node]:
         return self.repo.get_children(node_id)
 
-    def update_node(self, node_id: UUID, data: NodeUpdate) -> Node:
-        return self.repo.update_node(node_id, data)
+    def update_node(self, node_id: UUID, data: NodeUpdate, user_id: str | None = None) -> Node:
+        return self.repo.update_node(node_id, data, user_id=user_id)
 
-    def remove_node(self, node_id: UUID, cascade: bool = True) -> None:
-        self.repo.remove_node(node_id, cascade=cascade)
+    def remove_node(self, node_id: UUID, cascade: bool = True, user_id: str | None = None) -> None:
+        self.repo.remove_node(node_id, cascade=cascade, user_id=user_id)
 
     def get_subtree(self, node_id: UUID) -> list[Node]:
         return self.repo.get_subtree(node_id)
@@ -146,7 +147,7 @@ class TreeService:
 
     # ── Move subtree ───────────────────────────────────────────
 
-    def move_subtree(self, node_id: UUID, new_parent_id: UUID) -> None:
+    def move_subtree(self, node_id: UUID, new_parent_id: UUID, user_id: str | None = None) -> None:
         """Move a node and its subtree to a new parent, with validation."""
         node = self.repo.get_node(node_id)
         new_parent = self.repo.get_node(new_parent_id)
@@ -165,15 +166,15 @@ class TreeService:
         if new_parent_id in subtree_ids:
             raise InvalidMoveError("Cannot move a node to one of its own descendants")
 
-        self.repo.move_subtree(node_id, new_parent_id)
+        self.repo.move_subtree(node_id, new_parent_id, user_id=user_id)
 
     # ── Node reordering ─────────────────────────────────────────
 
-    def reorder_sibling(self, node_id: UUID, direction: str) -> None:
+    def reorder_sibling(self, node_id: UUID, direction: str, user_id: str | None = None) -> None:
         """Move a node left or right among its siblings."""
         if direction not in ("left", "right"):
             raise ValueError(f"Invalid direction: {direction}. Must be 'left' or 'right'.")
-        self.repo.reorder_sibling(node_id, direction)
+        self.repo.reorder_sibling(node_id, direction, user_id=user_id)
 
     # ── Edge hypothesis operations ─────────────────────────────
 
@@ -451,18 +452,18 @@ class TreeService:
     def get_tag_usage_count(self, tag_id: UUID) -> int:
         return self.repo.get_tag_usage_count(tag_id)
 
-    def add_tag_to_node(self, node_id: UUID, tag_id: UUID) -> None:
-        self.repo.add_tag_to_node(node_id, tag_id)
+    def add_tag_to_node(self, node_id: UUID, tag_id: UUID, user_id: str | None = None) -> None:
+        self.repo.add_tag_to_node(node_id, tag_id, user_id=user_id)
 
-    def remove_tag_from_node(self, node_id: UUID, tag_id: UUID) -> None:
-        self.repo.remove_tag_from_node(node_id, tag_id)
+    def remove_tag_from_node(self, node_id: UUID, tag_id: UUID, user_id: str | None = None) -> None:
+        self.repo.remove_tag_from_node(node_id, tag_id, user_id=user_id)
 
-    def add_tag_to_node_by_name(self, node_id: UUID, tag_name: str, project_id: UUID) -> Tag:
+    def add_tag_to_node_by_name(self, node_id: UUID, tag_name: str, project_id: UUID, user_id: str | None = None) -> Tag:
         """Create-if-not-exists + assign. Single operation for UX convenience."""
         tag = self.repo.get_tag_by_name(project_id, tag_name)
         if not tag:
             tag = self.repo.create_tag(project_id, TagCreate(name=tag_name))
-        self.repo.add_tag_to_node(node_id, tag.id)
+        self.repo.add_tag_to_node(node_id, tag.id, user_id=user_id)
         return tag
 
     def get_tree_filtered_by_tag(self, tree_id: UUID, tag_name: str) -> TreeWithNodes:
@@ -517,6 +518,14 @@ class TreeService:
             nodes=visible_nodes,
             edges=visible_edges,
         )
+
+    # ── Activity Feed ────────────────────────────────────────
+
+    def get_tree_activity(self, tree_id: UUID, limit: int = 50) -> list[ActivityLog]:
+        return self.repo.list_activity(tree_id=tree_id, limit=limit)
+
+    def get_project_activity(self, project_id: UUID, limit: int = 50) -> list[ActivityLog]:
+        return self.repo.list_activity(project_id=project_id, limit=limit)
 
     # ── Git Commit Log ────────────────────────────────────────
 

@@ -283,6 +283,7 @@ def _execute_tool(
                     assumption=arguments.get("assumption"),
                     evidence=arguments.get("evidence"),
                 ),
+                user_id=user_id,
             )
             return json.dumps(node.model_dump(mode="json"))
 
@@ -295,15 +296,16 @@ def _execute_tool(
                     assumption=arguments.get("assumption"),
                     evidence=arguments.get("evidence"),
                 ),
+                user_id=user_id,
             )
             return json.dumps(node.model_dump(mode="json"))
 
         elif tool_name == "remove_node":
-            service.remove_node(UUID(arguments["node_id"]))
+            service.remove_node(UUID(arguments["node_id"]), user_id=user_id)
             return json.dumps({"status": "removed", "node_id": arguments["node_id"]})
 
         elif tool_name == "move_node":
-            service.move_subtree(UUID(arguments["node_id"]), UUID(arguments["new_parent_id"]))
+            service.move_subtree(UUID(arguments["node_id"]), UUID(arguments["new_parent_id"]), user_id=user_id)
             return json.dumps({"status": "moved"})
 
         elif tool_name == "set_edge_hypothesis":
@@ -345,6 +347,7 @@ def _execute_tool(
                 UUID(arguments["node_id"]),
                 arguments["tag_name"],
                 UUID(arguments["project_id"]),
+                user_id=user_id,
             )
             return json.dumps(tag.model_dump(mode="json"))
 
@@ -352,6 +355,7 @@ def _execute_tool(
             service.remove_tag_from_node(
                 UUID(arguments["node_id"]),
                 UUID(arguments["tag_id"]),
+                user_id=user_id,
             )
             return json.dumps({"status": "removed"})
 
@@ -366,6 +370,7 @@ def _execute_tool(
             service.update_tree(
                 UUID(arguments["tree_id"]),
                 TreeUpdate(agent_knowledge=arguments["knowledge"]),
+                user_id=user_id,
             )
             return json.dumps({"status": "updated", "tree_id": arguments["tree_id"]})
 
@@ -373,6 +378,7 @@ def _execute_tool(
             tree = service.update_tree(
                 UUID(arguments["tree_id"]),
                 TreeUpdate(name=arguments["name"]),
+                user_id=user_id,
             )
             return json.dumps({"status": "renamed", "name": tree.name, "tree_id": str(tree.id)})
 
@@ -399,7 +405,8 @@ def _execute_tool(
                     project_id=UUID(arguments["project_id"]),
                     name=arguments["name"],
                     description=arguments.get("description", ""),
-                )
+                ),
+                user_id=user_id,
             )
             return json.dumps(tree.model_dump(mode="json"))
 

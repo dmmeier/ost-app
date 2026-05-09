@@ -343,9 +343,11 @@ def create(
 ):
     """Create a new Opportunity Solution Tree within a project."""
     service = _get_service()
-    tree = service.create_tree(
-        TreeCreate(name=name, description=description, tree_context=context, project_id=UUID(project_id))
+    tree_data = TreeCreate(
+        name=name, description=description,
+        tree_context=context, project_id=UUID(project_id),
     )
+    tree = service.create_tree(tree_data, user_id=_get_current_user_id())
     console.print(f"[green]Created tree:[/green] {tree.name} ({tree.id})")
 
 
@@ -459,6 +461,7 @@ def add(
             assumption=assumption,
             evidence=evidence,
         ),
+        user_id=_get_current_user_id(),
     )
     color = NODE_COLORS.get(node.node_type, "")
     console.print(f"[green]Added:[/green] [{color}]{node.title}[/{color}] ({node.id})")
@@ -471,7 +474,7 @@ def remove(
 ):
     """Remove a node (and optionally its subtree)."""
     service = _get_service()
-    service.remove_node(UUID(node_id), cascade=cascade)
+    service.remove_node(UUID(node_id), cascade=cascade, user_id=_get_current_user_id())
     console.print(f"[red]Removed:[/red] {node_id}")
 
 
@@ -482,7 +485,7 @@ def move(
 ):
     """Move a node and its subtree to a new parent."""
     service = _get_service()
-    service.move_subtree(UUID(node_id), UUID(new_parent_id))
+    service.move_subtree(UUID(node_id), UUID(new_parent_id), user_id=_get_current_user_id())
     console.print(f"[green]Moved:[/green] {node_id} → {new_parent_id}")
 
 
@@ -657,7 +660,7 @@ def delete_tree(
         if not confirm:
             console.print("[dim]Cancelled.[/dim]")
             raise typer.Exit(0)
-    _get_service().delete_tree(tid)
+    _get_service().delete_tree(tid, user_id=_get_current_user_id())
     console.print(f"[red]Deleted tree:[/red] {tree_id}")
 
 
@@ -700,7 +703,7 @@ def set_context(
     tid = _resolve_tree_id(tree_id)
 
     if tree_ctx is not None:
-        service.update_tree(tid, TreeUpdate(tree_context=tree_ctx))
+        service.update_tree(tid, TreeUpdate(tree_context=tree_ctx), user_id=_get_current_user_id())
         console.print("[green]Updated tree context.[/green]")
 
     if project_ctx is not None:
@@ -864,6 +867,7 @@ def edit(
                 title=title, description=description, status=status,
                 assumption=assumption, evidence=evidence, version=version,
             ),
+            user_id=_get_current_user_id(),
         )
     except VersionConflictError as e:
         console.print(f"[red]Conflict:[/red] {e}")
@@ -881,8 +885,58 @@ def rename_tree(
     """Rename a tree."""
     service = _get_service()
     tid = _resolve_tree_id(tree_id)
-    tree = service.update_tree(tid, TreeUpdate(name=name))
+    tree = service.update_tree(tid, TreeUpdate(name=name), user_id=_get_current_user_id())
     console.print(f"[green]Renamed tree:[/green] {tree.name} ({tree.id})")
+
+
+@app.command("activity")
+def show_activity(
+    tree_id: str = typer.Argument(..., help="Tree ID (or prefix)"),
+    limit: int = typer.Option(20, "--limit", help="Number of entries to show"),
+):
+    """Show recent activity (who changed what) for a tree."""
+    service = _get_service()
+    tid = _resolve_tree_id(tree_id)
+    activities = service.get_tree_activity(tid, limit=limit)
+
+    if not activities:
+        console.print("[dim]No activity found.[/dim]")
+        return
+
+    table = Table(title="Recent Activity")
+    table.add_column("When", style="dim")
+    table.add_column("Who", style="bold")
+    table.add_column("Action")
+    table.add_column("Summary")
+
+    for a in activities:
+        when = str(a.created_at)[:19]
+        who = a.user_display_name or "[dim]anonymous[/dim]"
+        action_colors = {
+            "node_created": "green",
+            "node_updated": "yellow",
+            "node_deleted": "red",
+            "node_moved": "cyan",
+            "node_reordered": "cyan",
+            "tree_created": "green",
+            "tree_updated": "yellow",
+            "tree_deleted": "red",
+            "tag_added": "blue",
+            "tag_removed": "red",
+            "snapshot_created": "magenta",
+            "snapshot_restored": "magenta",
+            "git_committed": "green",
+        }
+        color = action_colors.get(a.action, "")
+        action_display = a.action.replace("_", " ")
+        table.add_row(
+            when,
+            who,
+            f"[{color}]{action_display}[/{color}]" if color else action_display,
+            a.summary or "-",
+        )
+
+    console.print(table)
 
 
 # ── Edge commands ────────────────────────────────────────────
@@ -1074,7 +1128,7 @@ def tag_add(
 ):
     """Add a tag to a node (creates the tag if needed)."""
     service = _get_service()
-    tag = service.add_tag_to_node_by_name(UUID(node_id), tag_name, UUID(project_id))
+    tag = service.add_tag_to_node_by_name(UUID(node_id), tag_name, UUID(project_id), user_id=_get_current_user_id())
     console.print(f"[green]Tagged:[/green] {tag.name} → node {node_id[:8]}...")
 
 
@@ -1085,7 +1139,7 @@ def tag_remove(
 ):
     """Remove a tag from a node."""
     service = _get_service()
-    service.remove_tag_from_node(UUID(node_id), UUID(tag_id))
+    service.remove_tag_from_node(UUID(node_id), UUID(tag_id), user_id=_get_current_user_id())
     console.print(f"[red]Removed tag:[/red] {tag_id[:8]}... from node {node_id[:8]}...")
 
 
@@ -1175,6 +1229,19 @@ def git_commit(
     resolved_author_name = author_name or settings.user_name or ""
     resolved_author_email = author_email or settings.user_email or ""
 
+    # Pre-fill from authenticated user if not provided
+    if not resolved_author_name or not resolved_author_email:
+        uid = _get_current_user_id()
+        if uid:
+            try:
+                user = service.get_user(uid)
+                if not resolved_author_name:
+                    resolved_author_name = user.display_name
+                if not resolved_author_email:
+                    resolved_author_email = user.email
+            except Exception:
+                pass
+
     try:
         with console.status("Committing to git..."):
             result = commit_tree_to_git(
@@ -1228,6 +1295,21 @@ def git_commit(
                 )
             except Exception:
                 pass
+
+        # Log activity
+        try:
+            service.repo.log_activity_standalone(
+                user_id=_get_current_user_id(),
+                action="git_committed",
+                resource_type="tree",
+                resource_id=str(tree.id),
+                tree_id=str(tree.id),
+                project_id=str(tree.project_id),
+                summary=f"Git commit: {commit_msg}",
+                details={"commit_sha": result.commit_sha, "branch": result.branch},
+            )
+        except Exception:
+            pass
 
 
 @git_app.command("config")
@@ -1344,6 +1426,20 @@ def _clear_token():
     path = _token_path()
     if path.exists():
         path.unlink()
+
+
+def _get_current_user_id() -> str | None:
+    """Extract user_id from saved token, if available."""
+    from ost_core.auth import decode_token
+
+    token = _load_token()
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        return payload.get("sub")
+    except Exception:
+        return None
 
 
 @auth_app.command("register")

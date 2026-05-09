@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from ost_core.exceptions import PermissionDeniedError, ProjectNotFoundError
 from ost_core.models import (
     DEFAULT_BUBBLE_DEFAULTS,
@@ -110,3 +110,22 @@ def update_bubble_defaults(
         raise HTTPException(status_code=403, detail=str(e))
     except ProjectNotFoundError:
         raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+
+
+# ── Activity Feed ──────────────────────────────────────────
+
+@router.get("/{project_id}/activity")
+async def get_project_activity(
+    project_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
+):
+    """Get activity feed for a project."""
+    try:
+        service.check_project_permission(str(user.id) if user else None, str(project_id), "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ProjectNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
+    return service.get_project_activity(project_id, limit=limit)

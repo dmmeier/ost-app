@@ -3,7 +3,7 @@
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from ost_core.db.repository import TreeRepository
 from ost_core.exceptions import PermissionDeniedError, TreeNotFoundError, VersionConflictError
 from ost_core.models import Tree, TreeCreate, TreeUpdate, TreeWithNodes
@@ -38,7 +38,7 @@ def create_tree(data: TreeCreate, service: TreeService = Depends(get_service), u
         service.check_project_permission(
             str(user.id) if user else None, str(data.project_id), "editor"
         )
-        return service.create_tree(data)
+        return service.create_tree(data, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
@@ -95,7 +95,7 @@ def update_tree(
 ):
     try:
         _check_tree_permission(service, user, tree_id, "editor")
-        return service.update_tree(tree_id, data)
+        return service.update_tree(tree_id, data, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
@@ -108,7 +108,7 @@ def update_tree(
 def delete_tree(tree_id: UUID, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
     try:
         _check_tree_permission(service, user, tree_id, "editor")
-        service.delete_tree(tree_id)
+        service.delete_tree(tree_id, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
@@ -175,7 +175,7 @@ def create_snapshot(
 ):
     try:
         _check_tree_permission(service, user, tree_id, "editor")
-        return repo.create_snapshot(tree_id, data.message)
+        return repo.create_snapshot(tree_id, data.message, user_id=str(user.id) if user else None)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
@@ -224,7 +224,7 @@ def restore_snapshot(
 ):
     try:
         _check_tree_permission(service, user, tree_id, "editor")
-        repo.restore_snapshot(data.snapshot_id)
+        repo.restore_snapshot(data.snapshot_id, user_id=str(user.id) if user else None)
         return {"status": "restored", "snapshot_id": data.snapshot_id}
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -261,3 +261,22 @@ def clear_chat_history(
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
     repo.clear_chat_history(tree_id)
+
+
+# ── Activity Feed ──────────────────────────────────────────
+
+@router.get("/{tree_id}/activity")
+async def get_tree_activity(
+    tree_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
+):
+    """Get activity feed for a tree."""
+    try:
+        _check_tree_permission(service, user, tree_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except TreeNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
+    return service.get_tree_activity(tree_id, limit=limit)

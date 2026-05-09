@@ -62,6 +62,9 @@ class TreeRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    last_modified_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     project: Mapped["ProjectRow"] = relationship(back_populates="trees")
     nodes: Mapped[list["NodeRow"]] = relationship(
@@ -95,6 +98,9 @@ class NodeRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    last_modified_by: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     tree: Mapped["TreeRow"] = relationship(back_populates="nodes")
     parent: Mapped["NodeRow | None"] = relationship(
@@ -284,4 +290,28 @@ class GitCommitLogRow(Base):
     __table_args__ = (
         Index("ix_git_commit_log_project", "project_id"),
         Index("ix_git_commit_log_project_created", "project_id", "created_at"),
+    )
+
+
+class ActivityLogRow(Base):
+    """Activity log for tracking who changed what."""
+
+    __tablename__ = "activity_log"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    user_display_name: Mapped[str] = mapped_column(String(200), default="")
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    tree_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    project_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    __table_args__ = (
+        Index("ix_activity_log_tree_created", "tree_id", "created_at"),
+        Index("ix_activity_log_project_created", "project_id", "created_at"),
+        Index("ix_activity_log_user", "user_id"),
     )
