@@ -17,12 +17,15 @@ from ost_core.db.schema import (
     ProjectTagRow,
     TreeRow,
     TreeSnapshotRow,
+    UserRow,
 )
 from ost_core.exceptions import (
+    DuplicateEmailError,
     EdgeNotFoundError,
     NodeNotFoundError,
     ProjectNotFoundError,
     TreeNotFoundError,
+    UserNotFoundError,
     VersionConflictError,
 )
 from ost_core.models import (
@@ -46,6 +49,7 @@ from ost_core.models import (
     TreeCreate,
     TreeUpdate,
     TreeWithNodes,
+    User,
 )
 
 
@@ -1413,3 +1417,62 @@ class TreeRepository:
             session.commit()
 
         return tree_id
+
+    # ── User CRUD ──────────────────────────────────────────────
+
+    def create_user(self, email: str, display_name: str, password_hash: str) -> User:
+        """Create a new user. Raises DuplicateEmailError if email taken."""
+        with self._session() as session:
+            existing = session.execute(
+                select(UserRow).where(UserRow.email == email)
+            ).scalars().first()
+            if existing:
+                raise DuplicateEmailError(email)
+
+            row = UserRow(
+                id=str(uuid4()),
+                email=email,
+                display_name=display_name,
+                password_hash=password_hash,
+            )
+            session.add(row)
+            session.commit()
+            session.refresh(row)
+            return self._user_from_row(row)
+
+    def get_user_by_email(self, email: str) -> tuple[User, str] | None:
+        """Get a user by email. Returns (User, password_hash) or None."""
+        with self._session() as session:
+            row = session.execute(
+                select(UserRow).where(UserRow.email == email)
+            ).scalars().first()
+            if not row:
+                return None
+            return self._user_from_row(row), row.password_hash
+
+    def get_user_by_id(self, user_id: str) -> User:
+        """Get a user by ID. Raises UserNotFoundError if not found."""
+        with self._session() as session:
+            row = session.get(UserRow, user_id)
+            if not row:
+                raise UserNotFoundError(user_id)
+            return self._user_from_row(row)
+
+    def user_count(self) -> int:
+        """Return total number of registered users."""
+        with self._session() as session:
+            from sqlalchemy import func
+            result = session.execute(select(func.count(UserRow.id)))
+            return result.scalar() or 0
+
+    @staticmethod
+    def _user_from_row(row: UserRow) -> User:
+        from uuid import UUID as _UUID
+        return User(
+            id=_UUID(row.id),
+            email=row.email,
+            display_name=row.display_name,
+            is_active=row.is_active,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )

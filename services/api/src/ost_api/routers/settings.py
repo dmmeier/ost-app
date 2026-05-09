@@ -1,9 +1,11 @@
 """Settings endpoint for runtime configuration."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from ost_core.config import get_runtime_override, get_runtime_overrides, get_settings, set_runtime_override
+from ost_core.models.user import User
+from ost_api.deps import get_current_user_required
 
 router = APIRouter()
 
@@ -52,7 +54,7 @@ def get_current_settings():
 
 
 @router.patch("/", response_model=SettingsResponse)
-def update_settings(data: SettingsUpdate):
+def update_settings(data: SettingsUpdate, _user: User | None = Depends(get_current_user_required)):
     if data.llm_provider is not None:
         set_runtime_override("llm_provider", data.llm_provider)
     if data.llm_model is not None:

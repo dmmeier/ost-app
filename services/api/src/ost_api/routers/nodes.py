@@ -13,15 +13,16 @@ from ost_core.exceptions import (
     VersionConflictError,
 )
 from ost_core.models import Node, NodeCreate, NodeUpdate
+from ost_core.models.user import User
 from ost_core.services.tree_service import TreeService
-from ost_api.deps import get_service
+from ost_api.deps import get_current_user_required, get_service
 
 router = APIRouter()
 
 
 @router.post("/", response_model=Node, status_code=201)
 def add_node(
-    tree_id: UUID, data: NodeCreate, service: TreeService = Depends(get_service)
+    tree_id: UUID, data: NodeCreate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)
 ):
     try:
         return service.add_node(tree_id, data)
@@ -43,7 +44,7 @@ def get_node(node_id: UUID, service: TreeService = Depends(get_service)):
 
 @router.patch("/{node_id}", response_model=Node)
 def update_node(
-    node_id: UUID, data: NodeUpdate, service: TreeService = Depends(get_service)
+    node_id: UUID, data: NodeUpdate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)
 ):
     try:
         return service.update_node(node_id, data)
@@ -60,6 +61,7 @@ def remove_node(
     node_id: UUID,
     cascade: bool = True,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     try:
         service.remove_node(node_id, cascade=cascade)
@@ -76,6 +78,7 @@ def move_node(
     node_id: UUID,
     body: MoveNodeRequest,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     try:
         service.move_subtree(node_id, body.new_parent_id)
@@ -97,6 +100,7 @@ def reorder_node(
     node_id: UUID,
     body: ReorderNodeRequest,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     try:
         service.reorder_sibling(node_id, body.direction)

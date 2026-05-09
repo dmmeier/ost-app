@@ -221,6 +221,24 @@ class TreeSnapshotRow(Base):
     )
 
 
+class UserRow(Base):
+    """Registered user accounts."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+    )
+
+
 class GitCommitLogRow(Base):
     """Log of git commits made through the app."""
 

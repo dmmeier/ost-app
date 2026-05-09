@@ -214,6 +214,27 @@ export interface GitAuthor {
   email: string;
 }
 
+// ── Auth types ──────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  email: string;
+  display_name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserWithToken {
+  user: User;
+  token: string;
+}
+
+export interface AuthStatus {
+  auth_required: boolean;
+  user_count: number;
+}
+
 export interface GitCommitLog {
   id: string;
   project_id: string;

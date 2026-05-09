@@ -2,10 +2,14 @@
 
 from uuid import UUID
 
+from ost_core.auth import create_token, hash_password, verify_password
 from ost_core.db.repository import TreeRepository
 from ost_core.exceptions import (
+    AuthenticationError,
+    DuplicateEmailError,
     InvalidMoveError,
     InvalidNodeTypeError,
+    UserNotFoundError,
 )
 from ost_core.models import (
     EdgeHypothesis,
@@ -28,6 +32,8 @@ from ost_core.models import (
     TreeCreate,
     TreeUpdate,
     TreeWithNodes,
+    User,
+    UserCreate,
 )
 from ost_core.models.node import STANDARD_NODE_TYPES
 from ost_core.models.project import (
@@ -513,3 +519,35 @@ class TreeService:
 
     def archive_subtree(self, node_id: UUID) -> None:
         self.repo.archive_subtree(node_id)
+
+    # ── Auth operations ───────────────────────────────────────
+
+    def register(self, data: UserCreate) -> tuple[User, str]:
+        """Register a new user. Returns (User, token)."""
+        import re
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", data.email):
+            raise AuthenticationError("Invalid email format")
+
+        pw_hash = hash_password(data.password)
+        user = self.repo.create_user(data.email, data.display_name, pw_hash)
+        token = create_token(str(user.id))
+        return user, token
+
+    def login(self, email: str, password: str) -> tuple[User, str]:
+        """Authenticate a user. Returns (User, token)."""
+        result = self.repo.get_user_by_email(email)
+        if not result:
+            raise AuthenticationError("Invalid email or password")
+        user, pw_hash = result
+        if not verify_password(password, pw_hash):
+            raise AuthenticationError("Invalid email or password")
+        token = create_token(str(user.id))
+        return user, token
+
+    def get_user(self, user_id: str) -> User:
+        """Get a user by ID."""
+        return self.repo.get_user_by_id(user_id)
+
+    def user_count(self) -> int:
+        """Return the total number of registered users."""
+        return self.repo.user_count()

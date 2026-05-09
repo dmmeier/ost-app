@@ -77,6 +77,26 @@ class VersionConflictError(OSTError):
         )
 
 
+class AuthenticationError(OSTError):
+    """Raised when authentication fails (invalid credentials or token)."""
+    def __init__(self, message: str = "Invalid credentials"):
+        super().__init__(message)
+
+
+class DuplicateEmailError(OSTError):
+    """Raised when trying to register with an already-used email."""
+    def __init__(self, email: str):
+        self.email = email
+        super().__init__(f"Email already registered: {email}")
+
+
+class UserNotFoundError(OSTError):
+    """Raised when a user is not found."""
+    def __init__(self, user_id: str):
+        self.user_id = user_id
+        super().__init__(f"User not found: {user_id}")
+
+
 class GitNotConfiguredError(OSTError):
     def __init__(self):
         super().__init__("Git remote URL not configured. Set OST_GIT_REMOTE_URL in .env")

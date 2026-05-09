@@ -24,7 +24,8 @@ from ost_core.models import (
 )
 from ost_core.services.tree_service import TreeService
 from ost_core.validation.validator import TreeValidator
-from ost_api.deps import get_repo, get_service, get_tree_validator
+from ost_api.deps import get_current_user_required, get_repo, get_service, get_tree_validator
+from ost_core.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -408,6 +409,7 @@ async def chat(
     service: TreeService = Depends(get_service),
     validator: TreeValidator = Depends(get_tree_validator),
     repo: TreeRepository = Depends(get_repo),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Agentic chat endpoint with tool-use loop.
 

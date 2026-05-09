@@ -8,7 +8,8 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ost_api.deps import get_service
+from ost_api.deps import get_current_user_required, get_service
+from ost_core.models.user import User
 from ost_core.config import get_settings
 from ost_core.exceptions import (
     GitAuthenticationError,
@@ -120,6 +121,7 @@ def git_config_update(
     project_id: str,
     body: GitConfigUpdateRequest,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Save git remote URL and branch to the project."""
     from ost_core.models import ProjectUpdate
@@ -155,6 +157,7 @@ def git_config_update(
 async def git_commit(
     body: GitCommitRequest,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Export a tree as JSON and commit + push to the configured git remote."""
     settings = get_settings()

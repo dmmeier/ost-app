@@ -1,4 +1,4 @@
-import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog } from "./types";
+import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog, User, UserWithToken, AuthStatus } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -11,15 +11,42 @@ export class ApiError extends Error {
   }
 }
 
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("ost_token");
+}
+
 async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
   const isFormData = options?.body instanceof FormData;
   const headers: Record<string, string> = isFormData
     ? {}
     : { "Content-Type": "application/json" };
+
+  // Inject auth token if available
+  const token = getAuthToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { ...headers, ...options?.headers },
     ...options,
   });
+
+  // Handle 401: clear token and redirect to login
+  if (res.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("ost_token");
+      localStorage.removeItem("ost_user");
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
+      }
+    }
+    const error = await res.json().catch(() => ({ detail: "Authentication required" }));
+    throw new ApiError(error.detail || "Authentication required", 401);
+  }
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
     throw new ApiError(error.detail || `API error: ${res.status}`, res.status);
@@ -29,6 +56,14 @@ async function fetchAPI<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  auth: {
+    register: (email: string, display_name: string, password: string) =>
+      fetchAPI<UserWithToken>("/auth/register", { method: "POST", body: JSON.stringify({ email, display_name, password }) }),
+    login: (email: string, password: string) =>
+      fetchAPI<UserWithToken>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    me: () => fetchAPI<User>("/auth/me"),
+    status: () => fetchAPI<AuthStatus>("/auth/status"),
+  },
   projects: {
     list: () => fetchAPI<Project[]>("/projects/"),
     get: (id: string) => fetchAPI<ProjectWithTrees>(`/projects/${id}`),

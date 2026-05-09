@@ -26,6 +26,7 @@ from ost_core.models.project import (
 from ost_core.models.git import GitAuthor, GitCommitLog, GitProjectConfig
 from ost_core.models.tag import VALID_FILL_STYLES, Tag, TagCreate, TagUpdate
 from ost_core.models.tree import Tree, TreeCreate, TreeUpdate, TreeWithNodes
+from ost_core.models.user import User, UserCreate, UserLogin, UserWithToken
 
 __all__ = [
     "BubbleTypeDefault",
@@ -54,6 +55,10 @@ __all__ = [
     "TreeCreate",
     "TreeUpdate",
     "TreeWithNodes",
+    "User",
+    "UserCreate",
+    "UserLogin",
+    "UserWithToken",
     "VALID_CHILD_TYPES",
     "VALID_FILL_STYLES",
 ]

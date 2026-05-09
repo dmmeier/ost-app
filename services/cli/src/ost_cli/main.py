@@ -34,6 +34,9 @@ tag_app = typer.Typer(name="tag", help="Manage tags")
 app.add_typer(tag_app, name="tag")
 git_app = typer.Typer(name="git", help="Git export commands")
 app.add_typer(git_app, name="git")
+auth_app = typer.Typer(name="auth", help="Authentication commands")
+app.add_typer(auth_app, name="auth")
+
 
 console = Console()
 
@@ -1170,6 +1173,125 @@ def git_history(
 
     console.print(table)
 
+
+
+
+# ── Auth commands ────────────────────────────────────────────
+
+
+def _token_path():
+    from pathlib import Path
+    path = Path.home() / ".ost"
+    path.mkdir(exist_ok=True)
+    return path / "token"
+
+
+def _save_token(token: str):
+    _token_path().write_text(token)
+
+
+def _load_token() -> str | None:
+    path = _token_path()
+    if path.exists():
+        return path.read_text().strip()
+    return None
+
+
+def _clear_token():
+    path = _token_path()
+    if path.exists():
+        path.unlink()
+
+
+@auth_app.command("register")
+def auth_register(
+    email: str = typer.Option(..., prompt=True, help="Email address"),
+    display_name: str = typer.Option(..., "--name", prompt="Display name", help="Display name"),
+    password: str = typer.Option(..., prompt=True, hide_input=True, confirmation_prompt=True, help="Password (min 8 chars)"),
+):
+    """Register a new user account."""
+    from ost_core.exceptions import AuthenticationError, DuplicateEmailError
+    from ost_core.models import UserCreate
+
+    service = _get_service()
+    try:
+        user, token = service.register(UserCreate(email=email, display_name=display_name, password=password))
+    except DuplicateEmailError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except AuthenticationError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[red]Registration failed: {e}[/red]")
+        raise typer.Exit(1)
+
+    _save_token(token)
+    console.print(f"[green]Registered![/green] Welcome, {user.display_name} ({user.email})")
+    console.print(f"  Token saved to {_token_path()}")
+
+
+@auth_app.command("login")
+def auth_login(
+    email: str = typer.Option(..., prompt=True, help="Email address"),
+    password: str = typer.Option(..., prompt=True, hide_input=True, help="Password"),
+):
+    """Log in to an existing account."""
+    from ost_core.exceptions import AuthenticationError
+
+    service = _get_service()
+    try:
+        user, token = service.login(email, password)
+    except AuthenticationError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+    _save_token(token)
+    console.print(f"[green]Logged in![/green] Welcome back, {user.display_name}")
+
+
+@auth_app.command("me")
+def auth_me():
+    """Show the currently authenticated user."""
+    from ost_core.auth import decode_token
+
+    token = _load_token()
+    if not token:
+        console.print("[yellow]Not logged in. Run 'ost auth login' first.[/yellow]")
+        raise typer.Exit(1)
+
+    try:
+        payload = decode_token(token)
+        user_id = payload["sub"]
+    except Exception:
+        console.print("[red]Token expired or invalid. Please log in again.[/red]")
+        _clear_token()
+        raise typer.Exit(1)
+
+    service = _get_service()
+    try:
+        user = service.get_user(user_id)
+    except Exception:
+        console.print("[red]User not found. Please log in again.[/red]")
+        _clear_token()
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold]{user.display_name}[/bold]\n"
+        f"Email: {user.email}\n"
+        f"ID: {user.id}\n"
+        f"Active: {'yes' if user.is_active else 'no'}\n"
+        f"Created: {str(user.created_at)[:19]}",
+        title="Current User",
+        border_style="green",
+    ))
+
+
+@auth_app.command("logout")
+def auth_logout():
+    """Clear the saved authentication token."""
+    _clear_token()
+    console.print("[green]Logged out.[/green]")
 
 if __name__ == "__main__":
     app()

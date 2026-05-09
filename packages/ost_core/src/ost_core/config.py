@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     google_api_key: str = ""
 
+    # JWT authentication
+    jwt_secret: str = ""
+    jwt_expiry_days: int = 7
+
     # Git export settings
     git_remote_url: str = ""
     git_branch: str = "main"

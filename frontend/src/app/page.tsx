@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -9,6 +10,8 @@ import {
 import { useTree, useAutoValidate, useProjectList } from "@/hooks/use-tree";
 import { useTreePolling } from "@/hooks/use-tree-polling";
 import { useTreeStore } from "@/stores/tree-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { api } from "@/lib/api-client";
 import { TreeCanvas } from "@/components/tree/TreeCanvas";
 import { TreeSelector } from "@/components/panels/TreeSelector";
 import { Wordmark } from "@/components/brand/Wordmark";
@@ -31,6 +34,28 @@ const BOTTOM_TABS = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const { user, isAuthenticated, authRequired, hydrate, setAuthRequired, clearAuth } = useAuthStore();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Hydrate auth state and check auth status on mount
+  useEffect(() => {
+    hydrate();
+    api.auth.status().then((status) => {
+      setAuthRequired(status.auth_required);
+      setAuthChecked(true);
+    }).catch(() => {
+      setAuthChecked(true);
+    });
+  }, [hydrate, setAuthRequired]);
+
+  // Redirect to login if auth is required and user is not authenticated
+  useEffect(() => {
+    if (authChecked && authRequired && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authChecked, authRequired, isAuthenticated, router]);
+
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const { data: tree, isLoading, error } = useTree(selectedTreeId);
   const {
@@ -86,6 +111,20 @@ export default function Home() {
     }
   }, [conflictWarning, clearConflictWarning]);
 
+  // Show loading while checking auth status
+  if (!authChecked) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-gray-400 text-sm">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render the main app if auth is required and user is not authenticated
+  if (authRequired && !isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="h-screen flex flex-col">
       {/* Conflict warning toast */}
@@ -118,6 +157,20 @@ export default function Home() {
             </button>
           )}
           <SettingsDialog />
+          {isAuthenticated && user && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-700">
+              <span className="text-xs text-gray-400 truncate max-w-[120px]" title={user.email}>
+                {user.display_name}
+              </span>
+              <button
+                onClick={() => { clearAuth(); router.push("/login"); }}
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                title="Sign out"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

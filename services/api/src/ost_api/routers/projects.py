@@ -13,14 +13,15 @@ from ost_core.models import (
     ProjectUpdate,
     ProjectWithTrees,
 )
+from ost_core.models.user import User
 from ost_core.services.tree_service import TreeService
-from ost_api.deps import get_service
+from ost_api.deps import get_current_user_required, get_service
 
 router = APIRouter()
 
 
 @router.post("/", response_model=Project, status_code=201)
-def create_project(data: ProjectCreate, service: TreeService = Depends(get_service)):
+def create_project(data: ProjectCreate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)):
     return service.create_project(data)
 
 
@@ -39,7 +40,7 @@ def get_project(project_id: UUID, service: TreeService = Depends(get_service)):
 
 @router.patch("/{project_id}", response_model=Project)
 def update_project(
-    project_id: UUID, data: ProjectUpdate, service: TreeService = Depends(get_service)
+    project_id: UUID, data: ProjectUpdate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)
 ):
     try:
         return service.update_project(project_id, data)
@@ -48,7 +49,7 @@ def update_project(
 
 
 @router.delete("/{project_id}", status_code=204)
-def delete_project(project_id: UUID, service: TreeService = Depends(get_service)):
+def delete_project(project_id: UUID, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)):
     try:
         service.delete_project(project_id)
     except ProjectNotFoundError:
@@ -70,6 +71,7 @@ def update_bubble_defaults(
     project_id: UUID,
     data: dict[str, BubbleTypeDefault],
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Replace the bubble styling defaults for a project."""
     try:

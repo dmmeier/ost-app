@@ -6,15 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ost_core.exceptions import EdgeNotFoundError, NodeNotFoundError
 from ost_core.models import EdgeHypothesis, EdgeHypothesisCreate, EdgeHypothesisUpdate
+from ost_core.models.user import User
 from ost_core.services.tree_service import TreeService
-from ost_api.deps import get_service
+from ost_api.deps import get_current_user_required, get_service
 
 router = APIRouter()
 
 
 @router.post("/", response_model=EdgeHypothesis, status_code=201)
 def set_edge_hypothesis(
-    data: EdgeHypothesisCreate, service: TreeService = Depends(get_service)
+    data: EdgeHypothesisCreate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)
 ):
     try:
         return service.set_edge_hypothesis(data)
@@ -23,7 +24,7 @@ def set_edge_hypothesis(
 
 
 @router.delete("/{edge_id}", status_code=204)
-def delete_edge(edge_id: UUID, service: TreeService = Depends(get_service)):
+def delete_edge(edge_id: UUID, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)):
     try:
         service.delete_edge(edge_id)
     except EdgeNotFoundError:
@@ -52,6 +53,7 @@ def update_edge(
     edge_id: UUID,
     data: EdgeHypothesisUpdate,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     try:
         return service.update_edge(edge_id, data)

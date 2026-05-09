@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from ost_core.models import Tag, TagCreate, TagUpdate
+from ost_core.models.user import User
 from ost_core.services.tree_service import TreeService
-from ost_api.deps import get_service
+from ost_api.deps import get_current_user_required, get_service
 
 router = APIRouter()
 
@@ -21,6 +22,7 @@ def create_tag(
     project_id: UUID,
     data: TagCreate,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Create a new tag for a project."""
     return service.create_tag(project_id, data)
@@ -39,6 +41,7 @@ def list_tags(
 def delete_tag(
     tag_id: UUID,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Delete a tag. Returns usage count before deletion."""
     usage_count = service.get_tag_usage_count(tag_id)
@@ -51,6 +54,7 @@ def update_tag(
     tag_id: UUID,
     data: TagUpdate,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Update a tag's color and/or fill_style."""
     return service.update_tag(tag_id, data)
@@ -62,6 +66,7 @@ def add_tag_to_node(
     data: AddTagToNodeRequest,
     project_id: UUID | None = None,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Add a tag to a node by name (creates tag if it doesn't exist).
     Requires project_id query param to know which project the tag belongs to."""
@@ -78,6 +83,7 @@ def remove_tag_from_node(
     node_id: UUID,
     tag_id: UUID,
     service: TreeService = Depends(get_service),
+    _user: User | None = Depends(get_current_user_required),
 ):
     """Remove a tag from a node."""
     service.remove_tag_from_node(node_id, tag_id)

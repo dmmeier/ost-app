@@ -1137,7 +1137,7 @@ Files changed (22): schema.py, engine.py, exceptions.py, repository.py, tree_ser
   NodeDetailPanel.tsx, page.tsx, test_repository.py, test_api.py, pyproject.toml, uv.lock, tickets
 --- END DIARY ---
 
-29. User management: Authentication with login/password [STATUS: TODO]
+29. User management: Authentication with login/password [STATUS: COMPLETE]
 Depends on: Ticket 28
 
 Context:
@@ -1322,6 +1322,50 @@ Acceptance criteria:
      localStorage.
   6. CLI supports auth register/login/logout, stores token in ~/.ost/token.
   7. Display name visible in header when logged in.
+
+--- DIARY (Ticket #29) ---
+Implementation completed across all layers:
+
+Backend (ost_core):
+- Added bcrypt, PyJWT, email-validator dependencies
+- Added jwt_secret, jwt_expiry_days to Settings config
+- Added UserRow to schema.py (id, email, display_name, password_hash, is_active, timestamps)
+- Created models/user.py (User, UserCreate, UserLogin, UserWithToken)
+- Added AuthenticationError, DuplicateEmailError, UserNotFoundError exceptions
+- Created auth.py with hash_password, verify_password, create_token, decode_token
+- Added repository methods: create_user, get_user_by_email, get_user_by_id, user_count
+- Added service methods: register, login, get_user, user_count
+
+API layer:
+- Created routers/auth.py (POST /register, POST /login, GET /me, GET /status)
+- Updated deps.py with get_current_user and get_current_user_required (open mode logic)
+- Protected all POST/PATCH/DELETE/PUT handlers across: projects, trees, nodes, edges, tags, chat, settings, git
+- GET endpoints remain open without auth
+
+CLI layer:
+- Added auth_app sub-typer with register, login, me, logout commands
+- Token stored at ~/.ost/token
+
+Frontend:
+- Added User, UserWithToken, AuthStatus types
+- Updated api-client.ts: auth header injection, 401 handling, api.auth namespace
+- Created auth-store.ts (Zustand): user, token, hydrate, setAuth, clearAuth
+- Created login/page.tsx: Sign In / Create Account tabs, error display
+- Updated page.tsx: auth guard, user display in header, sign out button
+
+Tests (25 new, 298 total):
+- 13 core tests: password hash/verify, JWT create/decode/expire/wrong-secret, register, duplicate email, login, user_count, get_user
+- 8 API tests: auth status, register, login, wrong password, /me, open mode, auth required, protected endpoint
+
+Review cycles:
+- Cycle 1: API curl tests — register, login, /me, protected endpoints all verified
+- Cycle 2: Frontend Playwright — login page renders, login succeeds, redirect to main app, user name shows in header
+- Cycle 3: Frontend Playwright — registration flow, new user appears in header
+- Cycle 4: Logout flow — sign out clears state, redirects to login
+- Cycle 5: Error handling — wrong password shows "Invalid email or password" error inline
+
+Files changed (22): pyproject.toml, config.py, schema.py, exceptions.py, models/user.py (NEW), models/__init__.py, auth.py (NEW), repository.py, tree_service.py, routers/auth.py (NEW), deps.py, main.py, projects.py, trees.py, nodes.py, edges.py, tags.py, chat.py, settings.py, git.py, test_auth.py (NEW), test_api.py, types.ts, api-client.ts, auth-store.ts (NEW), login/page.tsx (NEW), page.tsx, services/cli/src/ost_cli/main.py
+--- END DIARY ---
 
 30. Authorization: Role-based access control per project [STATUS: TODO]
 Depends on: Ticket 29

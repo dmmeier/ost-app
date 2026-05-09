@@ -1246,3 +1246,110 @@ class TestOptimisticLockingAPI:
         )
         v2 = client.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
         assert v2 == v1 + 1
+
+
+class TestAuthEndpoints:
+    """Tests for authentication endpoints."""
+
+    def test_auth_status_open_mode(self, client):
+        """GET /auth/status returns auth_required=false when no users exist."""
+        r = client.get("/api/v1/auth/status")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["auth_required"] is False
+        assert data["user_count"] == 0
+
+    def test_register_user(self, client):
+        """POST /auth/register creates a new user and returns token."""
+        r = client.post("/api/v1/auth/register", json={
+            "email": "test@example.com",
+            "display_name": "Test User",
+            "password": "password123",
+        })
+        assert r.status_code == 201
+        data = r.json()
+        assert data["user"]["email"] == "test@example.com"
+        assert data["user"]["display_name"] == "Test User"
+        assert "token" in data
+        assert len(data["token"]) > 0
+
+    def test_login_user(self, client):
+        """POST /auth/login authenticates and returns token."""
+        # Register first
+        client.post("/api/v1/auth/register", json={
+            "email": "login@example.com",
+            "display_name": "Login User",
+            "password": "password123",
+        })
+        # Login
+        r = client.post("/api/v1/auth/login", json={
+            "email": "login@example.com",
+            "password": "password123",
+        })
+        assert r.status_code == 200
+        data = r.json()
+        assert data["user"]["email"] == "login@example.com"
+        assert "token" in data
+
+    def test_login_wrong_password(self, client):
+        """POST /auth/login with wrong password returns 401."""
+        client.post("/api/v1/auth/register", json={
+            "email": "wrong@example.com",
+            "display_name": "Wrong",
+            "password": "password123",
+        })
+        r = client.post("/api/v1/auth/login", json={
+            "email": "wrong@example.com",
+            "password": "wrongpassword",
+        })
+        assert r.status_code == 401
+
+    def test_me_with_valid_token(self, client):
+        """GET /auth/me returns user when authenticated."""
+        reg = client.post("/api/v1/auth/register", json={
+            "email": "me@example.com",
+            "display_name": "Me User",
+            "password": "password123",
+        }).json()
+        token = reg["token"]
+        r = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 200
+        assert r.json()["email"] == "me@example.com"
+
+    def test_open_mode_mutations_allowed(self, client):
+        """When no users exist, mutations should work without auth."""
+        # No users exist, so create project should work without token
+        r = client.post("/api/v1/projects/", json={"name": "Open Mode Project"})
+        assert r.status_code == 201
+
+    def test_auth_required_after_registration(self, client):
+        """After a user registers, auth status should show auth_required=true."""
+        client.post("/api/v1/auth/register", json={
+            "email": "first@example.com",
+            "display_name": "First",
+            "password": "password123",
+        })
+        r = client.get("/api/v1/auth/status")
+        assert r.status_code == 200
+        assert r.json()["auth_required"] is True
+
+    def test_protected_endpoint_requires_auth(self, client):
+        """After a user exists, mutations require auth token."""
+        reg = client.post("/api/v1/auth/register", json={
+            "email": "protect@example.com",
+            "display_name": "Protector",
+            "password": "password123",
+        }).json()
+        token = reg["token"]
+
+        # Without token: should fail
+        r = client.post("/api/v1/projects/", json={"name": "Unauthorized"})
+        assert r.status_code == 401
+
+        # With token: should succeed
+        r = client.post(
+            "/api/v1/projects/",
+            json={"name": "Authorized"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 201
