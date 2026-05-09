@@ -21,6 +21,7 @@ import { NODE_COLORS, NODE_LABELS, DEFAULT_BUBBLE_DEFAULTS, getNodeLabel, getNod
 import { getLayoutedElements } from "@/lib/tree-layout";
 import { useTreeStore } from "@/stores/tree-store";
 import { useAddNode, useDeleteNode, useUpdateNode, useReorderNode, useMoveNode, useBubbleDefaults, useProjectTags } from "@/hooks/use-tree";
+import { useCanEdit } from "@/hooks/use-permissions";
 import { OSTNode } from "./OSTNode";
 import { HypothesisEdge } from "./HypothesisEdge";
 import { NodeStyleDialog } from "./NodeStyleDialog";
@@ -357,6 +358,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const [reparentNodeId, setReparentNodeId] = useState<string | null>(null);
   const [reparentInput, setReparentInput] = useState("");
   const [reparentError, setReparentError] = useState<string | null>(null);
+  const canEdit = useCanEdit();
 
   const reactFlowInstance = useReactFlow();
 
@@ -1177,82 +1179,86 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           >
             Edit Details
           </button>
-          <button
-            onClick={handleOpenStyleDialog}
-            className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
-          >
-            Style Override
-          </button>
-          <button
-            onClick={handleOpenReparent}
-            className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
-          >
-            Attach to…
-          </button>
-          {(contextNodeSiblingInfo.canMoveLeft || contextNodeSiblingInfo.canMoveRight) && (
+          {canEdit && (
             <>
-              <div className="h-px bg-gray-100 my-1" />
-              <div className="flex gap-1 px-3 py-1">
-                <button
-                  onClick={handleMoveLeft}
-                  disabled={!contextNodeSiblingInfo.canMoveLeft}
-                  className="flex-1 text-center py-1 text-sm rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Move Left
-                </button>
-                <button
-                  onClick={handleMoveRight}
-                  disabled={!contextNodeSiblingInfo.canMoveRight}
-                  className="flex-1 text-center py-1 text-sm rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  Move Right
-                </button>
-              </div>
-            </>
-          )}
-          {validChildren.length > 0 && (
-            <>
-              <div className="h-px bg-gray-100 my-1" />
-              <div className="px-3 py-1 text-xs text-gray-400">Add Child</div>
-              {validChildren.map((childType) => (
-                <button
-                  key={childType}
-                  onClick={() => handleAddChild(childType)}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: effectiveBubbleDefaults[childType]?.border_color ?? "#94a3b8" }} /> {getNodeLabel(childType, effectiveBubbleDefaults)}
-                </button>
-              ))}
-            </>
-          )}
-          <div className="h-px bg-gray-100 my-1" />
-          {confirmDelete ? (
-            <div className="px-3 py-1.5 flex items-center gap-2">
               <button
-                onClick={handleDeleteNode}
-                className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                onClick={handleOpenStyleDialog}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
               >
-                Confirm
+                Style Override
               </button>
               <button
-                onClick={() => { setConfirmDelete(false); setContextMenu(null); }}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                onClick={handleOpenReparent}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
               >
-                Cancel
+                Attach to…
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleDeleteNode}
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
-            >
-              Delete
-            </button>
+              {(contextNodeSiblingInfo.canMoveLeft || contextNodeSiblingInfo.canMoveRight) && (
+                <>
+                  <div className="h-px bg-gray-100 my-1" />
+                  <div className="flex gap-1 px-3 py-1">
+                    <button
+                      onClick={handleMoveLeft}
+                      disabled={!contextNodeSiblingInfo.canMoveLeft}
+                      className="flex-1 text-center py-1 text-sm rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Move Left
+                    </button>
+                    <button
+                      onClick={handleMoveRight}
+                      disabled={!contextNodeSiblingInfo.canMoveRight}
+                      className="flex-1 text-center py-1 text-sm rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Move Right
+                    </button>
+                  </div>
+                </>
+              )}
+              {validChildren.length > 0 && (
+                <>
+                  <div className="h-px bg-gray-100 my-1" />
+                  <div className="px-3 py-1 text-xs text-gray-400">Add Child</div>
+                  {validChildren.map((childType) => (
+                    <button
+                      key={childType}
+                      onClick={() => handleAddChild(childType)}
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: effectiveBubbleDefaults[childType]?.border_color ?? "#94a3b8" }} /> {getNodeLabel(childType, effectiveBubbleDefaults)}
+                    </button>
+                  ))}
+                </>
+              )}
+              <div className="h-px bg-gray-100 my-1" />
+              {confirmDelete ? (
+                <div className="px-3 py-1.5 flex items-center gap-2">
+                  <button
+                    onClick={handleDeleteNode}
+                    className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => { setConfirmDelete(false); setContextMenu(null); }}
+                    className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleDeleteNode}
+                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                >
+                  Delete
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
-      {/* Edge context menu (thickness) */}
-      {edgeContextMenu && (
+      {/* Edge context menu (thickness) — editors only */}
+      {canEdit && edgeContextMenu && (
         <div
           className="fixed bg-white rounded-lg border shadow-lg py-1 z-50 min-w-[160px]"
           style={{ left: edgeContextMenu.x, top: edgeContextMenu.y }}
@@ -1283,8 +1289,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           ))}
         </div>
       )}
-      {/* Pane context menu (right-click on empty canvas to create standalone node) */}
-      {paneContextMenu && (
+      {/* Pane context menu (right-click on empty canvas to create standalone node) — editors only */}
+      {canEdit && paneContextMenu && (
         <div
           className="fixed bg-white rounded-lg border shadow-lg py-1 z-50 min-w-[180px]"
           style={{ left: paneContextMenu.x, top: paneContextMenu.y }}

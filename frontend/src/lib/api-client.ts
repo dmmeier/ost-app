@@ -1,4 +1,4 @@
-import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog, User, UserWithToken, AuthStatus } from "./types";
+import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog, User, UserWithToken, AuthStatus, ProjectMember } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -180,6 +180,24 @@ export const api = {
     authors: (projectId: string) => fetchAPI<GitAuthor[]>(`/git/authors/${projectId}`),
     history: (projectId: string, limit: number = 50) =>
       fetchAPI<GitCommitLog[]>(`/git/history/${projectId}?limit=${limit}`),
+  },
+  members: {
+    list: (projectId: string) =>
+      fetchAPI<ProjectMember[]>(`/projects/${projectId}/members`),
+    add: (projectId: string, email: string, role: string) =>
+      fetchAPI<ProjectMember>(`/projects/${projectId}/members`, {
+        method: "POST",
+        body: JSON.stringify({ email, role }),
+      }),
+    updateRole: (projectId: string, userId: string, role: string) =>
+      fetchAPI<{ status: string }>(`/projects/${projectId}/members/${userId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      }),
+    remove: (projectId: string, userId: string) =>
+      fetchAPI<void>(`/projects/${projectId}/members/${userId}`, {
+        method: "DELETE",
+      }),
   },
 };
 

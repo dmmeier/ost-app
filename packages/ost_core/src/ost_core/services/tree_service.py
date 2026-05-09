@@ -1,5 +1,6 @@
 """Business logic service for Opportunity Solution Tree operations."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from ost_core.auth import create_token, hash_password, verify_password
@@ -9,6 +10,7 @@ from ost_core.exceptions import (
     DuplicateEmailError,
     InvalidMoveError,
     InvalidNodeTypeError,
+    PermissionDeniedError,
     UserNotFoundError,
 )
 from ost_core.models import (
@@ -32,6 +34,7 @@ from ost_core.models import (
     TreeCreate,
     TreeUpdate,
     TreeWithNodes,
+    ProjectMember,
     User,
     UserCreate,
 )
@@ -42,19 +45,27 @@ from ost_core.models.project import (
 )
 
 
+ROLE_HIERARCHY = {"viewer": 0, "editor": 1, "owner": 2}
+
+
 class TreeService:
     def __init__(self, repository: TreeRepository):
         self.repo = repository
 
     # ── Project operations ─────────────────────────────────────
 
-    def create_project(self, data: ProjectCreate) -> Project:
-        return self.repo.create_project(data)
+    def create_project(self, data: ProjectCreate, user_id: str | None = None) -> Project:
+        project = self.repo.create_project(data)
+        if user_id:
+            self.repo.add_project_member(user_id, str(project.id), "owner")
+        return project
 
     def get_project(self, project_id: UUID) -> Project:
         return self.repo.get_project(project_id)
 
-    def list_projects(self) -> list[Project]:
+    def list_projects(self, user_id: str | None = None) -> list[Project]:
+        if user_id and self.repo.user_count() > 1:
+            return self.repo.list_user_projects(user_id)
         return self.repo.list_projects()
 
     def update_project(self, project_id: UUID, data: ProjectUpdate) -> Project:
@@ -428,6 +439,9 @@ class TreeService:
     def get_tag_by_name(self, project_id: UUID, name: str) -> Tag | None:
         return self.repo.get_tag_by_name(project_id, name)
 
+    def get_tag_project_id(self, tag_id: UUID) -> str | None:
+        return self.repo.get_tag_project_id(tag_id)
+
     def delete_tag(self, tag_id: UUID) -> None:
         self.repo.delete_tag(tag_id)
 
@@ -551,3 +565,85 @@ class TreeService:
     def user_count(self) -> int:
         """Return the total number of registered users."""
         return self.repo.user_count()
+
+    # ── RBAC / Membership ──────────────────────────────────────
+
+    def check_project_permission(
+        self, user_id: str | None, project_id: str, min_role: str
+    ) -> None:
+        """Check that user_id has at least min_role on project_id.
+
+        Skips checks if:
+        - user_id is None (open mode / no auth)
+        - Only one user exists (single-user = implicit owner of everything)
+        """
+        if user_id is None:
+            return  # open mode
+        if self.repo.user_count() <= 1:
+            return  # single user = implicit owner
+        role = self.repo.get_user_role(user_id, str(project_id))
+        if role is None:
+            raise PermissionDeniedError("You do not have access to this project")
+        if ROLE_HIERARCHY.get(role, 0) < ROLE_HIERARCHY.get(min_role, 0):
+            raise PermissionDeniedError(
+                f"Requires {min_role} role, but you are {role}"
+            )
+
+    def add_member(
+        self, owner_user_id: str | None, project_id: str, email: str, role: str
+    ) -> ProjectMember:
+        """Add a member to a project. Only owners can add members."""
+        self.check_project_permission(owner_user_id, project_id, "owner")
+        result = self.repo.get_user_by_email(email)
+        if not result:
+            raise UserNotFoundError(email)
+        target_user, _ = result
+        self.repo.add_project_member(str(target_user.id), project_id, role)
+        return ProjectMember(
+            user_id=target_user.id,
+            project_id=UUID(project_id),
+            role=role,
+            email=target_user.email,
+            display_name=target_user.display_name,
+            created_at=datetime.now(UTC),
+        )
+
+    def remove_member(
+        self, owner_user_id: str | None, project_id: str, target_user_id: str
+    ) -> None:
+        """Remove a member from a project. Cannot remove the last owner."""
+        self.check_project_permission(owner_user_id, project_id, "owner")
+        # Check if target is the last owner
+        target_role = self.repo.get_user_role(target_user_id, project_id)
+        if target_role == "owner":
+            count = self.repo.count_project_owners(project_id)
+            if count <= 1:
+                raise PermissionDeniedError("Cannot remove the last owner of a project")
+        self.repo.remove_project_member(target_user_id, project_id)
+
+    def update_member_role(
+        self, owner_user_id: str | None, project_id: str, target_user_id: str, role: str
+    ) -> None:
+        """Change a member's role. Cannot demote the last owner."""
+        self.check_project_permission(owner_user_id, project_id, "owner")
+        current_role = self.repo.get_user_role(target_user_id, project_id)
+        if current_role == "owner" and role != "owner":
+            count = self.repo.count_project_owners(project_id)
+            if count <= 1:
+                raise PermissionDeniedError("Cannot demote the last owner of a project")
+        self.repo.update_member_role(target_user_id, project_id, role)
+
+    def list_members(self, project_id: str) -> list[ProjectMember]:
+        """List all members of a project."""
+        rows = self.repo.list_project_members(project_id)
+        return [
+            ProjectMember(
+                user_id=UUID(r["user_id"]),
+                project_id=UUID(r["project_id"]),
+                role=r["role"],
+                email=r["email"],
+                display_name=r["display_name"],
+                created_at=r["created_at"],
+            )
+            for r in rows
+        ]

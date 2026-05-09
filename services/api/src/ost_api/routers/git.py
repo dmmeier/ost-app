@@ -6,21 +6,22 @@ Now supports per-project git configuration, author tracking, and commit history.
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-
-from ost_api.deps import get_current_user_required, get_service
-from ost_core.models.user import User
 from ost_core.config import get_settings
 from ost_core.exceptions import (
     GitAuthenticationError,
     GitNotConfiguredError,
     GitOperationError,
     GitPushConflictError,
+    PermissionDeniedError,
     ProjectNotFoundError,
     TreeNotFoundError,
 )
+from ost_core.models.user import User
 from ost_core.services.git_service import commit_tree_to_git
 from ost_core.services.tree_service import TreeService
+from pydantic import BaseModel
+
+from ost_api.deps import get_current_user_required, get_service
 
 router = APIRouter()
 
@@ -95,8 +96,14 @@ def _mask_url(url: str) -> str:
 def git_status(
     project_id: str,
     service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
     """Return git configuration for a project, with env fallback."""
+    try:
+        service.check_project_permission(str(user.id) if user else None, project_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     settings = get_settings()
 
     try:
@@ -121,10 +128,15 @@ def git_config_update(
     project_id: str,
     body: GitConfigUpdateRequest,
     service: TreeService = Depends(get_service),
-    _user: User | None = Depends(get_current_user_required),
+    user: User | None = Depends(get_current_user_required),
 ):
     """Save git remote URL and branch to the project."""
     from ost_core.models import ProjectUpdate
+
+    try:
+        service.check_project_permission(str(user.id) if user else None, project_id, "owner")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     try:
         service.get_project(project_id)
@@ -157,7 +169,7 @@ def git_config_update(
 async def git_commit(
     body: GitCommitRequest,
     service: TreeService = Depends(get_service),
-    _user: User | None = Depends(get_current_user_required),
+    user: User | None = Depends(get_current_user_required),
 ):
     """Export a tree as JSON and commit + push to the configured git remote."""
     settings = get_settings()
@@ -167,6 +179,11 @@ async def git_commit(
         tree = service.get_tree(body.tree_id)
     except TreeNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+    try:
+        service.check_project_permission(str(user.id) if user else None, str(tree.project_id), "editor")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     try:
         project = service.get_project(tree.project_id)
@@ -236,8 +253,14 @@ async def git_commit(
 def git_authors(
     project_id: str,
     service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
     """Get distinct authors from commit history for a project."""
+    try:
+        service.check_project_permission(str(user.id) if user else None, project_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     try:
         service.get_project(project_id)
     except ProjectNotFoundError as e:
@@ -252,8 +275,14 @@ def git_history(
     project_id: str,
     limit: int = 50,
     service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
     """Get commit history for a project (newest first)."""
+    try:
+        service.check_project_permission(str(user.id) if user else None, project_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     try:
         service.get_project(project_id)
     except ProjectNotFoundError as e:

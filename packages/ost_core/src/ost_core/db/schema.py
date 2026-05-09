@@ -196,6 +196,7 @@ class ChatMessageRow(Base):
     tool_use_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     tool_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     mode: Mapped[str] = mapped_column(String(20), default="coach")
+    user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     __table_args__ = (
@@ -236,6 +237,26 @@ class UserRow(Base):
 
     __table_args__ = (
         Index("ix_users_email", "email"),
+    )
+
+
+class ProjectMemberRow(Base):
+    """Project membership with role-based access control."""
+
+    __tablename__ = "project_members"
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    project_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # "owner"|"editor"|"viewer"
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    __table_args__ = (
+        Index("ix_project_members_user", "user_id"),
+        Index("ix_project_members_project", "project_id"),
     )
 
 

@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { GitPanel } from "@/components/git/GitPanel";
 import { useAddNode } from "@/hooks/use-tree";
+import { useCanEdit } from "@/hooks/use-permissions";
 import { Input } from "@/components/ui/input";
 
 const BOTTOM_TABS = [
@@ -36,6 +37,7 @@ const BOTTOM_TABS = [
 export default function Home() {
   const router = useRouter();
   const { user, isAuthenticated, authRequired, hydrate, setAuthRequired, clearAuth } = useAuthStore();
+  const canEdit = useCanEdit();
   const [authChecked, setAuthChecked] = useState(false);
 
   // Hydrate auth state and check auth status on mount
@@ -155,6 +157,11 @@ export default function Home() {
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Chat
             </button>
+          )}
+          {!canEdit && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+              View only
+            </span>
           )}
           <SettingsDialog />
           {isAuthenticated && user && (

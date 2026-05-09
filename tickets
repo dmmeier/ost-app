@@ -1367,7 +1367,7 @@ Review cycles:
 Files changed (22): pyproject.toml, config.py, schema.py, exceptions.py, models/user.py (NEW), models/__init__.py, auth.py (NEW), repository.py, tree_service.py, routers/auth.py (NEW), deps.py, main.py, projects.py, trees.py, nodes.py, edges.py, tags.py, chat.py, settings.py, git.py, test_auth.py (NEW), test_api.py, types.ts, api-client.ts, auth-store.ts (NEW), login/page.tsx (NEW), page.tsx, services/cli/src/ost_cli/main.py
 --- END DIARY ---
 
-30. Authorization: Role-based access control per project [STATUS: TODO]
+30. Authorization: Role-based access control per project [STATUS: COMPLETED]
 Depends on: Ticket 29
 
 Context:
@@ -1494,6 +1494,90 @@ Acceptance criteria:
   4. Viewers see the tree but cannot change anything. UI controls are disabled.
   5. Users only see projects they have a role on.
   6. Open mode (no users in DB) preserves current behavior.
+
+--- DIARY (Ticket #30) ---
+Implementation completed across all layers:
+
+Backend (ost_core):
+- Added ProjectMemberRow to schema.py (user_id, project_id, role, created_at composite PK)
+- Added ProjectMember, ProjectRole models to models/member.py (NEW)
+- Added PermissionDeniedError exception
+- Repository: add_project_member, remove_project_member, get_user_role, list_project_members,
+  get_user_projects, get_tag_project_id
+- Service: check_project_permission(user_id, project_id, min_role) with role hierarchy
+  {"viewer":0, "editor":1, "owner":2}, auto-add owner on create_project,
+  list_user_projects filtering, add_member, remove_member, update_member_role,
+  get_tag_project_id
+- Open mode: when user_id is None, all permission checks pass
+- Single-user mode: when only 1 user exists, all checks pass
+
+API layer:
+- Created routers/members.py (NEW): GET/POST/PATCH/DELETE project members
+- Added permission checks to ALL mutation endpoints across: projects.py, trees.py,
+  nodes.py, edges.py, tags.py, chat.py, git.py, validation.py
+- projects.py: filters by user projects when multi-user, injects my_role into response
+- Fixed tag router: added get_tag_project_id for proper permission lookup
+- Fixed validation router: added RBAC checks (viewer+)
+
+CLI layer:
+- Added members, add-member, remove-member commands to ost_cli/main.py
+
+Frontend:
+- Created hooks/use-permissions.ts (NEW): useCanEdit(), useIsOwner() hooks
+- Created MembersSection.tsx (NEW): member list with role management (owner-only controls)
+- Updated ContextPanel.tsx: renders MembersSection
+- Updated TreeSelector.tsx: per-project role checks using project.my_role,
+  local roleCanEdit/roleIsOwner helpers instead of global hooks
+- Updated NodeDetailPanel.tsx: disabled={!canEdit} on InlineEditableText
+- Updated InlineEditableText.tsx: added disabled prop (no cursor-pointer, no click handler)
+- Updated TreeCanvas.tsx: gated context menu items (Style Override, Attach to, Move,
+  Add Child, Delete) behind canEdit; gated edge/pane context menus entirely
+- Updated api-client.ts: members API namespace
+- Updated types.ts: ProjectMember, ProjectRole, my_role on Project
+- "View only" badge shown for viewers in header
+
+Bugs found and fixed during implementation:
+1. Tag router delete_tag/update_tag caught PermissionDeniedError but never called
+   check_project_permission — fixed by adding get_tag_project_id lookup
+2. Validation router had no RBAC checks — added viewer+ requirement
+3. add_member used target_user.created_at instead of datetime.now(UTC) for membership
+   timestamp — fixed
+4. TreeSelector used global useCanEdit/useIsOwner from current tree, applying same
+   permission to all projects — fixed to use per-project project.my_role
+
+Tests (13 new, 327 total):
+- TestProjectOwnership (2): create_project_adds_owner, creator_gets_owner_role
+- TestEditorPermissions (2): editor_can_add_node, editor_cannot_manage_members
+- TestViewerPermissions (2): viewer_cannot_add_node, viewer_can_read_tree
+- TestNoRoleAccess (1): no_role_cannot_access_project
+- TestMemberManagement (2): owner_can_add_member, owner_can_remove_member
+- TestProjectFiltering (1): list_user_projects_filters
+- TestOpenMode (1): open_mode_no_permission_checks
+- TestSingleUserMode (2): single_user_is_implicit_owner, single_user_can_do_anything
+
+Review cycles (5 cycles via Playwright MCP):
+1. Owner (test@example.com): All projects visible, Rename + Delete buttons, Members section
+   with role dropdowns, remove buttons, add member form. Full context menu on nodes.
+2. Viewer (test2@example.com as viewer): Only Miraculix visible, no Rename/Delete buttons,
+   "View only" badge, context menu shows only "Edit Details", node title not clickable,
+   Delete button disabled, Members section shows read-only role badges.
+3. Editor (test2@example.com as editor): No "View only" badge, Rename visible but no Delete
+   project, full tree management (Rename/Export/Delete tree, + New Tree), full node context
+   menu (Style Override, Attach to, Add Child, Delete).
+4. Editor Members section: read-only role badges, no remove buttons, no add member form.
+5. Owner Members section: role dropdowns, remove buttons, add member form all functional.
+
+Note: Chat-based mutations (tree builder mode) don't pass user_id through to individual
+mutations — flagged as a Ticket 31 concern (change attribution).
+
+Files changed (20): schema.py, repository.py, tree_service.py, exceptions.py,
+  models/__init__.py, models/member.py (NEW), routers/members.py (NEW), routers/projects.py,
+  routers/trees.py, routers/nodes.py, routers/edges.py, routers/tags.py, routers/chat.py,
+  routers/git.py, routers/validation.py, main.py (API), main.py (CLI), types.ts,
+  api-client.ts, hooks/use-permissions.ts (NEW), MembersSection.tsx (NEW),
+  ContextPanel.tsx, TreeSelector.tsx, NodeDetailPanel.tsx, InlineEditableText.tsx,
+  TreeCanvas.tsx, page.tsx, test_rbac.py (NEW)
+--- END DIARY ---
 
 31. Change attribution: Track who changed what [STATUS: TODO]
 Depends on: Ticket 29

@@ -10,12 +10,14 @@ export function InlineEditableText({
   className = "",
   multiline = false,
   placeholder = "Click to edit...",
+  disabled = false,
 }: {
   value: string;
   onSave: (newValue: string) => Promise<void>;
   className?: string;
   multiline?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -41,12 +43,12 @@ export function InlineEditableText({
   if (!editing) {
     return (
       <div
-        className={`${className} cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition-colors`}
-        onClick={() => {
+        className={`${className} ${disabled ? "" : "cursor-pointer hover:bg-gray-50"} rounded px-1 -mx-1 transition-colors`}
+        onClick={disabled ? undefined : () => {
           setDraft(value);
           setEditing(true);
         }}
-        title="Click to edit"
+        title={disabled ? undefined : "Click to edit"}
       >
         {value || <span className="text-gray-400 italic">{placeholder}</span>}
       </div>

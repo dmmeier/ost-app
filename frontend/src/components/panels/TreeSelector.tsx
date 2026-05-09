@@ -12,6 +12,7 @@ import {
 } from "@/hooks/use-tree";
 import { api } from "@/lib/api-client";
 import { Project } from "@/lib/types";
+import type { ProjectRole } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +27,16 @@ import {
 interface TreeSelectorProps {
   selectedTreeId: string | null;
   onSelectTree: (id: string) => void;
+}
+
+function roleCanEdit(role?: ProjectRole | null): boolean {
+  if (role === undefined || role === null) return true; // open mode
+  return role === "owner" || role === "editor";
+}
+
+function roleIsOwner(role?: ProjectRole | null): boolean {
+  if (role === undefined || role === null) return true; // open mode
+  return role === "owner";
 }
 
 export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps) {
@@ -197,6 +208,8 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
             onToggle={() => toggleProject(project.id)}
             selectedTreeId={selectedTreeId}
             onSelectTree={onSelectTree}
+            canEdit={roleCanEdit(project.my_role)}
+            isOwner={roleIsOwner(project.my_role)}
             onNewTree={() => {
               setTreeDialogProjectId(project.id);
               setExpandedProjects((prev) => new Set(prev).add(project.id));
@@ -359,6 +372,8 @@ interface ProjectAccordionProps {
   onToggle: () => void;
   selectedTreeId: string | null;
   onSelectTree: (id: string) => void;
+  canEdit: boolean;
+  isOwner: boolean;
   onNewTree: () => void;
   confirmDeleteId: string | null;
   onDeleteClick: (id: string, e: React.MouseEvent) => void;
@@ -388,6 +403,8 @@ function ProjectAccordion({
   onToggle,
   selectedTreeId,
   onSelectTree,
+  canEdit,
+  isOwner,
   onNewTree,
   confirmDeleteId,
   onDeleteClick,
@@ -445,23 +462,27 @@ function ProjectAccordion({
             </span>
           </div>
           <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onStartEdit();
-              }}
-              className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
-              title="Rename project"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-            </button>
-            <button
-              onClick={onDeleteProjectClick}
-              className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
-              title="Delete project"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            </button>
+            {canEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartEdit();
+                }}
+                className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
+                title="Rename project"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+              </button>
+            )}
+            {isOwner && (
+              <button
+                onClick={onDeleteProjectClick}
+                className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
+                title="Delete project"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            )}
           </div>
         </div>
         {confirmDeleteProjectId === project.id && (
@@ -519,16 +540,18 @@ function ProjectAccordion({
                   <TreeNodeCount treeId={tree.id} />
                 </div>
                 <div className="flex items-center gap-0.5 ml-1 shrink-0 opacity-0 group-hover/tree:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStartTreeEdit(tree.id, tree.name);
-                    }}
-                    className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
-                    title="Rename tree"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStartTreeEdit(tree.id, tree.name);
+                      }}
+                      className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
+                      title="Rename tree"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -548,13 +571,15 @@ function ProjectAccordion({
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                   </button>
-                  <button
-                    onClick={(e) => onDeleteClick(tree.id, e)}
-                    className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
-                    title="Delete tree"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={(e) => onDeleteClick(tree.id, e)}
+                      className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
+                      title="Delete tree"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                  )}
                 </div>
               </div>
               {confirmDeleteId === tree.id && (
@@ -579,12 +604,14 @@ function ProjectAccordion({
               )}
             </div>
           ))}
-          <button
-            onClick={onNewTree}
-            className="w-full text-left pl-6 pr-2 py-1.5 text-xs text-gray-400 hover:text-[#0d9488] hover:bg-gray-50"
-          >
-            + New Tree
-          </button>
+          {canEdit && (
+            <button
+              onClick={onNewTree}
+              className="w-full text-left pl-6 pr-2 py-1.5 text-xs text-gray-400 hover:text-[#0d9488] hover:bg-gray-50"
+            >
+              + New Tree
+            </button>
+          )}
         </div>
       )}
     </div>

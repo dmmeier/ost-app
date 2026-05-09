@@ -6,9 +6,8 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-
 from ost_core.db.repository import TreeRepository
+from ost_core.exceptions import PermissionDeniedError
 from ost_core.llm import LLMProvider, LLMResponse, get_llm_provider
 from ost_core.llm.tools import CHAT_TOOLS
 from ost_core.models import (
@@ -22,10 +21,12 @@ from ost_core.models import (
     TreeCreate,
     TreeUpdate,
 )
+from ost_core.models.user import User
 from ost_core.services.tree_service import TreeService
 from ost_core.validation.validator import TreeValidator
+from pydantic import BaseModel
+
 from ost_api.deps import get_current_user_required, get_repo, get_service, get_tree_validator
-from ost_core.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -238,8 +239,13 @@ def _execute_tool(
     arguments: dict[str, Any],
     service: TreeService,
     validator: TreeValidator,
+    user_id: str | None = None,
 ) -> str:
-    """Execute a tool call and return the result as a string."""
+    """Execute a tool call and return the result as a string.
+
+    user_id is passed through so mutations (e.g. create_project) are
+    attributed to the authenticated user.
+    """
     try:
         if tool_name == "get_tree":
             result = service.get_full_tree(UUID(arguments["tree_id"]))
@@ -382,7 +388,8 @@ def _execute_tool(
                 ProjectCreate(
                     name=arguments["name"],
                     description=arguments.get("description", ""),
-                )
+                ),
+                user_id=user_id,
             )
             return json.dumps(project.model_dump(mode="json"))
 
@@ -409,7 +416,7 @@ async def chat(
     service: TreeService = Depends(get_service),
     validator: TreeValidator = Depends(get_tree_validator),
     repo: TreeRepository = Depends(get_repo),
-    _user: User | None = Depends(get_current_user_required),
+    user: User | None = Depends(get_current_user_required),
 ):
     """Agentic chat endpoint with tool-use loop.
 
@@ -428,6 +435,16 @@ async def chat(
         tree_data = service.get_tree(UUID(request.tree_id))
     except Exception:
         tree_data = None
+
+    # RBAC: builder mode requires editor, coach mode requires viewer
+    chat_min_role = "editor" if request.mode == "builder" else "viewer"
+    try:
+        if tree_data:
+            service.check_project_permission(
+                str(user.id) if user else None, str(tree_data.project_id), chat_min_role
+            )
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
     project_data = None
     if tree_data:
@@ -505,7 +522,7 @@ async def chat(
 
             # Execute each tool call and add results
             for tc in response.tool_calls:
-                result = _execute_tool(tc.name, tc.arguments, service, validator)
+                result = _execute_tool(tc.name, tc.arguments, service, validator, user_id=str(user.id) if user else None)
                 tool_result_msg = {
                     "role": "tool_result",
                     "tool_use_id": tc.id,
@@ -539,6 +556,7 @@ async def chat(
                 UUID(request.tree_id),
                 new_msgs_to_save,
                 mode=request.mode or "coach",
+                user_id=str(user.id) if user else None,
             )
     except Exception as e:
         logger.warning(f"Failed to save chat history: {e}")

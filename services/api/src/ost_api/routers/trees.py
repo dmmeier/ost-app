@@ -1,17 +1,16 @@
 """Tree endpoints."""
 
 import json
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from pydantic import BaseModel
-
 from ost_core.db.repository import TreeRepository
-from ost_core.exceptions import TreeNotFoundError, VersionConflictError
+from ost_core.exceptions import PermissionDeniedError, TreeNotFoundError, VersionConflictError
 from ost_core.models import Tree, TreeCreate, TreeUpdate, TreeWithNodes
 from ost_core.models.user import User
 from ost_core.services.tree_service import TreeService
+from pydantic import BaseModel
+
 from ost_api.deps import get_current_user_required, get_repo, get_service
 
 router = APIRouter()
@@ -25,47 +24,80 @@ class RestoreRequest(BaseModel):
     snapshot_id: str
 
 
+def _check_tree_permission(service: TreeService, user: User | None, tree_id: UUID, min_role: str) -> None:
+    """Resolve project_id from tree and check permission."""
+    tree = service.get_tree(tree_id)
+    service.check_project_permission(
+        str(user.id) if user else None, str(tree.project_id), min_role
+    )
+
+
 @router.post("/", response_model=Tree, status_code=201)
-def create_tree(data: TreeCreate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)):
-    return service.create_tree(data)
+def create_tree(data: TreeCreate, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
+    try:
+        service.check_project_permission(
+            str(user.id) if user else None, str(data.project_id), "editor"
+        )
+        return service.create_tree(data)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 
 @router.get("/", response_model=list[Tree])
-def list_trees(project_id: UUID | None = None, service: TreeService = Depends(get_service)):
+def list_trees(project_id: UUID | None = None, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
+    if project_id:
+        try:
+            service.check_project_permission(
+                str(user.id) if user else None, str(project_id), "viewer"
+            )
+        except PermissionDeniedError as e:
+            raise HTTPException(status_code=403, detail=str(e))
     return service.list_trees(project_id=project_id)
 
 
 @router.get("/{tree_id}", response_model=TreeWithNodes)
-def get_tree(tree_id: UUID, service: TreeService = Depends(get_service)):
+def get_tree(tree_id: UUID, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
     try:
+        _check_tree_permission(service, user, tree_id, "viewer")
         return service.get_full_tree(tree_id)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
 
 @router.get("/{tree_id}/export")
-def export_tree(tree_id: UUID, service: TreeService = Depends(get_service)):
+def export_tree(tree_id: UUID, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
     """Export a tree with full project-level styling metadata (tags, bubble_defaults)."""
     try:
+        _check_tree_permission(service, user, tree_id, "viewer")
         return service.export_tree(tree_id)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
 
 @router.get("/{tree_id}/version")
-def get_tree_version(tree_id: UUID, service: TreeService = Depends(get_service)):
+def get_tree_version(tree_id: UUID, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
     try:
+        _check_tree_permission(service, user, tree_id, "viewer")
         return {"version": service.get_tree_version(tree_id)}
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
 
 @router.patch("/{tree_id}", response_model=Tree)
 def update_tree(
-    tree_id: UUID, data: TreeUpdate, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)
+    tree_id: UUID, data: TreeUpdate, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)
 ):
     try:
+        _check_tree_permission(service, user, tree_id, "editor")
         return service.update_tree(tree_id, data)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
     except VersionConflictError as e:
@@ -73,9 +105,12 @@ def update_tree(
 
 
 @router.delete("/{tree_id}", status_code=204)
-def delete_tree(tree_id: UUID, service: TreeService = Depends(get_service), _user: User | None = Depends(get_current_user_required)):
+def delete_tree(tree_id: UUID, service: TreeService = Depends(get_service), user: User | None = Depends(get_current_user_required)):
     try:
+        _check_tree_permission(service, user, tree_id, "editor")
         service.delete_tree(tree_id)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
@@ -86,8 +121,15 @@ async def import_tree(
     file: UploadFile,
     name: str | None = None,
     service: TreeService = Depends(get_service),
-    _user: User | None = Depends(get_current_user_required),
+    user: User | None = Depends(get_current_user_required),
 ):
+    try:
+        service.check_project_permission(
+            str(user.id) if user else None, str(project_id), "editor"
+        )
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
     try:
         content = await file.read()
         tree_data = json.loads(content)
@@ -109,11 +151,14 @@ def merge_trees(
     source_tree_id: UUID,
     target_parent_id: UUID,
     service: TreeService = Depends(get_service),
-    _user: User | None = Depends(get_current_user_required),
+    user: User | None = Depends(get_current_user_required),
 ):
     try:
+        _check_tree_permission(service, user, tree_id, "editor")
         service.merge_trees(source_tree_id, tree_id, target_parent_id)
         return {"status": "merged"}
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -125,10 +170,14 @@ def create_snapshot(
     tree_id: UUID,
     data: SnapshotCreate,
     repo: TreeRepository = Depends(get_repo),
-    _user: User | None = Depends(get_current_user_required),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
     try:
+        _check_tree_permission(service, user, tree_id, "editor")
         return repo.create_snapshot(tree_id, data.message)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail=f"Tree {tree_id} not found")
 
@@ -137,7 +186,13 @@ def create_snapshot(
 def list_snapshots(
     tree_id: UUID,
     repo: TreeRepository = Depends(get_repo),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
+    try:
+        _check_tree_permission(service, user, tree_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     return repo.list_snapshots(tree_id)
 
 
@@ -146,7 +201,13 @@ def get_snapshot(
     tree_id: UUID,
     snapshot_id: str,
     repo: TreeRepository = Depends(get_repo),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
+    try:
+        _check_tree_permission(service, user, tree_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     snapshot = repo.get_snapshot(snapshot_id)
     if not snapshot:
         raise HTTPException(status_code=404, detail="Snapshot not found")
@@ -158,11 +219,15 @@ def restore_snapshot(
     tree_id: UUID,
     data: RestoreRequest,
     repo: TreeRepository = Depends(get_repo),
-    _user: User | None = Depends(get_current_user_required),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
     try:
+        _check_tree_permission(service, user, tree_id, "editor")
         repo.restore_snapshot(data.snapshot_id)
         return {"status": "restored", "snapshot_id": data.snapshot_id}
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     except TreeNotFoundError:
         raise HTTPException(status_code=404, detail="Snapshot not found")
 
@@ -174,7 +239,13 @@ def get_chat_history(
     tree_id: UUID,
     limit: int = 100,
     repo: TreeRepository = Depends(get_repo),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
+    try:
+        _check_tree_permission(service, user, tree_id, "viewer")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     return repo.get_chat_history(tree_id, limit=limit)
 
 
@@ -182,6 +253,11 @@ def get_chat_history(
 def clear_chat_history(
     tree_id: UUID,
     repo: TreeRepository = Depends(get_repo),
-    _user: User | None = Depends(get_current_user_required),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
 ):
+    try:
+        _check_tree_permission(service, user, tree_id, "editor")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
     repo.clear_chat_history(tree_id)

@@ -13,6 +13,8 @@ export interface BubbleTypeDefault {
 
 export type BubbleDefaults = Record<string, BubbleTypeDefault>;
 
+export type ProjectRole = "owner" | "editor" | "viewer";
+
 export interface Project {
   id: string;
   name: string;
@@ -23,6 +25,7 @@ export interface Project {
   git_branch: string;
   created_at: string;
   updated_at: string;
+  my_role?: ProjectRole | null;
 }
 
 export interface ProjectWithTrees extends Project {
@@ -191,6 +194,7 @@ export interface ChatHistoryMessage {
   tool_use_id?: string;
   tool_name?: string;
   mode: string;
+  user_id?: string | null;
   created_at: string;
 }
 
@@ -246,5 +250,16 @@ export interface GitCommitLog {
   file_path: string;
   branch: string;
   remote_url: string;
+  created_at: string;
+}
+
+// ── RBAC types ──────────────────────────────────────────────
+
+export interface ProjectMember {
+  user_id: string;
+  project_id: string;
+  role: ProjectRole;
+  email: string;
+  display_name: string;
   created_at: string;
 }

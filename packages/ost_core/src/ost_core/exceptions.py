@@ -90,6 +90,13 @@ class DuplicateEmailError(OSTError):
         super().__init__(f"Email already registered: {email}")
 
 
+class PermissionDeniedError(OSTError):
+    """Raised when a user lacks permission for an operation."""
+    def __init__(self, message: str = "Permission denied"):
+        self.message = message
+        super().__init__(message)
+
+
 class UserNotFoundError(OSTError):
     """Raised when a user is not found."""
     def __init__(self, user_id: str):

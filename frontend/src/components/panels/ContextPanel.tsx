@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { DEFAULT_BUBBLE_DEFAULTS, getNodeLabel } from "@/lib/colors";
 import { getFillStyle, FILL_STYLE_OPTIONS } from "@/lib/fill-patterns";
+import MembersSection from "@/components/panels/MembersSection";
 
 interface ContextPanelProps {
   tree: TreeWithNodes;
@@ -541,6 +542,11 @@ export function ContextPanel({ tree }: ContextPanelProps) {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Members */}
+      <div className="border-t border-gray-100 pt-3">
+        <MembersSection projectId={tree.project_id} />
       </div>
     </div>
   );

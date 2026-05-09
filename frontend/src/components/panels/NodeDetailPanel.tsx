@@ -12,6 +12,7 @@ import { useBubbleDefaults } from "@/hooks/use-tree";
 import { DEFAULT_BUBBLE_DEFAULTS } from "@/lib/colors";
 import { Badge } from "@/components/ui/badge";
 
+import { useCanEdit } from "@/hooks/use-permissions";
 import { InlineEditableText } from "./detail/InlineEditableText";
 import { DeleteConfirmInline } from "./detail/DeleteConfirmInline";
 import { NodeTagsSection } from "./detail/NodeTagsSection";
@@ -27,6 +28,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
   const { selectedNodeId, setSelectedNodeId, setChatInitialMessage, setCenterOnNodeId } = useTreeStore();
   const setConflictWarning = useTreeStore((s) => s.setConflictWarning);
   const deleteNode = useDeleteNode(tree.id);
+  const canEdit = useCanEdit();
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { data: bubbleDefaults } = useBubbleDefaults(tree.project_id);
@@ -227,6 +229,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                 }
               }}
               className="text-lg font-semibold flex-1 min-w-0 break-words"
+              disabled={!canEdit}
             />
             <button
               onClick={handleChatAboutNode}
@@ -237,8 +240,9 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
             </button>
             <button
               onClick={() => setConfirmingDelete(true)}
-              className="text-gray-400 hover:text-red-500 shrink-0 mt-1"
-              title="Delete node"
+              className={`shrink-0 mt-1 ${canEdit ? "text-gray-400 hover:text-red-500" : "text-gray-200 cursor-not-allowed"}`}
+              title={canEdit ? "Delete node" : "View only"}
+              disabled={!canEdit}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
             </button>
@@ -264,6 +268,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                 className="text-sm text-gray-600"
                 multiline
                 placeholder="Add a description..."
+                disabled={!canEdit}
               />
             </div>
             <div className="border border-gray-200 rounded-lg p-2.5">
@@ -299,7 +304,8 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                             : ""
                     }
                     rows={2}
-                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488]"
+                    disabled={!canEdit}
+                    className={`w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488] ${!canEdit ? "bg-gray-50 cursor-not-allowed" : ""}`}
                   />
                 </div>
                 <div>
@@ -311,7 +317,8 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                     onChange={(e) => handleEvidenceChange(e.target.value)}
                     placeholder="Supporting data, observations, statements, research..."
                     rows={2}
-                    className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488]"
+                    disabled={!canEdit}
+                    className={`w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488] ${!canEdit ? "bg-gray-50 cursor-not-allowed" : ""}`}
                   />
                 </div>
               </div>
@@ -334,7 +341,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
             />
           </div>
 
-          {validChildTypes.length > 0 && (
+          {canEdit && validChildTypes.length > 0 && (
             <div className="border border-gray-200 rounded-lg p-2.5">
               <AddChildForm
                 selectedNodeId={selectedNode.id}

@@ -188,6 +188,149 @@ def project_update(
     console.print(f"[green]Updated project:[/green] {project.name} ({project.id})")
 
 
+@project_app.command("members")
+def project_members(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+):
+    """List all members and their roles for a project."""
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+    members = service.list_members(str(pid))
+    if not members:
+        console.print("[dim]No members found (open mode or single-user).[/dim]")
+        return
+
+    table = Table(title="Project Members")
+    table.add_column("User ID", style="dim")
+    table.add_column("Name", style="bold")
+    table.add_column("Email")
+    table.add_column("Role")
+    table.add_column("Added", style="dim")
+
+    role_colors = {"owner": "red", "editor": "green", "viewer": "blue"}
+
+    for m in members:
+        color = role_colors.get(m.role, "")
+        table.add_row(
+            str(m.user_id)[:8] + "...",
+            m.display_name,
+            m.email,
+            f"[{color}]{m.role}[/{color}]",
+            str(m.created_at)[:19],
+        )
+
+    console.print(table)
+
+
+@project_app.command("add-member")
+def project_add_member(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+    email: str = typer.Option(..., "--email", help="Email of user to add"),
+    role: str = typer.Option("editor", "--role", help="Role: owner, editor, viewer"),
+):
+    """Add a member to a project."""
+    from ost_core.exceptions import PermissionDeniedError, UserNotFoundError
+
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+
+    # Use saved token to get current user
+    from ost_core.auth import decode_token
+    token = _load_token()
+    user_id = None
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    try:
+        member = service.add_member(user_id, str(pid), email, role)
+        console.print(f"[green]Added member:[/green] {member.display_name} ({member.email}) as {role}")
+    except PermissionDeniedError as e:
+        console.print(f"[red]Permission denied:[/red] {e}")
+        raise typer.Exit(1)
+    except UserNotFoundError:
+        console.print(f"[red]User not found:[/red] {email}")
+        raise typer.Exit(1)
+
+
+@project_app.command("remove-member")
+def project_remove_member(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+    email: str = typer.Option(..., "--email", help="Email of user to remove"),
+):
+    """Remove a member from a project."""
+    from ost_core.exceptions import PermissionDeniedError, UserNotFoundError
+
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+
+    # Resolve target user by email
+    result = service.repo.get_user_by_email(email)
+    if not result:
+        console.print(f"[red]User not found:[/red] {email}")
+        raise typer.Exit(1)
+    target_user, _ = result
+
+    # Use saved token to get current user
+    from ost_core.auth import decode_token
+    token = _load_token()
+    user_id = None
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    try:
+        service.remove_member(user_id, str(pid), str(target_user.id))
+        console.print(f"[red]Removed member:[/red] {email}")
+    except PermissionDeniedError as e:
+        console.print(f"[red]Permission denied:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@project_app.command("set-role")
+def project_set_role(
+    project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
+    email: str = typer.Option(..., "--email", help="Email of user to update"),
+    role: str = typer.Option(..., "--role", help="New role: owner, editor, viewer"),
+):
+    """Change a member's role in a project."""
+    from ost_core.exceptions import PermissionDeniedError, UserNotFoundError
+
+    service = _get_service()
+    pid = _resolve_project_id(project_id)
+
+    # Resolve target user by email
+    result = service.repo.get_user_by_email(email)
+    if not result:
+        console.print(f"[red]User not found:[/red] {email}")
+        raise typer.Exit(1)
+    target_user, _ = result
+
+    # Use saved token to get current user
+    from ost_core.auth import decode_token
+    token = _load_token()
+    user_id = None
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    try:
+        service.update_member_role(user_id, str(pid), str(target_user.id), role)
+        console.print(f"[green]Updated role:[/green] {email} → {role}")
+    except PermissionDeniedError as e:
+        console.print(f"[red]Permission denied:[/red] {e}")
+        raise typer.Exit(1)
+
+
 # ── Tree commands ────────────────────────────────────────────
 
 

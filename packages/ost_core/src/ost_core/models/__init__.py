@@ -26,9 +26,11 @@ from ost_core.models.project import (
 from ost_core.models.git import GitAuthor, GitCommitLog, GitProjectConfig
 from ost_core.models.tag import VALID_FILL_STYLES, Tag, TagCreate, TagUpdate
 from ost_core.models.tree import Tree, TreeCreate, TreeUpdate, TreeWithNodes
+from ost_core.models.member import AddMemberRequest, ProjectMember, UpdateMemberRequest
 from ost_core.models.user import User, UserCreate, UserLogin, UserWithToken
 
 __all__ = [
+    "AddMemberRequest",
     "BubbleTypeDefault",
     "DEFAULT_BUBBLE_DEFAULTS",
     "GitAuthor",
@@ -43,6 +45,7 @@ __all__ = [
     "NodeCreate",
     "NodeType",
     "NodeUpdate",
+    "ProjectMember",
     "STANDARD_NODE_TYPES",
     "Project",
     "ProjectCreate",
@@ -55,6 +58,7 @@ __all__ = [
     "TreeCreate",
     "TreeUpdate",
     "TreeWithNodes",
+    "UpdateMemberRequest",
     "User",
     "UserCreate",
     "UserLogin",

@@ -13,6 +13,7 @@ from ost_core.db.schema import (
     NodeClosureRow,
     NodeRow,
     NodeTagRow,
+    ProjectMemberRow,
     ProjectRow,
     ProjectTagRow,
     TreeRow,
@@ -51,6 +52,9 @@ from ost_core.models import (
     TreeWithNodes,
     User,
 )
+
+
+from ost_core.models.member import ProjectMember
 
 
 class TreeRepository:
@@ -986,6 +990,12 @@ class TreeRepository:
             ).scalars().first()
             return self._tag_from_row(row) if row else None
 
+    def get_tag_project_id(self, tag_id: UUID) -> str | None:
+        """Return the project_id for a tag, or None if tag not found."""
+        with self._session() as session:
+            row = session.get(ProjectTagRow, str(tag_id))
+            return row.project_id if row else None
+
     def delete_tag(self, tag_id: UUID) -> None:
         with self._session() as session:
             row = session.get(ProjectTagRow, str(tag_id))
@@ -1074,10 +1084,12 @@ class TreeRepository:
 
     # ── Chat History ─────────────────────────────────────────
 
-    def save_chat_messages(self, tree_id: UUID, messages: list[dict], mode: str = "coach") -> None:
+    def save_chat_messages(self, tree_id: UUID, messages: list[dict], mode: str = "coach", user_id: str | None = None) -> None:
         """Save a batch of chat messages for a tree."""
         with self._session() as session:
             for msg in messages:
+                # Only attach user_id to user-role messages
+                msg_user_id = user_id if msg.get("role") == "user" else None
                 row = ChatMessageRow(
                     id=str(uuid4()),
                     tree_id=str(tree_id),
@@ -1087,6 +1099,7 @@ class TreeRepository:
                     tool_use_id=msg.get("tool_use_id"),
                     tool_name=msg.get("tool_name"),
                     mode=mode,
+                    user_id=msg_user_id,
                 )
                 session.add(row)
             session.commit()
@@ -1109,6 +1122,7 @@ class TreeRepository:
                     "tool_use_id": row.tool_use_id,
                     "tool_name": row.tool_name,
                     "mode": row.mode,
+                    "user_id": row.user_id,
                     "created_at": row.created_at.isoformat(),
                 }
                 for row in rows
@@ -1463,6 +1477,106 @@ class TreeRepository:
         with self._session() as session:
             from sqlalchemy import func
             result = session.execute(select(func.count(UserRow.id)))
+            return result.scalar() or 0
+
+    # ── Project Membership ──────────────────────────────────────
+
+    def add_project_member(self, user_id: str, project_id: str, role: str) -> None:
+        """Add a user as a member of a project with the given role."""
+        with self._session() as session:
+            row = ProjectMemberRow(
+                user_id=user_id,
+                project_id=project_id,
+                role=role,
+            )
+            session.merge(row)  # upsert in case already exists
+            session.commit()
+
+    def remove_project_member(self, user_id: str, project_id: str) -> None:
+        """Remove a user from a project."""
+        with self._session() as session:
+            session.execute(
+                delete(ProjectMemberRow).where(
+                    and_(
+                        ProjectMemberRow.user_id == user_id,
+                        ProjectMemberRow.project_id == project_id,
+                    )
+                )
+            )
+            session.commit()
+
+    def get_user_role(self, user_id: str, project_id: str) -> str | None:
+        """Get a user's role in a project, or None if not a member."""
+        with self._session() as session:
+            row = session.execute(
+                select(ProjectMemberRow).where(
+                    and_(
+                        ProjectMemberRow.user_id == user_id,
+                        ProjectMemberRow.project_id == project_id,
+                    )
+                )
+            ).scalars().first()
+            return row.role if row else None
+
+    def update_member_role(self, user_id: str, project_id: str, role: str) -> None:
+        """Update a member's role in a project."""
+        with self._session() as session:
+            row = session.execute(
+                select(ProjectMemberRow).where(
+                    and_(
+                        ProjectMemberRow.user_id == user_id,
+                        ProjectMemberRow.project_id == project_id,
+                    )
+                )
+            ).scalars().first()
+            if row:
+                row.role = role
+                session.commit()
+
+    def list_project_members(self, project_id: str) -> list[dict]:
+        """List all members of a project with user details."""
+        with self._session() as session:
+            rows = session.execute(
+                select(ProjectMemberRow, UserRow)
+                .join(UserRow, ProjectMemberRow.user_id == UserRow.id)
+                .where(ProjectMemberRow.project_id == project_id)
+                .order_by(ProjectMemberRow.created_at)
+            ).all()
+            return [
+                {
+                    "user_id": pm.user_id,
+                    "project_id": pm.project_id,
+                    "role": pm.role,
+                    "email": user.email,
+                    "display_name": user.display_name,
+                    "created_at": pm.created_at,
+                }
+                for pm, user in rows
+            ]
+
+    def list_user_projects(self, user_id: str) -> list[Project]:
+        """List all projects the user is a member of."""
+        with self._session() as session:
+            rows = session.execute(
+                select(ProjectRow)
+                .join(ProjectMemberRow, ProjectMemberRow.project_id == ProjectRow.id)
+                .where(ProjectMemberRow.user_id == user_id)
+                .order_by(ProjectRow.created_at)
+            ).scalars().all()
+            return [self._project_from_row(r) for r in rows]
+
+    def count_project_owners(self, project_id: str) -> int:
+        """Count the number of owners of a project."""
+        from sqlalchemy import func
+        with self._session() as session:
+            result = session.execute(
+                select(func.count(ProjectMemberRow.user_id)).where(
+                    and_(
+                        ProjectMemberRow.project_id == project_id,
+                        ProjectMemberRow.role == "owner",
+                    )
+                )
+            )
             return result.scalar() or 0
 
     @staticmethod
