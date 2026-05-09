@@ -23,6 +23,7 @@ import { VersionPanel } from "@/components/panels/VersionPanel";
 import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { GitPanel } from "@/components/git/GitPanel";
+import { ActivityPanel } from "@/components/panels/ActivityPanel";
 import { useAddNode } from "@/hooks/use-tree";
 import { useCanEdit } from "@/hooks/use-permissions";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ const BOTTOM_TABS = [
   { key: "context" as const, label: "Context" },
   { key: "versions" as const, label: "Versions" },
   { key: "git" as const, label: "Git" },
+  { key: "activity" as const, label: "Activity" },
 ];
 
 export default function Home() {
@@ -336,6 +338,8 @@ export default function Home() {
                         treeId={tree.id}
                         treeName={tree.name}
                       />
+                    ) : bottomPanel === "activity" ? (
+                      <ActivityPanel tree={tree} />
                     ) : null}
                   </div>
                 </div>

@@ -1710,7 +1710,7 @@ Acceptance criteria:
   5. Git commit defaults to authenticated user's identity.
   6. Open mode (no users): mutations work, activity has null user_id.
 
-32. Activity feed: Recent changes tab in bottom panel [STATUS: TODO]
+32. Activity feed: Recent changes tab in bottom panel [STATUS: COMPLETE]
 Depends on: Ticket 31
 
 Context:
@@ -1773,6 +1773,30 @@ Acceptance criteria:
   3. Each entry shows who did what and when.
   4. Clicking an entry selects the relevant node.
   5. Feed refreshes automatically via polling mechanism.
+
+--- DIARY (Ticket #32) ---
+Implementation:
+- Added "activity" to BottomPanelTab union type in tree-store.ts
+- Created ActivityPanel.tsx component with:
+  - TanStack Query fetching api.activity.forTree with 10s refetch interval
+  - Auto-refetch on tree version change (query key includes tree.version)
+  - Action-specific SVG icons: green plus (created), blue pencil (updated), red trash (deleted), purple arrows (moved), gray arrows (reordered), teal tag (tag ops), amber camera (snapshots), orange git (commits)
+  - Relative timestamps (just now, Xm ago, Xh ago, yesterday, date)
+  - Click-to-navigate: clicking a node entry sets selectedNodeId + centerOnNodeId
+  - Empty state: "No activity yet / Changes will appear here as you edit."
+- Wired into page.tsx: added Activity to BOTTOM_TABS, imported ActivityPanel, added render case
+
+Review cycles (5):
+- Cycle 1: Tab renders, empty state works on tree with no prior activity logs
+- Cycle 2: Edited node title, confirmed activity entry appeared with correct icon/text/timestamp
+- Cycle 3: Clicked activity entry while different node selected — correctly navigated to referenced node
+- Cycle 4: Switched to empty tree, verified empty state message
+- Cycle 5: Visual screenshot review — design consistent with app style, clean layout
+
+No backend changes needed — API endpoints and ActivityLog type already existed from Ticket 31.
+
+Files changed (3): tree-store.ts, page.tsx, ActivityPanel.tsx (NEW)
+--- END DIARY ---
 
 33. Live presence: Who is active in the tree [STATUS: TODO]
 Depends on: Ticket 29
