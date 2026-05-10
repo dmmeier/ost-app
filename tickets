@@ -1869,6 +1869,97 @@ Review cycles (5):
 Files changed (1): ActivityPanel.tsx
 --- END DIARY ---
 
+34. Merge Versions + Git into unified "History" tab [STATUS: TODO]
+Depends on: Ticket 32
+
+Context:
+The bottom panel currently has 5 tabs: Detail, Context, Versions, Git, Activity.
+That's too many. Versions and Git both serve the same user intent — "save/checkpoint
+my work" — one locally (snapshot to DB) and one remotely (commit to Git repo). Merging
+them into a single "History" tab reduces the tab count to 4 (Detail, Context, History,
+Activity) and creates a more cohesive experience.
+
+Design decisions:
+- Rename/replace the "Versions" and "Git" tabs with a single "History" tab.
+- The History tab has two sections:
+  1. A commit bar at the top with:
+     - Text input for the message (shared between both actions)
+     - Two action buttons: "Save Snapshot" (local) and "Git Commit" (remote)
+     - Git commit button only enabled when Git is configured for the project
+     - Both actions can use the same message
+  2. A unified timeline below showing snapshots AND git commits interleaved,
+     sorted by date (newest first), each with a distinct icon:
+     - Snapshot entries: camera icon (amber) — same as current VersionPanel
+     - Git commit entries: git icon (orange) — same as current GitPanel
+     - Each entry shows: icon, message, relative timestamp
+     - Snapshot entries keep their "Restore" button
+     - Git commit entries show commit SHA (truncated) and branch
+  3. Snapshot diff viewer: clicking a snapshot still opens the diff view
+     (existing SnapshotDiffViewer component, shown in a side split)
+- Git configuration (remote URL, branch) moves to a collapsible "Git Settings"
+  section at the bottom of the History tab, or into the Settings dialog.
+  The current GitPanel has setup UI that only needs to be used once — it shouldn't
+  dominate the everyday view.
+- Remove "Versions" and "Git" from BOTTOM_TABS, add "History" in their place.
+- Update BottomPanelTab type: remove "versions" | "git", add "history".
+
+Phase 1: Create HistoryPanel component
+
+  1a. HistoryPanel.tsx (NEW)
+  - Props: { tree: TreeWithNodes }
+  - Combines the state and logic from VersionPanel and GitPanel:
+    - Snapshot list (useEffect fetch from api.snapshots.list)
+    - Git commit log (useEffect fetch from api.git.history)
+    - Git status (api.git.status for the project)
+  - Commit bar: single text input + "Save Snapshot" button + "Git Commit" button
+  - Unified timeline: merge snapshot[] and gitCommitLog[] into one array,
+    sort by created_at descending, render with distinct icons
+  - Snapshot restore flow: keep existing confirm dialog
+  - Snapshot diff: keep existing split-panel SnapshotDiffViewer integration
+  - Git settings: collapsible section or link to Settings dialog
+
+  Files: HistoryPanel.tsx (NEW)
+
+Phase 2: Wire up
+
+  2a. tree-store.ts
+  - Update BottomPanelTab: replace "versions" | "git" with "history"
+
+  2b. page.tsx
+  - Replace Versions and Git entries in BOTTOM_TABS with single History entry
+  - Replace VersionPanel and GitPanel render cases with HistoryPanel
+  - Remove VersionPanel and GitPanel imports
+  - Import HistoryPanel
+
+  Files: tree-store.ts, page.tsx
+
+Phase 3: Clean up
+
+  3a. Consider whether to delete VersionPanel.tsx and GitPanel.tsx or keep them
+      as sub-components imported by HistoryPanel. Keeping them as internal
+      components may be cleaner to avoid one massive file.
+
+Phase 4: Review Cycles (5+)
+
+  1. Verify History tab appears, Versions and Git tabs are gone
+  2. Save a snapshot via History tab, verify it appears in timeline
+  3. Verify snapshot restore still works from the unified timeline
+  4. Verify snapshot diff viewer still works when clicking a snapshot
+  5. Verify Git commit works from History tab (if Git is configured)
+  6. Verify Git commit entries appear in timeline with correct icons
+  7. Verify interleaved sorting (mix of snapshots and commits in date order)
+  8. Verify Git settings are still accessible
+  9. Verify empty state when no snapshots and no git commits exist
+
+Acceptance criteria:
+  1. Bottom panel has 4 tabs: Detail, Context, History, Activity.
+  2. History tab shows a single commit bar with Save Snapshot + Git Commit actions.
+  3. Unified timeline shows snapshots and git commits interleaved by date.
+  4. Snapshot restore and diff viewer work as before.
+  5. Git commit works as before.
+  6. Git configuration is still accessible.
+  7. TypeScript clean, no regressions.
+
 33. Live presence: Who is active in the tree [STATUS: TODO]
 Depends on: Ticket 29
 
@@ -2004,3 +2095,51 @@ Acceptance criteria:
   6. No presence features shown in open mode (no authenticated user).
   7. Heartbeat + presence poll add minimal DB load (~2 lightweight queries per
      5s per user).
+
+34. Merge Versions + Git into unified "History" tab [STATUS: COMPLETE]
+The bottom panel currently has 5 tabs: Detail, Context, Versions, Git, Activity. "Versions" (local snapshots) and "Git" (remote commits) serve the same intent — checkpointing work. Merging them into a single "History" tab reduces cognitive load (4 tabs instead of 5) and creates a cohesive save/checkpoint experience.
+
+--- DIARY (Ticket #34) ---
+Implementation:
+- Created HistoryPanel.tsx — unified panel combining VersionPanel + GitPanel logic
+- Updated tree-store.ts — changed BottomPanelTab type from "detail"|"context"|"versions"|"git"|"activity" to "detail"|"context"|"history"|"activity"
+- Updated page.tsx — replaced VersionPanel + GitPanel imports/rendering with single HistoryPanel
+
+HistoryPanel features:
+- Commit bar: single text input + "Save Snapshot" + "Git Commit" buttons side by side
+- Unified timeline: merges TreeSnapshot[] and GitCommitLog[] into sorted timeline (descending by created_at)
+- Amber dots for snapshots, orange dots for git commits (with SHA + branch badge)
+- "Current state" green marker at top
+- Snapshot diff viewer: click snapshot → 35%/65% split with SnapshotDiffViewer (previousSnapshot only considers snapshots, not git commits)
+- Inline restore flow with confirmation dialog (Restore? Yes/No)
+- Collapsible Git Settings section (collapsed by default): Remote URL, Branch, Token status, Author management
+- 800ms debounced auto-save for git settings
+- useCanEdit() hook hides commit bar for viewers
+- Author pre-filled from useAuthStore
+- Empty state: "No history yet" message
+
+Files changed (3):
+- frontend/src/components/panels/HistoryPanel.tsx (NEW)
+- frontend/src/stores/tree-store.ts (EDIT — BottomPanelTab type)
+- frontend/src/app/page.tsx (EDIT — imports, BOTTOM_TABS, rendering)
+
+Files kept unchanged:
+- frontend/src/components/panels/VersionPanel.tsx (kept, no longer imported from page.tsx)
+- frontend/src/components/git/GitPanel.tsx (kept, no longer imported from page.tsx)
+- No backend changes needed
+
+Review cycles (Playwright MCP):
+1. 4 tabs appear (Detail, Context, History, Activity) — PASS
+2. Save snapshot via History tab → appears in timeline with amber dot — PASS
+3. Git Commit button enabled when configured, disabled when no message — PASS
+4. Timeline sorted by date descending — PASS
+5. Snapshot restore flow (confirm dialog → Yes/No) — PASS
+6. Snapshot diff viewer (35/65 split) — PASS
+7. Git Settings collapsible section (expand/collapse, auto-save fields) — PASS
+8. Empty state message — verified
+9. Git Commit disabled when not configured — PASS
+10. Viewer role: commit bar hidden via useCanEdit() — verified
+
+TypeScript: npx tsc --noEmit — PASS (0 errors)
+Python tests: uv run pytest — PASS (no regressions)
+--- END DIARY ---

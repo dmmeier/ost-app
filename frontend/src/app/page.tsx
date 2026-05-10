@@ -19,10 +19,9 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { NodeDetailPanel } from "@/components/panels/NodeDetailPanel";
 import { ContextPanel } from "@/components/panels/ContextPanel";
 import { ChatPanel } from "@/components/chat/ChatPanel";
-import { VersionPanel } from "@/components/panels/VersionPanel";
 import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { GitPanel } from "@/components/git/GitPanel";
+import { HistoryPanel } from "@/components/panels/HistoryPanel";
 import { ActivityPanel } from "@/components/panels/ActivityPanel";
 import { useAddNode } from "@/hooks/use-tree";
 import { useCanEdit } from "@/hooks/use-permissions";
@@ -31,8 +30,7 @@ import { Input } from "@/components/ui/input";
 const BOTTOM_TABS = [
   { key: "detail" as const, label: "Detail" },
   { key: "context" as const, label: "Context" },
-  { key: "versions" as const, label: "Versions" },
-  { key: "git" as const, label: "Git" },
+  { key: "history" as const, label: "History" },
   { key: "activity" as const, label: "Activity" },
 ];
 
@@ -330,14 +328,8 @@ export default function Home() {
                       <NodeDetailPanel tree={tree} />
                     ) : bottomPanel === "context" ? (
                       <ContextPanel tree={tree} />
-                    ) : bottomPanel === "versions" ? (
-                      <VersionPanel tree={tree} />
-                    ) : bottomPanel === "git" ? (
-                      <GitPanel
-                        projectId={tree.project_id}
-                        treeId={tree.id}
-                        treeName={tree.name}
-                      />
+                    ) : bottomPanel === "history" ? (
+                      <HistoryPanel tree={tree} />
                     ) : bottomPanel === "activity" ? (
                       <ActivityPanel tree={tree} />
                     ) : null}
