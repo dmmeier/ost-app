@@ -1,20 +1,4 @@
-0. [COMPLETED] The git commits and the version saves on DB should be visually distinct on the "History" tab. Perhaps by different colors for the timeline bubble on the left. Moreover, the "Describe this version" textfield should be resizable in case of long messages. The Git Settings should be at the top, rather than at the bottom, otherwise one has to scroll too far. The history should cut out after let's say the 10 most recent elements (as in: not display further back). I also do not like that the button "Save Snapshot" or "Git Commit" immediately act. Incidentally, ideally the "author" in the Git settings also should persist from session to session for the user (to the last used by that user), and especially it should not - as it does now - vanish even after just navigating away briefly from the History tab.
-
-The suggested layout and design can be found in the folder "design_history_tab". Have a look there, especially the readme file that directs you to all the relevant sources. This deserves careful study.
-
-STATUS: Completed. Full V1 redesign implemented per design_history_tab spec:
-- Git Settings accordion moved to top with collapse/expand, status summary line
-- Input replaced with resizable textarea (resize: vertical)
-- Two equal-weight outline buttons with icons (teal Save snapshot, rust Commit to {branch})
-- 22px glyph markers: green Database for snapshots, rust GitBranch for commits, solid teal for current state
-- Timeline limited to 10 most recent entries
-- Author persisted via localStorage (ost_git_author key)
-- Enter key no longer bypasses empty check (textarea uses newlines instead)
-- Restore button only on snapshot rows (not commits)
-- All existing functionality preserved (diff viewer, restore flow, feedback banners)
-
-1. Ideally I would like to make it possible to have basic formatting inside the textboxes (for instance when writing descriptions or assumptions). The basic stuff like boldface, cursive, underline, enumeration -- is this possible? Perhaps using markdown under the hood? Ideally in the UI I would have a small formatting bar where I can select these things -- similar to what one has for basic text editing in Microsoft Teams messages, for instance. Let me know how much effort this is -- if it is difficult then perhaps
-let us not do it. 
+1. [COMPLETED] Rich Text Formatting in Text Fields — Implemented Tiptap rich text editor with markdown storage for description, assumption, and evidence fields. Toolbar with Bold, Italic, Underline, Bullet List, and Ordered List. Keyboard shortcuts (Cmd+B/I/U) supported. Auto-save with debounce works correctly. No backend changes needed (markdown stored as plain text).
 
 2. I can make connection lines between bubbles of different thickness. I would like a slider that allows a more gradual thickness change. I also want to be able to make lines dashed or dotted (for instance, when a connection has been rejected by experiment). 
 

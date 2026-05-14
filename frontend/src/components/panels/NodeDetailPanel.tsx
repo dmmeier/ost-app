@@ -18,6 +18,7 @@ import { DeleteConfirmInline } from "./detail/DeleteConfirmInline";
 import { NodeTagsSection } from "./detail/NodeTagsSection";
 import { AddChildForm } from "./detail/AddChildForm";
 import { MiniTreeDiagram } from "./detail/MiniTreeDiagram";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 
 interface NodeDetailPanelProps {
   tree: TreeWithNodes;
@@ -267,6 +268,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                 }}
                 className="text-sm text-gray-600"
                 multiline
+                richText
                 placeholder="Add a description..."
                 disabled={!canEdit}
               />
@@ -291,9 +293,9 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                   <label className="text-[10px] font-semibold uppercase text-gray-400 mb-0.5 block">
                     Assumption
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={assumptionDraft}
-                    onChange={(e) => handleAssumptionChange(e.target.value)}
+                    onChange={handleAssumptionChange}
                     placeholder={
                       selectedNode?.node_type === "opportunity" || selectedNode?.node_type === "child_opportunity"
                         ? "What assumptions need to be tested to verify that this is a relevant problem?"
@@ -303,22 +305,20 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                             ? "Which assumptions are we testing?"
                             : ""
                     }
-                    rows={2}
+                    minRows={2}
                     disabled={!canEdit}
-                    className={`w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488] ${!canEdit ? "bg-gray-50 cursor-not-allowed" : ""}`}
                   />
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold uppercase text-gray-400 mb-0.5 block">
                     Evidence
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={evidenceDraft}
-                    onChange={(e) => handleEvidenceChange(e.target.value)}
+                    onChange={handleEvidenceChange}
                     placeholder="Supporting data, observations, statements, research..."
-                    rows={2}
+                    minRows={2}
                     disabled={!canEdit}
-                    className={`w-full border border-gray-200 rounded px-2 py-1.5 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-[#0d9488] ${!canEdit ? "bg-gray-50 cursor-not-allowed" : ""}`}
                   />
                 </div>
               </div>
