@@ -345,6 +345,7 @@ class TreeService:
                         override_fill_style=node_data.get("override_fill_style"),
                         override_font_light=node_data.get("override_font_light"),
                         edge_thickness=node_data.get("edge_thickness"),
+                        edge_style=node_data.get("edge_style"),
                     ),
                 )
                 id_map[old_id] = new_node.id

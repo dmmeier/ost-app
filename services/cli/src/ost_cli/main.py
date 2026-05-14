@@ -854,9 +854,11 @@ def edit(
     status: Optional[str] = typer.Option(None, help="New status (active, archived)"),
     assumption: Optional[str] = typer.Option(None, help="Assumption explaining why this node matters for its parent"),
     evidence: Optional[str] = typer.Option(None, help="Supporting data, research, or observations"),
+    edge_thickness: Optional[float] = typer.Option(None, "--edge-thickness", help="Edge thickness (0.5-10, 0 to clear)"),
+    edge_style: Optional[str] = typer.Option(None, "--edge-style", help="Edge line style: solid, dashed, dotted (empty to clear)"),
     version: Optional[int] = typer.Option(None, help="Expected version for conflict detection"),
 ):
-    """Edit a node's title, description, status, assumption, or evidence."""
+    """Edit a node's title, description, status, assumption, evidence, or edge styling."""
     from ost_core.exceptions import VersionConflictError
 
     service = _get_service()
@@ -865,7 +867,9 @@ def edit(
             UUID(node_id),
             NodeUpdate(
                 title=title, description=description, status=status,
-                assumption=assumption, evidence=evidence, version=version,
+                assumption=assumption, evidence=evidence,
+                edge_thickness=edge_thickness, edge_style=edge_style,
+                version=version,
             ),
             user_id=_get_current_user_id(),
         )

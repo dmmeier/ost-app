@@ -1,6 +1,7 @@
 export type NodeType = string;
 export type HypothesisType = "problem" | "solution" | "feasibility" | "desirability" | "viability";
 export type FillStyle = "none" | "solid";
+export type EdgeStyle = "solid" | "dashed" | "dotted";
 
 export const STANDARD_NODE_TYPES = ["outcome", "opportunity", "child_opportunity", "solution", "experiment"] as const;
 
@@ -74,6 +75,7 @@ export interface Node {
   override_font_light: boolean | null;
   sort_order: number;
   edge_thickness: number | null;
+  edge_style: EdgeStyle | null;
   assumption: string;
   evidence: string;
   version: number;
@@ -142,6 +144,7 @@ export interface NodeUpdate {
   assumption?: string;
   evidence?: string;
   edge_thickness?: number;
+  edge_style?: string;
   override_border_color?: string | null;
   override_border_width?: number | null;
   override_fill_color?: string | null;

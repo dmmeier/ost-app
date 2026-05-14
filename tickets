@@ -2,16 +2,11 @@
 
 1.1 [COMPLETED] Markdown formatting on graph viewer — Description text on canvas node bubbles now renders markdown (bold, italic, lists) via shared markdownToHtml utility. Title remains plain text. Extracted markdownToHtml to shared lib/markdown-to-html.ts used by both OSTNode and InlineEditableText.
 
-2. I can make connection lines between bubbles of different thickness. I would like a slider that allows a more gradual thickness change. I also want to be able to make lines dashed or dotted (for instance, when a connection has been rejected by experiment). 
+2. [COMPLETED] Edge Line Styling — Slider Thickness + Dashed/Dotted Lines. Replaced the 6-button thickness menu with a smooth slider (range 1-20, step 0.5) with live preview bar. Added dashed and dotted line style options with SVG previews and teal active-state highlighting. Edge thickness changed from int to float in backend. New edge_style column (VARCHAR 20) added to nodes table with auto-migration. Menu stays open after adjustments so users can change both thickness and style in one interaction. Changes persist across page refreshes. CLI updated with --edge-thickness (float) and --edge-style options. All 347 tests pass.
 
-3. In bubble design whenever there is an assumption text field I would like to be able to add a further assumption. So there should be a "Add assumption" button that then adds an assumption and evidence text box. Make sure this is also accessible through the chat interface (in the sense that in the chat one should be able to say "add a further assumption"...)
-
-4. I would like to be able to discard/disprove assumptions, so add a checkfield "rejected" that can be ticked. This should also be
+3. In bubble design whenever there is an assumption text field I would like to be able to add a further assumption. So there should be a "Add assumption" button that then adds an assumption and evidence text box. Make sure this is also accessible through the chat interface (in the sense that in the chat one should be able to say "add a further assumption"...). I would like to be able to discard/disprove assumptions, so add a checkfield "rejected" that can be ticked. This should also be
 accessible through chat. 
 
-5. Ideally I would like to make it possible to have basic formatting inside the textboxes (for instance when writing descriptions or assumptions). The basic stuff like boldface, cursive, underline, enumeration -- is this possible? Perhaps using markdown under the hood? Ideally in the UI I would have a small formatting bar where I can select these things -- similar to what one has for basic text editing in Microsoft Teams messages, for instance. Let me know how much effort this is -- if it is difficult then perhaps
-let us not do it. 
+4. When I look at the Activity tab, I see a very fine-grained activity thing with loads of identical titles. These should be condensed. Activities should be less fine-grained. When the title is identical in a continuous uninterrupted sequence, I would say only display the most recent change. 
 
-6. When I look at the Activity tab, I see a very fine-grained activity thing with loads of identical titles. These should be condensed. Activities should be less fine-grained. When the title is identical in a continuous uninterrupted sequence, I would say only display the most recent change. 
-
-7. Bug: Currently when I use Chat and then fold the chat tab in, when I then open it the whole chat is reset. I want the chat to persist across folding the tab in and out. Ideally the chat should also persist from one user session to the next. The user can always "clear" history manually for a manual reset. 
+5. Bug: Currently when I use Chat and then fold the chat tab in, when I then open it the whole chat is reset. I want the chat to persist across folding the tab in and out. Ideally the chat should also persist from one user session to the next. The user can always "clear" history manually for a manual reset. 

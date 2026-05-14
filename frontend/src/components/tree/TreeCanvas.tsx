@@ -289,6 +289,7 @@ function buildReactFlowElements(
       type: "hypothesis",
       data: {
         thickness: node.edge_thickness ?? undefined,
+        edgeStyle: node.edge_style ?? undefined,
         parentNodeId: node.parent_id,
         childNodeId: node.id,
       },
@@ -311,6 +312,7 @@ interface EdgeContextMenuState {
   y: number;
   childNodeId: string;
   currentThickness: number;
+  currentStyle: string;
 }
 
 // Helper: highlight matching text in search results
@@ -747,11 +749,11 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     (event: React.MouseEvent, edge: RFEdge) => {
       event.preventDefault();
       setContextMenu(null);
-      const edgeData = edge.data as { childNodeId?: string; thickness?: number };
+      const edgeData = edge.data as { childNodeId?: string; thickness?: number; edgeStyle?: string };
       const rawX = event.clientX;
       const rawY = event.clientY;
-      const menuWidth = 180;
-      const menuHeight = 200;
+      const menuWidth = 220;
+      const menuHeight = 320;
       const x = rawX + menuWidth > window.innerWidth ? rawX - menuWidth : rawX;
       const y = rawY + menuHeight > window.innerHeight ? rawY - menuHeight : rawY;
       setEdgeContextMenu({
@@ -759,16 +761,30 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         y,
         childNodeId: edgeData.childNodeId || "",
         currentThickness: edgeData.thickness ?? 2,
+        currentStyle: edgeData.edgeStyle || "solid",
       });
     },
     []
   );
 
+  const [localThickness, setLocalThickness] = useState<number>(2);
+
+  // Sync local thickness when edge context menu opens
+  useEffect(() => {
+    if (edgeContextMenu) {
+      setLocalThickness(edgeContextMenu.currentThickness);
+    }
+  }, [edgeContextMenu]);
+
   const handleSetEdgeThickness = (thickness: number) => {
     if (!edgeContextMenu || !edgeContextMenu.childNodeId) return;
-    // Update edge_thickness on the child node (stores thickness of edge to parent)
     updateNode.mutate({ nodeId: edgeContextMenu.childNodeId, data: { edge_thickness: thickness } });
-    setEdgeContextMenu(null);
+  };
+
+  const handleSetEdgeStyle = (style: string) => {
+    if (!edgeContextMenu || !edgeContextMenu.childNodeId) return;
+    updateNode.mutate({ nodeId: edgeContextMenu.childNodeId, data: { edge_style: style || "" } });
+    setEdgeContextMenu((prev) => prev ? { ...prev, currentStyle: style } : null);
   };
 
   const handleSaveStyleOverrides = (overrides: {
@@ -1257,36 +1273,75 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           )}
         </div>
       )}
-      {/* Edge context menu (thickness) — editors only */}
+      {/* Edge context menu (thickness slider + line style) — editors only */}
       {canEdit && edgeContextMenu && (
         <div
-          className="fixed bg-white rounded-lg border shadow-lg py-1 z-50 min-w-[160px]"
+          className="fixed bg-white rounded-lg border shadow-lg py-2 z-50 w-[220px]"
           style={{ left: edgeContextMenu.x, top: edgeContextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">
-            Edge Thickness
-          </div>
-          <div className="h-px bg-gray-100 my-1" />
-          {[1, 2, 3, 4, 5, 6].map((t) => (
-            <button
-              key={t}
-              onClick={() => handleSetEdgeThickness(t)}
-              className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2 ${
-                edgeContextMenu.currentThickness === t ? "bg-[#e6f4f3] text-[#0b7a70]" : ""
-              }`}
-            >
+          {/* Thickness slider */}
+          <div className="px-3 pb-1">
+            <div className="text-xs text-gray-400 font-medium mb-2">Thickness</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={1}
+                max={20}
+                step={0.5}
+                value={localThickness}
+                onChange={(e) => setLocalThickness(parseFloat(e.target.value))}
+                onMouseUp={() => handleSetEdgeThickness(localThickness)}
+                onTouchEnd={() => handleSetEdgeThickness(localThickness)}
+                className="flex-1 h-1.5 accent-[#0d9488] cursor-pointer"
+              />
+              <span className="text-xs text-gray-500 w-8 text-right tabular-nums">{localThickness}px</span>
+            </div>
+            {/* Live preview bar */}
+            <div className="mt-1.5 flex items-center justify-center h-4">
               <div
-                className="w-8 rounded"
+                className="w-full rounded-full"
                 style={{
-                  height: `${t}px`,
+                  height: `${Math.max(1, localThickness)}px`,
                   backgroundColor: "#94a3b8",
-                  minHeight: "1px",
                 }}
               />
-              <span>{t}px</span>
-            </button>
-          ))}
+            </div>
+          </div>
+          <div className="h-px bg-gray-100 my-1.5" />
+          {/* Line style */}
+          <div className="px-3 pt-0.5">
+            <div className="text-xs text-gray-400 font-medium mb-2">Line Style</div>
+            <div className="flex gap-1">
+              {(["solid", "dashed", "dotted"] as const).map((style) => {
+                const isActive = (edgeContextMenu.currentStyle || "solid") === style;
+                return (
+                  <button
+                    key={style}
+                    onClick={() => handleSetEdgeStyle(style)}
+                    className={`flex-1 flex flex-col items-center gap-1 py-1.5 px-1 rounded border text-[11px] transition-colors ${
+                      isActive
+                        ? "border-[#0d9488] bg-[#e6f4f3] text-[#0b7a70]"
+                        : "border-gray-200 hover:border-gray-300 text-gray-500"
+                    }`}
+                  >
+                    <svg width="40" height="6" viewBox="0 0 40 6">
+                      <line
+                        x1="0" y1="3" x2="40" y2="3"
+                        stroke={isActive ? "#0d9488" : "#94a3b8"}
+                        strokeWidth="2"
+                        strokeDasharray={
+                          style === "dashed" ? "6 4" : style === "dotted" ? "2 4" : undefined
+                        }
+                        strokeLinecap={style === "dotted" ? "round" : undefined}
+                      />
+                    </svg>
+                    <span>{style}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
       {/* Pane context menu (right-click on empty canvas to create standalone node) — editors only */}

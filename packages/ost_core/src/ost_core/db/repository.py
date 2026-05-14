@@ -441,6 +441,7 @@ class TreeRepository:
                 override_fill_style=data.override_fill_style,
                 override_font_light=data.override_font_light,
                 edge_thickness=data.edge_thickness,
+                edge_style=data.edge_style,
                 sort_order=sort_order,
                 assumption=data.assumption or "",
                 evidence=data.evidence or "",
@@ -525,6 +526,8 @@ class TreeRepository:
                 row.override_font_light = data.override_font_light
             if data.edge_thickness is not None:
                 row.edge_thickness = data.edge_thickness or None
+            if data.edge_style is not None:
+                row.edge_style = data.edge_style or None
             if data.assumption is not None:
                 changed_fields.append("assumption")
                 row.assumption = data.assumption
@@ -1182,6 +1185,7 @@ class TreeRepository:
             override_font_light=row.override_font_light,
             sort_order=row.sort_order,
             edge_thickness=row.edge_thickness,
+            edge_style=row.edge_style,
             assumption=row.assumption or "",
             evidence=row.evidence or "",
             version=row.version or 1,
@@ -1651,6 +1655,7 @@ class TreeRepository:
                     override_font_light=node_data.get("override_font_light"),
                     sort_order=node_data.get("sort_order", 0),
                     edge_thickness=node_data.get("edge_thickness"),
+                    edge_style=node_data.get("edge_style"),
                     assumption=node_data.get("assumption", ""),
                     evidence=node_data.get("evidence", ""),
                 )
