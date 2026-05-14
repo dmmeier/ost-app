@@ -42,6 +42,8 @@ export function RichTextEditor({
 
   // Track the last value emitted by onChange to avoid feedback loops
   const lastEmittedRef = useRef(value);
+  // Suppress onChange during programmatic setContent to avoid dirty-flag race conditions
+  const isProgrammaticRef = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -63,6 +65,7 @@ export function RichTextEditor({
     content: value,
     editable: !disabled,
     onUpdate: ({ editor: ed }) => {
+      if (isProgrammaticRef.current) return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const md = (ed.storage as any).markdown.getMarkdown();
       lastEmittedRef.current = md;
@@ -97,7 +100,9 @@ export function RichTextEditor({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const currentMd = (editor.storage as any).markdown.getMarkdown();
     if (currentMd !== value) {
+      isProgrammaticRef.current = true;
       editor.commands.setContent(value);
+      isProgrammaticRef.current = false;
       lastEmittedRef.current = value;
     }
   }, [editor, value]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useEffect, useCallback } from "react";
+import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { NodeType, BubbleDefaults, FillStyle } from "@/lib/types";
 import { useTreeStore } from "@/stores/tree-store";
@@ -8,6 +8,7 @@ import { DEFAULT_BUBBLE_DEFAULTS } from "@/lib/colors";
 import { getFillStyle } from "@/lib/fill-patterns";
 import { api } from "@/lib/api-client";
 import { useQueryClient } from "@tanstack/react-query";
+import { markdownToHtml } from "@/lib/markdown-to-html";
 
 interface OSTNodeData {
   title: string;
@@ -94,6 +95,11 @@ function OSTNodeComponent({ id, data }: NodeProps) {
   const hasFill = fillColor !== null && fillStyle !== "none";
   const fontLight = hasFill && (nodeData.fontLight ?? false);
 
+  const descriptionHtml = useMemo(
+    () => markdownToHtml(nodeData.description || ""),
+    [nodeData.description]
+  );
+
   return (
     <div
       className={`relative px-4 py-3 rounded-lg shadow-sm min-w-[200px] max-w-[280px] ${
@@ -135,7 +141,10 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         </span>
       )}
       {nodeData.description && (
-        <div className={`text-xs mt-1 line-clamp-2 ${fontLight ? "text-white/80" : "text-gray-600"}`}>{nodeData.description}</div>
+        <div
+          className={`text-xs mt-1 line-clamp-2 rich-text-display ${fontLight ? "text-white/80" : "text-gray-600"}`}
+          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+        />
       )}
       {/* Tag chips */}
       {nodeData.tags && nodeData.tags.length > 0 && (

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useUpdateTree, useProject, useUpdateProject, useProjectTags, useCreateTag, useUpdateTag, useDeleteTag, useBubbleDefaults, useUpdateBubbleDefaults } from "@/hooks/use-tree";
 import { TreeWithNodes, BubbleDefaults, BubbleTypeDefault, STANDARD_NODE_TYPES, FillStyle } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { DEFAULT_BUBBLE_DEFAULTS, getNodeLabel } from "@/lib/colors";
 import { getFillStyle, FILL_STYLE_OPTIONS } from "@/lib/fill-patterns";
@@ -183,22 +183,23 @@ export function ContextPanel({ tree }: ContextPanelProps) {
             <Badge variant="outline" className="text-[10px] py-0">shared</Badge>
           </div>
           <div className="relative">
-            <Textarea
+            <RichTextEditor
               value={projectContext}
-              onChange={(e) => { setProjectContext(e.target.value); setProjectDirty(true); }}
+              onChange={(val) => { setProjectContext(val); setProjectDirty(true); }}
               placeholder="Project background: what is it about? Who are the stakeholders? What constraints exist?"
-              className="text-sm resize-y pb-8 min-h-[60px] overflow-y-auto"
-              rows={2}
+              minRows={2}
             />
             {hasProjectChanges && (
-              <Button
-                size="sm"
-                onClick={handleSaveProjectContext}
-                disabled={updateProject.isPending}
-                className="absolute bottom-2 right-2 h-6 text-[10px] px-2 shadow-sm z-10"
-              >
-                {updateProject.isPending ? "Saving..." : "Save"}
-              </Button>
+              <div className="flex justify-end mt-1">
+                <Button
+                  size="sm"
+                  onClick={handleSaveProjectContext}
+                  disabled={updateProject.isPending}
+                  className="h-6 text-[10px] px-2 shadow-sm"
+                >
+                  {updateProject.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -210,22 +211,23 @@ export function ContextPanel({ tree }: ContextPanelProps) {
             <Badge variant="outline" className="text-[10px] py-0">this tree</Badge>
           </div>
           <div className="relative">
-            <Textarea
+            <RichTextEditor
               value={treeContext}
-              onChange={(e) => { setTreeContext(e.target.value); setTreeDirty(true); }}
+              onChange={(val) => { setTreeContext(val); setTreeDirty(true); }}
               placeholder="Context specific to this OST: what area does it focus on? Any relevant research or findings?"
-              className="text-sm resize-y pb-8 min-h-[60px] overflow-y-auto"
-              rows={2}
+              minRows={2}
             />
             {hasTreeChanges && (
-              <Button
-                size="sm"
-                onClick={handleSaveTreeContext}
-                disabled={updateTree.isPending}
-                className="absolute bottom-2 right-2 h-6 text-[10px] px-2 shadow-sm z-10"
-              >
-                {updateTree.isPending ? "Saving..." : "Save"}
-              </Button>
+              <div className="flex justify-end mt-1">
+                <Button
+                  size="sm"
+                  onClick={handleSaveTreeContext}
+                  disabled={updateTree.isPending}
+                  className="h-6 text-[10px] px-2 shadow-sm"
+                >
+                  {updateTree.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
             )}
           </div>
         </div>

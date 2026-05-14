@@ -1,4 +1,6 @@
-1. [COMPLETED] Rich Text Formatting in Text Fields — Implemented Tiptap rich text editor with markdown storage for description, assumption, and evidence fields. Toolbar with Bold, Italic, Underline, Bullet List, and Ordered List. Keyboard shortcuts (Cmd+B/I/U) supported. Auto-save with debounce works correctly. No backend changes needed (markdown stored as plain text).
+1. [COMPLETED] Rich Text Formatting in Text Fields — Implemented Tiptap rich text editor with markdown storage for ALL multiline text fields: description, assumption, evidence, Project Context, and Tree Context. Toolbar with Bold, Italic, Underline, Bullet List, and Ordered List (appears on focus only). Keyboard shortcuts (Cmd+B/I/U) supported. Auto-save with debounce works for assumption/evidence; explicit Save button for context fields. Fixed race condition in RichTextEditor (isProgrammaticRef suppresses onChange during programmatic setContent). No backend changes needed (markdown stored as plain text).
+
+1.1 [COMPLETED] Markdown formatting on graph viewer — Description text on canvas node bubbles now renders markdown (bold, italic, lists) via shared markdownToHtml utility. Title remains plain text. Extracted markdownToHtml to shared lib/markdown-to-html.ts used by both OSTNode and InlineEditableText.
 
 2. I can make connection lines between bubbles of different thickness. I would like a slider that allows a more gradual thickness change. I also want to be able to make lines dashed or dotted (for instance, when a connection has been rejected by experiment). 
 
