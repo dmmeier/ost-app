@@ -14,6 +14,8 @@ from ost_core.models import (
     EdgeHypothesisCreate,
     EdgeHypothesisUpdate,
     HypothesisType,
+    NodeAssumptionCreate,
+    NodeAssumptionUpdate,
     NodeCreate,
     NodeUpdate,
     ProjectCreate,
@@ -388,6 +390,34 @@ def _execute_tool(
                 ProjectUpdate(name=arguments["name"]),
             )
             return json.dumps({"status": "renamed", "name": project.name, "project_id": str(project.id)})
+
+        elif tool_name == "add_assumption":
+            assumption = service.add_assumption(
+                UUID(arguments["node_id"]),
+                NodeAssumptionCreate(
+                    text=arguments.get("text", ""),
+                    evidence=arguments.get("evidence", ""),
+                ),
+            )
+            return json.dumps(assumption.model_dump(mode="json"))
+
+        elif tool_name == "update_assumption":
+            assumption = service.update_assumption(
+                UUID(arguments["assumption_id"]),
+                NodeAssumptionUpdate(
+                    text=arguments.get("text"),
+                    evidence=arguments.get("evidence"),
+                    status=arguments.get("status"),
+                ),
+            )
+            return json.dumps(assumption.model_dump(mode="json"))
+
+        elif tool_name == "reject_assumption":
+            assumption = service.update_assumption(
+                UUID(arguments["assumption_id"]),
+                NodeAssumptionUpdate(status="rejected"),
+            )
+            return json.dumps(assumption.model_dump(mode="json"))
 
         elif tool_name == "create_project":
             project = service.create_project(

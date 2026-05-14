@@ -12,9 +12,15 @@ interface VersionPanelProps {
   tree: TreeWithNodes;
 }
 
+/** Ensure a timestamp string is parsed as UTC (backend stores UTC without Z suffix). */
+function parseUTC(dateStr: string): Date {
+  const s = dateStr.endsWith("Z") || dateStr.includes("+") ? dateStr : dateStr + "Z";
+  return new Date(s);
+}
+
 function relativeTime(dateStr: string): string {
   const now = Date.now();
-  const then = new Date(dateStr).getTime();
+  const then = parseUTC(dateStr).getTime();
   const diffMs = now - then;
   const diffSec = Math.floor(diffMs / 1000);
   if (diffSec < 30) return "just now";
@@ -26,12 +32,11 @@ function relativeTime(dateStr: string): string {
   if (diffHr < 24) return remainMin > 0 ? `${diffHr}h ${remainMin}m ago` : `${diffHr}h ago`;
   const diffDays = Math.floor(diffHr / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  return parseUTC(dateStr).toLocaleDateString();
 }
 
 function absoluteTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleString(undefined, {
+  return parseUTC(dateStr).toLocaleString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",

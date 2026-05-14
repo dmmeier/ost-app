@@ -20,6 +20,9 @@ interface OSTNodeData {
   childCount?: number;
   isCollapsed?: boolean;
   hasAssumption?: boolean;
+  assumptionCount?: number;
+  confirmedAssumptionCount?: number;
+  rejectedAssumptionCount?: number;
   tags?: string[];
   isAncestorOnly?: boolean;
   depthHidesChildren?: boolean;
@@ -175,7 +178,37 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         </div>
       )}
       {/* Assumption indicator */}
-      {nodeData.hasAssumption && (
+      {(nodeData.assumptionCount ?? 0) > 0 && (() => {
+        const total = nodeData.assumptionCount ?? 0;
+        const confirmed = nodeData.confirmedAssumptionCount ?? 0;
+        const rejected = nodeData.rejectedAssumptionCount ?? 0;
+        const untested = total - confirmed - rejected;
+        const parts: string[] = [];
+        if (confirmed > 0) parts.push(`${confirmed} confirmed`);
+        if (untested > 0) parts.push(`${untested} untested`);
+        if (rejected > 0) parts.push(`${rejected} rejected`);
+        return (
+          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+            {confirmed > 0 && (
+              <span className={`text-[10px] ${fontLight ? "text-green-200" : "text-green-600"}`}>
+                {confirmed} <span className="inline-block">&#10003;</span>
+              </span>
+            )}
+            {untested > 0 && (
+              <span className={`text-[10px] ${fontLight ? "text-blue-200" : "text-blue-500"}`}>
+                {untested} untested
+              </span>
+            )}
+            {rejected > 0 && (
+              <span className={`text-[10px] ${fontLight ? "text-red-300" : "text-red-400"}`}>
+                {rejected} <span className="inline-block">&#10007;</span>
+              </span>
+            )}
+          </div>
+        );
+      })()}
+      {/* Legacy single assumption indicator */}
+      {(nodeData.assumptionCount ?? 0) === 0 && nodeData.hasAssumption && (
         <div className="flex items-center gap-1 mt-1.5">
           <span className={`text-[10px] ${fontLight ? "text-blue-200" : "text-blue-500"}`}>
             has assumption

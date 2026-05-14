@@ -78,6 +78,7 @@ export interface Node {
   edge_style: EdgeStyle | null;
   assumption: string;
   evidence: string;
+  assumptions: NodeAssumption[];
   version: number;
   last_modified_by: string | null;
   last_modified_by_name: string | null;
@@ -93,6 +94,31 @@ export interface Tag {
   fill_style: string | null;
   font_light: boolean;
   created_at: string;
+}
+
+export type AssumptionStatus = "untested" | "confirmed" | "rejected";
+
+export interface NodeAssumption {
+  id: string;
+  node_id: string;
+  text: string;
+  evidence: string;
+  status: AssumptionStatus;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NodeAssumptionCreate {
+  text?: string;
+  evidence?: string;
+}
+
+export interface NodeAssumptionUpdate {
+  text?: string;
+  evidence?: string;
+  status?: AssumptionStatus;
+  sort_order?: number;
 }
 
 export interface EdgeHypothesis {

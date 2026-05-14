@@ -15,6 +15,8 @@ from ost_core.models import (
     EdgeHypothesisCreate,
     EdgeHypothesisUpdate,
     HypothesisType,
+    NodeAssumptionCreate,
+    NodeAssumptionUpdate,
     NodeCreate,
     NodeUpdate,
     ProjectCreate,
@@ -36,6 +38,8 @@ git_app = typer.Typer(name="git", help="Git export commands")
 app.add_typer(git_app, name="git")
 auth_app = typer.Typer(name="auth", help="Authentication commands")
 app.add_typer(auth_app, name="auth")
+assumption_app = typer.Typer(name="assumption", help="Manage node assumptions")
+app.add_typer(assumption_app, name="assumption")
 
 
 console = Console()
@@ -725,6 +729,22 @@ def show_node(
     icon = NODE_ICONS.get(node.node_type, "")
     color = NODE_COLORS.get(node.node_type, "")
 
+    # Build assumptions display
+    assumptions = service.get_assumptions_for_node(UUID(node_id))
+    if assumptions:
+        assumption_lines = []
+        for i, a in enumerate(assumptions):
+            status_colors = {"confirmed": "[green]confirmed[/green]", "rejected": "[red]rejected[/red]"}
+            status = status_colors.get(a.status, "[dim]untested[/dim]")
+            assumption_lines.append(f"  #{i+1} ({status}) {a.text or '-'}")
+            if a.evidence:
+                assumption_lines.append(f"      Evidence: {a.evidence}")
+        assumption_text = "\n".join(assumption_lines)
+    else:
+        assumption_text = f"  (legacy) {node.assumption or '-'}"
+        if node.evidence:
+            assumption_text += f"\n      Evidence: {node.evidence}"
+
     console.print(Panel(
         f"[{color}]{icon} {node.title}[/{color}]\n\n"
         f"[bold]Type:[/bold] {node.node_type}\n"
@@ -733,8 +753,7 @@ def show_node(
         f"[bold]Tree:[/bold] {node.tree_id}\n"
         f"[bold]Parent:[/bold] {node.parent_id or 'None (root)'}\n"
         f"[bold]Description:[/bold] {node.description or '-'}\n"
-        f"[bold]Assumption:[/bold] {node.assumption or '-'}\n"
-        f"[bold]Evidence:[/bold] {node.evidence or '-'}\n"
+        f"[bold]Assumptions:[/bold]\n{assumption_text}\n"
         f"[bold]Version:[/bold] {node.version}\n"
         f"[bold]Created:[/bold] {str(node.created_at)[:19]}",
         border_style=color.replace("bold ", "") if color else "white",
@@ -1535,6 +1554,107 @@ def auth_logout():
     """Clear the saved authentication token."""
     _clear_token()
     console.print("[green]Logged out.[/green]")
+
+
+# ── Assumption commands ──────────────────────────────────────
+
+
+@assumption_app.command("add")
+def assumption_add(
+    node_id: str = typer.Argument(..., help="Node ID"),
+    text: str = typer.Argument(..., help="Assumption text"),
+    evidence: str = typer.Option("", "--evidence", "-e", help="Supporting evidence"),
+):
+    """Add a new assumption to a node."""
+    service = _get_service()
+    assumption = service.add_assumption(
+        UUID(node_id),
+        NodeAssumptionCreate(text=text, evidence=evidence),
+    )
+    console.print(f"[green]Added assumption {str(assumption.id)[:8]}... to node {node_id[:8]}...[/green]")
+    console.print(f"  Text: {assumption.text}")
+    if assumption.evidence:
+        console.print(f"  Evidence: {assumption.evidence}")
+
+
+@assumption_app.command("list")
+def assumption_list(
+    node_id: str = typer.Argument(..., help="Node ID"),
+):
+    """List all assumptions for a node."""
+    service = _get_service()
+    assumptions = service.get_assumptions_for_node(UUID(node_id))
+
+    if not assumptions:
+        console.print(f"[dim]No assumptions on node {node_id[:8]}...[/dim]")
+        return
+
+    table = Table(title=f"Assumptions for node {node_id[:8]}...")
+    table.add_column("#", style="dim", width=3)
+    table.add_column("ID", style="dim")
+    table.add_column("Assumption", style="bold")
+    table.add_column("Evidence")
+    table.add_column("Status")
+
+    for i, a in enumerate(assumptions):
+        status_colors = {"confirmed": "[green]confirmed[/green]", "rejected": "[red]rejected[/red]"}
+        status = status_colors.get(a.status, "[dim]untested[/dim]")
+        table.add_row(
+            str(i + 1),
+            str(a.id)[:8] + "...",
+            a.text or "-",
+            a.evidence or "-",
+            status,
+        )
+
+    console.print(table)
+
+
+@assumption_app.command("update")
+def assumption_update(
+    assumption_id: str = typer.Argument(..., help="Assumption ID"),
+    text: Optional[str] = typer.Option(None, "--text", "-t", help="New assumption text"),
+    evidence: Optional[str] = typer.Option(None, "--evidence", "-e", help="New evidence"),
+    status: Optional[str] = typer.Option(None, "--status", "-s", help="Status: untested, confirmed, or rejected"),
+):
+    """Update an assumption's text, evidence, or status."""
+    service = _get_service()
+    data = NodeAssumptionUpdate(text=text, evidence=evidence, status=status)
+    assumption = service.update_assumption(UUID(assumption_id), data)
+    console.print(f"[green]Updated assumption {str(assumption.id)[:8]}... ({assumption.status})[/green]")
+    console.print(f"  Text: {assumption.text}")
+    if assumption.evidence:
+        console.print(f"  Evidence: {assumption.evidence}")
+
+
+@assumption_app.command("reject")
+def assumption_reject(
+    assumption_id: str = typer.Argument(..., help="Assumption ID"),
+):
+    """Mark an assumption as rejected."""
+    service = _get_service()
+    assumption = service.update_assumption(
+        UUID(assumption_id),
+        NodeAssumptionUpdate(status="rejected"),
+    )
+    console.print(f"[red]Rejected assumption {str(assumption.id)[:8]}...[/red]")
+    console.print(f"  Text: {assumption.text}")
+
+
+@assumption_app.command("delete")
+def assumption_delete(
+    assumption_id: str = typer.Argument(..., help="Assumption ID"),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
+):
+    """Delete an assumption."""
+    if not force:
+        confirm = typer.confirm("Delete this assumption?")
+        if not confirm:
+            raise typer.Abort()
+    service = _get_service()
+    service.delete_assumption(UUID(assumption_id))
+    console.print(f"[green]Deleted assumption {assumption_id[:8]}...[/green]")
+
 
 if __name__ == "__main__":
     app()

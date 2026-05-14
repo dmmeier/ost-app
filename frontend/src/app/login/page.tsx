@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { Wordmark } from "@/components/brand/Wordmark";
-import { BrandMark } from "@/components/brand/BrandMark";
 
 type Mode = "login" | "register";
 
@@ -87,7 +86,6 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand header */}
         <div className="text-center mb-8">
-          <BrandMark size={48} className="mx-auto mb-3 text-[#0d9488]" />
           <Wordmark height={32} className="mx-auto" />
         </div>
 

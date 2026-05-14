@@ -251,6 +251,52 @@ CHAT_TOOLS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
+        name="add_assumption",
+        description=(
+            "Add a new assumption to a node. Each node can have multiple assumptions. "
+            "An assumption explains why this node matters for its parent. "
+            "Use this instead of update_node(assumption=...) for the new multi-assumption model."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "node_id": {"type": "string", "description": "The node ID to add an assumption to"},
+                "text": {"type": "string", "description": "The assumption text"},
+                "evidence": {"type": "string", "description": "Supporting data, observations, or research findings"},
+            },
+            "required": ["node_id", "text"],
+        },
+    ),
+    ToolDefinition(
+        name="update_assumption",
+        description="Update an existing assumption's text, evidence, or status.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "assumption_id": {"type": "string", "description": "The assumption ID to update"},
+                "text": {"type": "string", "description": "New assumption text"},
+                "evidence": {"type": "string", "description": "New evidence text"},
+                "status": {
+                    "type": "string",
+                    "enum": ["untested", "confirmed", "rejected"],
+                    "description": "Assumption status: untested, confirmed, or rejected",
+                },
+            },
+            "required": ["assumption_id"],
+        },
+    ),
+    ToolDefinition(
+        name="reject_assumption",
+        description="Mark an assumption as rejected. Shorthand for update_assumption(status='rejected').",
+        parameters={
+            "type": "object",
+            "properties": {
+                "assumption_id": {"type": "string", "description": "The assumption ID to reject"},
+            },
+            "required": ["assumption_id"],
+        },
+    ),
+    ToolDefinition(
         name="get_tree_filtered_by_tag",
         description="Get a tree filtered to only show nodes with the specified tag and their ancestors. Useful for focusing on a specific theme.",
         parameters={

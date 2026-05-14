@@ -291,7 +291,11 @@ export function useAutoValidate(tree: TreeWithNodes | null | undefined) {
 
   // Track node count + assumption changes as a change signal
   const nodeCount = tree?.nodes.length ?? 0;
-  const assumptionSignal = tree?.nodes.map((n) => n.assumption || "").join("|") ?? "";
+  const assumptionSignal = tree?.nodes.map((n) => {
+    const legacy = n.assumption || "";
+    const multi = (n.assumptions || []).map((a) => `${a.text}:${a.status}`).join(",");
+    return `${legacy}|${multi}`;
+  }).join("||") ?? "";
   const treeId = tree?.id ?? null;
 
   useEffect(() => {

@@ -22,6 +22,9 @@ from ost_core.models import (
     GitCommitLog,
     HypothesisType,
     Node,
+    NodeAssumption,
+    NodeAssumptionCreate,
+    NodeAssumptionUpdate,
     NodeCreate,
     NodeUpdate,
     Project,
@@ -196,6 +199,20 @@ class TreeService:
     def get_edges_for_tree(self, tree_id: UUID) -> list[EdgeHypothesis]:
         return self.repo.get_edges_for_tree(tree_id)
 
+    # ── Node Assumption operations ────────────────────────────
+
+    def add_assumption(self, node_id: UUID, data: NodeAssumptionCreate) -> NodeAssumption:
+        return self.repo.add_assumption(node_id, data)
+
+    def update_assumption(self, assumption_id: UUID, data: NodeAssumptionUpdate) -> NodeAssumption:
+        return self.repo.update_assumption(assumption_id, data)
+
+    def delete_assumption(self, assumption_id: UUID) -> None:
+        self.repo.delete_assumption(assumption_id)
+
+    def get_assumptions_for_node(self, node_id: UUID) -> list[NodeAssumption]:
+        return self.repo.get_assumptions_for_node(node_id)
+
     # ── Export tree to JSON ──────────────────────────────────
 
     def export_tree(self, tree_id: UUID) -> dict:
@@ -350,6 +367,26 @@ class TreeService:
                 )
                 id_map[old_id] = new_node.id
                 queue.append(old_id)
+
+                # Restore node assumptions
+                for a_data in node_data.get("assumptions", []):
+                    self.add_assumption(
+                        new_node.id,
+                        NodeAssumptionCreate(
+                            text=a_data.get("text", ""),
+                            evidence=a_data.get("evidence", ""),
+                        ),
+                    )
+                    # Restore status if not untested
+                    a_status = a_data.get("status", "untested")
+                    if a_status != "untested":
+                        assumptions = self.get_assumptions_for_node(new_node.id)
+                        if assumptions:
+                            last = assumptions[-1]
+                            self.update_assumption(
+                                last.id,
+                                NodeAssumptionUpdate(status=a_status),
+                            )
 
                 # Restore node status if archived
                 node_status = node_data.get("status")

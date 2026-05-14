@@ -114,6 +114,25 @@ class NodeRow(Base):
     )
 
 
+class NodeAssumptionRow(Base):
+    __tablename__ = "node_assumptions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_str)
+    node_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    text: Mapped[str] = mapped_column(Text, default="")
+    evidence: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="untested")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    __table_args__ = (
+        Index("ix_node_assumptions_node", "node_id"),
+    )
+
+
 class EdgeHypothesisRow(Base):
     __tablename__ = "edge_hypotheses"
 

@@ -133,6 +133,7 @@ class Node(BaseModel):
     edge_style: Optional[str] = None
     assumption: str = ""
     evidence: str = ""
+    assumptions: list["NodeAssumption"] = Field(default_factory=list)
     version: int = 1
     last_modified_by: UUID | None = None
     last_modified_by_name: str | None = None
@@ -151,3 +152,35 @@ class Node(BaseModel):
         if valid is None:
             return False  # Custom types are not leaf types by default
         return len(valid) == 0
+
+
+class NodeAssumption(BaseModel):
+    """A single assumption with evidence on a node."""
+    id: UUID = Field(default_factory=uuid4)
+    node_id: UUID
+    text: str = ""
+    evidence: str = ""
+    status: str = "untested"  # untested | confirmed | rejected
+    sort_order: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    model_config = {"from_attributes": True}
+
+    @property
+    def rejected(self) -> bool:
+        return self.status == "rejected"
+
+
+class NodeAssumptionCreate(BaseModel):
+    """Data to create a new assumption."""
+    text: str = ""
+    evidence: str = ""
+
+
+class NodeAssumptionUpdate(BaseModel):
+    """Fields that can be updated on an assumption."""
+    text: Optional[str] = None
+    evidence: Optional[str] = None
+    status: Optional[str] = None  # untested | confirmed | rejected
+    sort_order: Optional[int] = None

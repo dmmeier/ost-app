@@ -1,4 +1,4 @@
-import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog, User, UserWithToken, AuthStatus, ActivityLog, ProjectMember } from "./types";
+import { Project, ProjectCreate, ProjectUpdate, ProjectWithTrees, Tree, TreeCreate, TreeUpdate, TreeWithNodes, Node, NodeCreate, NodeUpdate, NodeAssumption, NodeAssumptionCreate, NodeAssumptionUpdate, EdgeHypothesis, ValidationReport, TreeSnapshot, SnapshotDetail, ChatHistoryMessage, Tag, BubbleDefaults, GitStatusResponse, GitCommitResponse, GitAuthor, GitCommitLog, User, UserWithToken, AuthStatus, ActivityLog, ProjectMember } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -108,6 +108,14 @@ export const api = {
     reorder: (id: string, direction: "left" | "right") =>
       fetchAPI<void>(`/nodes/${id}/reorder`, { method: "POST", body: JSON.stringify({ direction }) }),
     children: (id: string) => fetchAPI<Node[]>(`/nodes/${id}/children`),
+  },
+  assumptions: {
+    create: (nodeId: string, data: NodeAssumptionCreate = {}) =>
+      fetchAPI<NodeAssumption>(`/nodes/${nodeId}/assumptions`, { method: "POST", body: JSON.stringify(data) }),
+    update: (nodeId: string, assumptionId: string, data: NodeAssumptionUpdate) =>
+      fetchAPI<NodeAssumption>(`/nodes/${nodeId}/assumptions/${assumptionId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (nodeId: string, assumptionId: string) =>
+      fetchAPI<void>(`/nodes/${nodeId}/assumptions/${assumptionId}`, { method: "DELETE" }),
   },
   edges: {
     get: (parentId: string, childId: string) => fetchAPI<EdgeHypothesis>(`/edges/${parentId}/${childId}`),

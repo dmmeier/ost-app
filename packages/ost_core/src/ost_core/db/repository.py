@@ -11,6 +11,7 @@ from ost_core.db.schema import (
     ChatMessageRow,
     EdgeHypothesisRow,
     GitCommitLogRow,
+    NodeAssumptionRow,
     NodeClosureRow,
     NodeRow,
     NodeTagRow,
@@ -38,6 +39,9 @@ from ost_core.models import (
     GitAuthor,
     GitCommitLog,
     Node,
+    NodeAssumption,
+    NodeAssumptionCreate,
+    NodeAssumptionUpdate,
     NodeCreate,
     NodeUpdate,
     Project,
@@ -729,6 +733,28 @@ class TreeRepository:
                 for node in nodes:
                     node.tags = node_tag_map.get(str(node.id), [])
 
+            # Bulk-load assumptions for all nodes in this tree
+            if node_ids:
+                assumption_rows = session.execute(
+                    select(NodeAssumptionRow).where(NodeAssumptionRow.node_id.in_(node_ids))
+                    .order_by(NodeAssumptionRow.sort_order, NodeAssumptionRow.created_at)
+                ).scalars().all()
+                node_assumption_map: dict[str, list] = {}
+                for ar in assumption_rows:
+                    a = NodeAssumption(
+                        id=UUID(ar.id),
+                        node_id=UUID(ar.node_id),
+                        text=ar.text or "",
+                        evidence=ar.evidence or "",
+                        status=ar.status or "untested",
+                        sort_order=ar.sort_order,
+                        created_at=ar.created_at,
+                        updated_at=ar.updated_at,
+                    )
+                    node_assumption_map.setdefault(str(ar.node_id), []).append(a)
+                for node in nodes:
+                    node.assumptions = node_assumption_map.get(str(node.id), [])
+
             edge_rows = (
                 session.execute(
                     select(EdgeHypothesisRow).where(
@@ -1370,6 +1396,89 @@ class TreeRepository:
             created_at=row.created_at,
         )
 
+    # ── Node Assumption CRUD ──────────────────────────────────
+
+    def add_assumption(self, node_id: UUID, data: NodeAssumptionCreate) -> NodeAssumption:
+        with self._session() as session:
+            node = session.get(NodeRow, str(node_id))
+            if not node:
+                raise NodeNotFoundError(node_id)
+            # Auto-assign sort_order
+            max_order = session.execute(
+                select(NodeAssumptionRow.sort_order)
+                .where(NodeAssumptionRow.node_id == str(node_id))
+                .order_by(NodeAssumptionRow.sort_order.desc())
+            ).first()
+            sort_order = (max_order[0] + 1) if max_order else 0
+            row = NodeAssumptionRow(
+                id=str(uuid4()),
+                node_id=str(node_id),
+                text=data.text,
+                evidence=data.evidence,
+                sort_order=sort_order,
+            )
+            session.add(row)
+            self._bump_tree_version(session, node.tree_id)
+            session.commit()
+            session.refresh(row)
+            return self._assumption_from_row(row)
+
+    def update_assumption(self, assumption_id: UUID, data: NodeAssumptionUpdate) -> NodeAssumption:
+        with self._session() as session:
+            row = session.get(NodeAssumptionRow, str(assumption_id))
+            if not row:
+                raise NodeNotFoundError(assumption_id)
+            if data.text is not None:
+                row.text = data.text
+            if data.evidence is not None:
+                row.evidence = data.evidence
+            if data.status is not None:
+                row.status = data.status
+            if data.sort_order is not None:
+                row.sort_order = data.sort_order
+            row.updated_at = datetime.now(UTC)
+            # Bump tree version
+            node = session.get(NodeRow, row.node_id)
+            if node:
+                self._bump_tree_version(session, node.tree_id)
+            session.commit()
+            session.refresh(row)
+            return self._assumption_from_row(row)
+
+    def delete_assumption(self, assumption_id: UUID) -> None:
+        with self._session() as session:
+            row = session.get(NodeAssumptionRow, str(assumption_id))
+            if not row:
+                raise NodeNotFoundError(assumption_id)
+            # Bump tree version
+            node = session.get(NodeRow, row.node_id)
+            if node:
+                self._bump_tree_version(session, node.tree_id)
+            session.delete(row)
+            session.commit()
+
+    def get_assumptions_for_node(self, node_id: UUID) -> list[NodeAssumption]:
+        with self._session() as session:
+            rows = session.execute(
+                select(NodeAssumptionRow)
+                .where(NodeAssumptionRow.node_id == str(node_id))
+                .order_by(NodeAssumptionRow.sort_order, NodeAssumptionRow.created_at)
+            ).scalars().all()
+            return [self._assumption_from_row(r) for r in rows]
+
+    @staticmethod
+    def _assumption_from_row(row: NodeAssumptionRow) -> NodeAssumption:
+        return NodeAssumption(
+            id=UUID(row.id),
+            node_id=UUID(row.node_id),
+            text=row.text or "",
+            evidence=row.evidence or "",
+            status=row.status or "untested",
+            sort_order=row.sort_order,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
     # ── Chat History ─────────────────────────────────────────
 
     def save_chat_messages(self, tree_id: UUID, messages: list[dict], mode: str = "coach", user_id: str | None = None) -> None:
@@ -1452,6 +1561,19 @@ class TreeRepository:
                     snapshot_data["node_tags"] = [
                         {"node_id": r.node_id, "tag_id": r.tag_id}
                         for r in node_tag_rows
+                    ]
+
+                    # Include node assumptions
+                    assumption_rows = session.execute(
+                        select(NodeAssumptionRow).where(NodeAssumptionRow.node_id.in_(node_ids))
+                    ).scalars().all()
+                    snapshot_data["node_assumptions"] = [
+                        {
+                            "id": r.id, "node_id": r.node_id, "text": r.text or "",
+                            "evidence": r.evidence or "", "status": r.status or "untested",
+                            "sort_order": r.sort_order,
+                        }
+                        for r in assumption_rows
                     ]
 
         with self._session() as session:
@@ -1721,6 +1843,23 @@ class TreeRepository:
                     tag_row.color = tag_snap.get("color", tag_row.color)
                     tag_row.fill_style = tag_snap.get("fill_style")
                     tag_row.font_light = tag_snap.get("font_light", False)
+
+            # Restore node assumptions
+            # Delete existing assumptions for this tree's nodes
+            tree_node_ids = [n["id"] for n in data.get("nodes", [])]
+            if tree_node_ids:
+                session.execute(
+                    delete(NodeAssumptionRow).where(NodeAssumptionRow.node_id.in_(tree_node_ids))
+                )
+            for a_data in data.get("node_assumptions", []):
+                session.add(NodeAssumptionRow(
+                    id=a_data.get("id", str(uuid4())),
+                    node_id=a_data["node_id"],
+                    text=a_data.get("text", ""),
+                    evidence=a_data.get("evidence", ""),
+                    status=a_data.get("status", "untested"),
+                    sort_order=a_data.get("sort_order", 0),
+                ))
 
             # Update tree metadata
             tree_row = session.get(TreeRow, str(tree_id))

@@ -122,7 +122,16 @@ def check_edge_completeness(tree: TreeWithNodes) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
 
     for node in tree.nodes:
-        if node.parent_id and not (node.assumption or "").strip():
+        if not node.parent_id:
+            continue
+        # Check new multi-assumption list first: at least one non-rejected with non-empty text
+        has_active_assumption = any(
+            not a.rejected and (a.text or "").strip()
+            for a in getattr(node, "assumptions", [])
+        )
+        # Fall back to legacy single assumption field
+        has_legacy_assumption = bool((node.assumption or "").strip())
+        if not has_active_assumption and not has_legacy_assumption:
             parent_title = "?"
             for n in tree.nodes:
                 if n.id == node.parent_id:

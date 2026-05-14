@@ -199,9 +199,90 @@ def _migrate_drop_edge_unique(engine: Engine) -> None:
         ))
 
 
+def _migrate_node_assumptions_schema(engine: Engine) -> None:
+    """Migrate node_assumptions from rejected boolean to status string if needed."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "node_assumptions" not in inspector.get_table_names():
+        return
+
+    columns = {c["name"] for c in inspector.get_columns("node_assumptions")}
+    if "status" in columns:
+        return  # Already migrated
+    if "rejected" not in columns:
+        return  # Neither column exists — unexpected, skip
+
+    # Recreate table with status column instead of rejected
+    with engine.begin() as conn:
+        conn.execute(text(
+            "CREATE TABLE node_assumptions_new ("
+            "  id VARCHAR(36) PRIMARY KEY,"
+            "  node_id VARCHAR(36) NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,"
+            "  text TEXT DEFAULT '',"
+            "  evidence TEXT DEFAULT '',"
+            "  status VARCHAR(20) DEFAULT 'untested',"
+            "  sort_order INTEGER DEFAULT 0,"
+            "  created_at DATETIME,"
+            "  updated_at DATETIME"
+            ")"
+        ))
+        conn.execute(text(
+            "INSERT INTO node_assumptions_new (id, node_id, text, evidence, status, sort_order, created_at, updated_at) "
+            "SELECT id, node_id, text, evidence, "
+            "CASE WHEN rejected = 1 THEN 'rejected' ELSE 'untested' END, "
+            "sort_order, created_at, updated_at FROM node_assumptions"
+        ))
+        conn.execute(text("DROP TABLE node_assumptions"))
+        conn.execute(text("ALTER TABLE node_assumptions_new RENAME TO node_assumptions"))
+        conn.execute(text("CREATE INDEX ix_node_assumptions_node ON node_assumptions(node_id)"))
+
+
+def _migrate_node_assumptions_data(engine: Engine) -> None:
+    """Migrate existing single assumption/evidence fields to the new node_assumptions table."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    table_names = inspector.get_table_names()
+
+    if "node_assumptions" not in table_names:
+        return  # Table not yet created, will be created by create_all
+
+    if "nodes" not in table_names:
+        return
+
+    # Check if there are already rows in node_assumptions — skip if migration already ran
+    with engine.begin() as conn:
+        count = conn.execute(text("SELECT COUNT(*) FROM node_assumptions")).scalar()
+        if count > 0:
+            return
+
+    # Migrate rows where assumption or evidence is non-empty
+    with engine.begin() as conn:
+        rows = conn.execute(text(
+            "SELECT id, assumption, evidence FROM nodes "
+            "WHERE (assumption IS NOT NULL AND assumption != '') "
+            "OR (evidence IS NOT NULL AND evidence != '')"
+        )).fetchall()
+
+        for node_id, assumption_text, evidence_text in rows:
+            import uuid
+            conn.execute(text(
+                "INSERT INTO node_assumptions (id, node_id, text, evidence, status, sort_order, created_at, updated_at) "
+                "VALUES (:id, :node_id, :text, :evidence, 'untested', 0, datetime('now'), datetime('now'))"
+            ), {
+                "id": str(uuid.uuid4()),
+                "node_id": node_id,
+                "text": assumption_text or "",
+                "evidence": evidence_text or "",
+            })
+
+
 def init_db(engine: Engine) -> None:
     """Create all tables if they don't exist."""
     Base.metadata.create_all(engine)
     _migrate_add_columns(engine)
     _migrate_projects(engine)
     _migrate_drop_edge_unique(engine)
+    _migrate_node_assumptions_schema(engine)
+    _migrate_node_assumptions_data(engine)

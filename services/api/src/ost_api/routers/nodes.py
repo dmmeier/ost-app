@@ -169,3 +169,48 @@ def get_ancestors(node_id: UUID, service: TreeService = Depends(get_service), us
         return service.get_ancestors(node_id)
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/{node_id}/assumptions")
+async def add_assumption(
+    node_id: str,
+    body: dict,
+    service: TreeService = Depends(get_service),
+):
+    """Add a new assumption to a node."""
+    from ost_core.models import NodeAssumptionCreate
+    data = NodeAssumptionCreate(
+        text=body.get("text", ""),
+        evidence=body.get("evidence", ""),
+    )
+    assumption = service.add_assumption(UUID(node_id), data)
+    return assumption.model_dump(mode="json")
+
+
+@router.patch("/{node_id}/assumptions/{assumption_id}")
+async def update_assumption(
+    node_id: str,
+    assumption_id: str,
+    body: dict,
+    service: TreeService = Depends(get_service),
+):
+    """Update an assumption."""
+    from ost_core.models import NodeAssumptionUpdate
+    data = NodeAssumptionUpdate(
+        text=body.get("text"),
+        evidence=body.get("evidence"),
+        status=body.get("status"),
+        sort_order=body.get("sort_order"),
+    )
+    assumption = service.update_assumption(UUID(assumption_id), data)
+    return assumption.model_dump(mode="json")
+
+
+@router.delete("/{node_id}/assumptions/{assumption_id}", status_code=204)
+async def delete_assumption(
+    node_id: str,
+    assumption_id: str,
+    service: TreeService = Depends(get_service),
+):
+    """Delete an assumption."""
+    service.delete_assumption(UUID(assumption_id))
