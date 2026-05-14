@@ -5,10 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { TreeSnapshot, TreeWithNodes, GitCommitLog, GitStatusResponse, GitAuthor, GitCommitResponse } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { SnapshotDiffViewer } from "./SnapshotDiffViewer";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCanEdit } from "@/hooks/use-permissions";
-import { Database, GitBranch, ChevronDown, RotateCcw } from "lucide-react";
+import { Database, GitBranch, ChevronDown, RotateCcw, Loader2 } from "lucide-react";
 
 /* ── Design tokens ──────────────────────────────────────── */
 const T = {
@@ -68,17 +69,6 @@ function absoluteTime(dateStr: string): string {
 type TimelineEntry =
   | { type: "snapshot"; data: TreeSnapshot }
   | { type: "git_commit"; data: GitCommitLog };
-
-/* ── Inline spinner for save buttons ───────────────────── */
-function Spinner({ color }: { color: string }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 1s linear infinite" }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2.5" opacity="0.25" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 /* ── Entry glyph markers (22px) ────────────────────────── */
 function EntryGlyph({ kind }: { kind: "current" | "snapshot" | "commit" }) {
@@ -451,8 +441,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
   // ── Render ────────────────────────────────────────────
 
   const timeline = (
-    <div className="overflow-y-auto h-full flex justify-center">
-      <div style={{ width: "100%", maxWidth: 620, padding: "20px 28px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="p-3 space-y-3 overflow-y-auto h-full">
 
         {/* ─── 1. Git Settings Accordion ──────────────── */}
         <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, background: T.bgSubtle, overflow: "hidden" }}>
@@ -620,73 +609,39 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
         {/* ─── 2. Save Row (textarea + buttons) ──────── */}
         {canEdit && (
           <div>
-            <textarea
+            <Textarea
               placeholder="Describe this version…"
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
               rows={2}
-              style={{
-                width: "100%", boxSizing: "border-box", resize: "vertical",
-                border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px",
-                fontFamily: "inherit", fontSize: 13.5, background: T.bgInput, color: T.text, outline: "none",
-              }}
+              className="text-sm resize-y min-h-[60px]"
             />
-            <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+            <div className="flex gap-2 mt-2 justify-end">
               {/* Save snapshot button */}
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSaveSnapshot}
                 disabled={!commitMessage.trim() || isBusy}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7,
-                  padding: "8px 14px", borderRadius: 8,
-                  background: "#fff", border: `1px solid ${T.brand}`, color: T.brand,
-                  cursor: !commitMessage.trim() || isBusy ? "not-allowed" : "pointer",
-                  fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                  opacity: !commitMessage.trim() || isBusy ? 0.5 : 1,
-                  transition: "background 150ms ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (commitMessage.trim() && !isBusy) {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(21,163,127,0.06)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#fff";
-                }}
+                className="text-[#15a37f] border-[#15a37f] hover:bg-[#15a37f]/5 text-xs"
               >
-                {isSaving ? <Spinner color={T.brand} /> : <Database size={14} strokeWidth={2} />}
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Database size={14} />}
                 Save snapshot
-              </button>
+              </Button>
 
               {/* Commit button */}
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleGitCommit}
                 disabled={!commitMessage.trim() || isBusy || !gitConfigured}
                 title={!gitConfigured ? "Configure Git in settings above" : `Commit & push to ${branch}`}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7,
-                  padding: "8px 14px", borderRadius: 8,
-                  background: "#fff", border: `1px solid ${T.commit}`, color: T.commit,
-                  cursor: !commitMessage.trim() || isBusy || !gitConfigured ? "not-allowed" : "pointer",
-                  fontFamily: "inherit", fontSize: 13, fontWeight: 600,
-                  opacity: !commitMessage.trim() || isBusy || !gitConfigured ? 0.5 : 1,
-                  transition: "background 150ms ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (commitMessage.trim() && !isBusy && gitConfigured) {
-                    (e.currentTarget as HTMLButtonElement).style.background = "rgba(182,90,24,0.06)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#fff";
-                }}
+                className="text-[#b65a18] border-[#b65a18] hover:bg-[#b65a18]/5 text-xs"
               >
-                {committing ? <Spinner color={T.commit} /> : <GitBranch size={14} strokeWidth={2} />}
+                {committing ? <Loader2 size={14} className="animate-spin" /> : <GitBranch size={14} />}
                 Commit to{" "}
-                <span style={{ fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace", fontWeight: 600 }}>
-                  {branch}
-                </span>
-              </button>
+                <span className="font-mono font-semibold">{branch}</span>
+              </Button>
             </div>
 
             {/* Inline feedback */}
@@ -718,9 +673,9 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
 
         {/* ─── 3. History List ───────────────────────── */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.textMuted, marginBottom: 10 }}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
             History
-          </div>
+          </p>
           {isLoading ? (
             <p className="text-xs" style={{ color: T.textFaint }}>Loading...</p>
           ) : displayedEntries.length === 0 ? (
@@ -814,20 +769,17 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                               </Button>
                             </span>
                           ) : (
-                            <button
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              className="text-[10px] shrink-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmRestoreId(snap.id);
                               }}
-                              style={{
-                                padding: "3px 8px", borderRadius: 6, border: `1px solid ${T.border}`,
-                                background: "#fff", color: T.textMuted, cursor: "pointer",
-                                fontFamily: "inherit", fontSize: 11.5, display: "inline-flex", alignItems: "center", gap: 4,
-                                flexShrink: 0,
-                              }}
                             >
                               <RotateCcw size={11} /> Restore
-                            </button>
+                            </Button>
                           )}
                         </>
                       )}
@@ -886,7 +838,6 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
           )}
         </div>
 
-      </div>
     </div>
   );
 
