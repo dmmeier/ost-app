@@ -11,14 +11,9 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useCanEdit } from "@/hooks/use-permissions";
 import { Database, GitBranch, ChevronDown, RotateCcw, Loader2 } from "lucide-react";
 
-/* ── Design tokens ──────────────────────────────────────── */
+/* ── Design tokens (used by EntryGlyph markers + rail) ─── */
 const T = {
-  bgSubtle: "#f6f5f1",
-  bgInput: "#fbfaf7",
   border: "#e5e3dd",
-  text: "#1f1d1a",
-  textMuted: "#6f6a62",
-  textFaint: "#9a948a",
   brand: "#15a37f",
   snapSoft: "#d8efe6",
   commit: "#b65a18",
@@ -444,45 +439,31 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
     <div className="p-3 space-y-3 overflow-y-auto h-full">
 
         {/* ─── 1. Git Settings Accordion ──────────────── */}
-        <div style={{ border: `1px solid ${T.border}`, borderRadius: 10, background: T.bgSubtle, overflow: "hidden" }}>
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="w-full"
-            style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "10px 14px", background: "transparent", border: 0, cursor: "pointer",
-              fontFamily: "inherit",
-            }}
+            className="flex items-center gap-2 w-full px-3 py-2 bg-transparent border-0 cursor-pointer"
           >
             <ChevronDown
               size={12}
-              color={T.textMuted}
-              style={{
-                transition: "transform 150ms ease",
-                transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)",
-                flexShrink: 0,
-              }}
+              className="text-gray-400 shrink-0 transition-transform duration-150"
+              style={{ transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
             />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.textMuted }}>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
               Git Settings
             </span>
-            <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 500, color: T.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span className="ml-auto text-[10px] text-gray-400 truncate">
               {[repoShortName, branch, currentAuthorInitial].filter(Boolean).join(" · ")}
             </span>
           </button>
 
           {settingsOpen && (
-            <div style={{ padding: "4px 14px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 12px", borderTop: `1px solid ${T.border}` }}>
+            <div className="grid grid-cols-2 gap-2.5 gap-x-3 px-3 pb-3 pt-1 border-t border-gray-200">
               {/* Remote URL — full width */}
-              <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>Remote URL</span>
+              <div className="col-span-2 flex flex-col gap-1">
+                <label className="text-[10px] font-medium text-gray-500">Remote URL</label>
                 <input
-                  style={{
-                    background: "#ffffff", border: `1px solid ${T.border}`, borderRadius: 6,
-                    padding: "6px 9px", fontSize: 12.5,
-                    fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace",
-                    color: T.text, outline: "none", width: "100%", boxSizing: "border-box",
-                  }}
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-[#0d9488]"
                   placeholder="https://github.com/org/repo.git"
                   value={remoteUrl}
                   onChange={(e) => handleRemoteChange(e.target.value)}
@@ -490,14 +471,10 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
               </div>
 
               {/* Branch */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>Branch</span>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-medium text-gray-500">Branch</label>
                 <input
-                  style={{
-                    background: "#ffffff", border: `1px solid ${T.border}`, borderRadius: 6,
-                    padding: "6px 9px", fontSize: 12.5, color: T.text, outline: "none",
-                    width: "100%", boxSizing: "border-box",
-                  }}
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                   placeholder="main"
                   value={branch}
                   onChange={(e) => handleBranchChange(e.target.value)}
@@ -505,16 +482,12 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
               </div>
 
               {/* Author */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 11, color: T.textMuted, fontWeight: 500 }}>Author</span>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-medium text-gray-500">Author</label>
                 {authors.length > 0 && !showNewAuthor ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="flex flex-col gap-1.5">
                     <select
-                      style={{
-                        background: "#ffffff", border: `1px solid ${T.border}`, borderRadius: 6,
-                        padding: "6px 9px", fontSize: 12.5, color: T.text, outline: "none",
-                        width: "100%", boxSizing: "border-box",
-                      }}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                       value={selectedAuthorIdx ?? ""}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -537,19 +510,15 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                         setShowNewAuthor(true);
                         setSelectedAuthorIdx(null);
                       }}
-                      style={{ fontSize: 11, color: T.brand, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+                      className="text-[10px] text-[#0d9488] hover:text-[#0b7a70] text-left p-0 bg-transparent border-0 cursor-pointer"
                     >
                       + New author
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="flex flex-col gap-1.5">
                     <input
-                      style={{
-                        background: "#ffffff", border: `1px solid ${T.border}`, borderRadius: 6,
-                        padding: "6px 9px", fontSize: 12.5, color: T.text, outline: "none",
-                        width: "100%", boxSizing: "border-box",
-                      }}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                       placeholder="Name"
                       value={newAuthorName}
                       onChange={(e) => {
@@ -558,11 +527,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                       }}
                     />
                     <input
-                      style={{
-                        background: "#ffffff", border: `1px solid ${T.border}`, borderRadius: 6,
-                        padding: "6px 9px", fontSize: 12.5, color: T.text, outline: "none",
-                        width: "100%", boxSizing: "border-box",
-                      }}
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                       placeholder="Email address"
                       type="email"
                       value={newAuthorEmail}
@@ -578,7 +543,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                           setNewAuthorName("");
                           setNewAuthorEmail("");
                         }}
-                        style={{ fontSize: 11, color: T.textFaint, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "left" }}
+                        className="text-[10px] text-gray-500 hover:text-gray-700 text-left p-0 bg-transparent border-0 cursor-pointer"
                       >
                         Cancel — use existing author
                       </button>
@@ -588,17 +553,15 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
               </div>
 
               {/* Token status */}
-              <div style={{ gridColumn: "1 / -1", fontSize: 12, color: T.textMuted }}>
+              <div className="col-span-2 text-xs text-gray-500">
                 Token:{" "}
                 {gitStatus?.token_configured ? (
-                  <span style={{ color: T.brand, fontWeight: 500 }}>configured</span>
+                  <span className="text-green-600 font-medium">configured</span>
                 ) : (
                   <span>
-                    <span style={{ background: T.bgInput, padding: "1px 6px", borderRadius: 4, fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace", fontSize: 11 }}>not set</span>
-                    {" — add "}
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace", fontSize: 11 }}>GIT_TOKEN</span>
-                    {" to "}
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace", fontSize: 11 }}>.env</span>
+                    not set — add{" "}
+                    <code className="bg-gray-100 px-1 rounded text-[10px]">GIT_TOKEN</code> to{" "}
+                    <code className="bg-gray-100 px-1 rounded text-[10px]">.env</code>
                   </span>
                 )}
               </div>
@@ -677,9 +640,9 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
             History
           </p>
           {isLoading ? (
-            <p className="text-xs" style={{ color: T.textFaint }}>Loading...</p>
+            <p className="text-xs text-gray-400">Loading...</p>
           ) : displayedEntries.length === 0 ? (
-            <div style={{ background: T.bgSubtle, border: `1px dashed ${T.border}`, borderRadius: 10, padding: 16, textAlign: "center", fontSize: 13, color: T.textFaint }}>
+            <div className="bg-gray-50 border border-dashed rounded-md p-3 text-center text-xs text-gray-400">
               No history yet. Save a snapshot or make a git commit to get started.
             </div>
           ) : (
@@ -688,14 +651,14 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
               <div style={{ position: "absolute", left: 11, top: 14, bottom: 14, width: 1.5, background: T.border }} />
 
               {/* Current state row */}
-              <li style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: `1px solid ${T.border}` }}>
-                <span style={{ position: "relative", zIndex: 1, background: "#fff", padding: "2px 0", flexShrink: 0 }}>
+              <li className="flex items-center gap-3 py-1.5 border-b border-gray-100">
+                <span className="relative z-10 bg-white py-0.5 shrink-0">
                   <EntryGlyph kind="current" />
                 </span>
-                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: T.brand, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span className="flex-1 min-w-0 text-xs font-semibold text-[#0d9488] truncate">
                   Current state
                 </span>
-                <span style={{ fontSize: 12, color: T.textFaint, flexShrink: 0 }}>now</span>
+                <span className="text-[10px] text-gray-400 shrink-0">now</span>
               </li>
 
               {/* Timeline entries */}
@@ -708,38 +671,27 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                     <li
                       key={`snap-${snap.id}`}
                       onClick={() => handleSnapshotClick(snap.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 12,
-                        padding: "8px 0", position: "relative",
-                        borderBottom: isLast ? "none" : `1px solid ${T.border}`,
-                        cursor: "pointer",
-                        transition: "background 100ms ease",
-                        borderRadius: 4,
-                        background: selectedSnapshotId === snap.id ? "rgba(21,163,127,0.06)" : "transparent",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (selectedSnapshotId !== snap.id) {
-                          (e.currentTarget as HTMLLIElement).style.background = T.bgInput;
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLLIElement).style.background =
-                          selectedSnapshotId === snap.id ? "rgba(21,163,127,0.06)" : "transparent";
-                      }}
+                      className={`flex items-center gap-3 py-1.5 relative cursor-pointer transition-colors rounded ${
+                        isLast ? "" : "border-b border-gray-100"
+                      } ${
+                        selectedSnapshotId === snap.id
+                          ? "bg-[#e6f4f3]"
+                          : "hover:bg-gray-50"
+                      }`}
                     >
-                      <span style={{ position: "relative", zIndex: 1, background: "#fff", padding: "2px 0", flexShrink: 0 }}>
+                      <span className="relative z-10 bg-white py-0.5 shrink-0">
                         <EntryGlyph kind="snapshot" />
                       </span>
                       <span
-                        style={{
-                          flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: T.text,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}
+                        className="flex-1 min-w-0 text-xs font-medium text-gray-700 truncate"
                         title={snap.message}
                       >
                         {snap.message}
                       </span>
-                      <span style={{ fontSize: 12, color: T.textFaint, flexShrink: 0, cursor: "help" }} title={absoluteTime(snap.created_at)}>
+                      <span
+                        className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                        title={absoluteTime(snap.created_at)}
+                      >
                         {relativeTime(snap.created_at)}
                       </span>
                       {canEdit && (
@@ -749,7 +701,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                               className="flex items-center gap-1 shrink-0"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <span style={{ fontSize: 10, color: T.commit }}>Restore?</span>
+                              <span className="text-[10px] text-amber-600">Restore?</span>
                               <Button
                                 variant="default"
                                 size="sm"
@@ -790,44 +742,29 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                   return (
                     <li
                       key={`git-${commit.id}`}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 12,
-                        padding: "8px 0", position: "relative",
-                        borderBottom: isLast ? "none" : `1px solid ${T.border}`,
-                        transition: "background 100ms ease",
-                        borderRadius: 4,
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLLIElement).style.background = T.bgInput;
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLLIElement).style.background = "transparent";
-                      }}
+                      className={`flex items-center gap-3 py-1.5 relative transition-colors rounded hover:bg-gray-50 ${
+                        isLast ? "" : "border-b border-gray-100"
+                      }`}
                     >
-                      <span style={{ position: "relative", zIndex: 1, background: "#fff", padding: "2px 0", flexShrink: 0 }}>
+                      <span className="relative z-10 bg-white py-0.5 shrink-0">
                         <EntryGlyph kind="commit" />
                       </span>
                       <span
-                        style={{
-                          flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, color: T.text,
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        }}
+                        className="flex-1 min-w-0 text-xs font-medium text-gray-700 truncate"
                         title={commit.commit_message}
                       >
                         {commit.commit_message}
-                        <span style={{ marginLeft: 8, fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace", fontSize: 11.5, color: T.textFaint }}>
+                        <code className="ml-2 text-[10px] text-gray-400">
                           {commit.commit_sha.slice(0, 8)}
-                        </span>
-                        <span style={{
-                          marginLeft: 8, display: "inline-flex", alignItems: "center", gap: 4,
-                          background: T.commitSoft, color: T.commit,
-                          padding: "1px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                          verticalAlign: "middle",
-                        }}>
+                        </code>
+                        <span className="ml-2 inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full text-[9px] font-semibold align-middle">
                           <GitBranch size={10} strokeWidth={2} />{commit.branch}
                         </span>
                       </span>
-                      <span style={{ fontSize: 12, color: T.textFaint, flexShrink: 0, cursor: "help" }} title={absoluteTime(commit.created_at)}>
+                      <span
+                        className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                        title={absoluteTime(commit.created_at)}
+                      >
                         {relativeTime(commit.created_at)}
                       </span>
                     </li>
