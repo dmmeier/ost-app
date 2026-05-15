@@ -173,14 +173,15 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
       setTimeout(() => setConfirmClear(false), 3000);
       return;
     }
+    // Always clear local state (even if the API call fails)
+    setDisplayMessages([]);
+    setConversationHistory([]);
+    setLastSystemPrompt(null);
+    setConfirmClear(false);
     try {
       await api.chatHistory.clear(treeId);
-      setDisplayMessages([]);
-      setConversationHistory([]);
-      setLastSystemPrompt(null);
-      setConfirmClear(false);
     } catch (err) {
-      console.error("Failed to clear chat history:", err);
+      console.error("Failed to clear chat history on server:", err);
     }
   };
 

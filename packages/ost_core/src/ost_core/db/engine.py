@@ -118,6 +118,12 @@ def _migrate_add_columns(engine: Engine) -> None:
             if "thickness" not in edge_columns:
                 conn.execute(text("ALTER TABLE edge_hypotheses ADD COLUMN thickness INTEGER"))
 
+    if "chat_messages" in inspector.get_table_names():
+        chat_columns = [c["name"] for c in inspector.get_columns("chat_messages")]
+        with engine.begin() as conn:
+            if "user_id" not in chat_columns:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN user_id VARCHAR(36)"))
+
 
 def _migrate_projects(engine: Engine) -> None:
     """Migrate existing trees into the projects structure."""

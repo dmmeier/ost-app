@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { PanelImperativeHandle } from "react-resizable-panels";
 import { useRouter } from "next/navigation";
 import {
   ResizableHandle,
@@ -105,6 +106,28 @@ export default function Home() {
     }
   }, [selectedNodeId, setBottomPanelOpen, setBottomPanel]);
 
+  // Chat panel ref for collapsible control
+  const chatPanelRef = useRef<PanelImperativeHandle>(null);
+
+  const toggleChatPanel = useCallback(() => {
+    if (chatPanelRef.current?.isCollapsed()) {
+      chatPanelRef.current.expand();
+    } else {
+      chatPanelRef.current?.collapse();
+    }
+  }, []);
+
+  // Sync chatPanelOpen store state with the collapsible panel ref
+  useEffect(() => {
+    const panel = chatPanelRef.current;
+    if (!panel) return;
+    if (chatPanelOpen && panel.isCollapsed()) {
+      panel.expand();
+    } else if (!chatPanelOpen && !panel.isCollapsed()) {
+      panel.collapse();
+    }
+  }, [chatPanelOpen]);
+
   // Auto-dismiss conflict warning after 5 seconds
   useEffect(() => {
     if (conflictWarning) {
@@ -146,7 +169,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           {tree && (
             <button
-              onClick={() => setChatPanelOpen(!chatPanelOpen)}
+              onClick={toggleChatPanel}
               className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
                 chatPanelOpen
                   ? "bg-[#0d9488] text-white"
@@ -221,7 +244,7 @@ export default function Home() {
               )}
 
               {/* Center: Tree canvas */}
-              <ResizablePanel id="canvas" defaultSize={chatPanelOpen ? "52%" : "82%"} minSize="30%">
+              <ResizablePanel id="canvas" defaultSize="52%" minSize="30%">
                 <div className="h-full bg-white">
                   {!selectedTreeId ? (
                     <div className="h-full flex items-center justify-center text-gray-400">
@@ -249,34 +272,44 @@ export default function Home() {
                 </div>
               </ResizablePanel>
 
-              {/* Right: Chat (collapsible) */}
-              {chatPanelOpen ? (
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel id="chat" defaultSize="30%" minSize="20%" maxSize="45%">
-                    <div className="h-full overflow-hidden border-l bg-white">
-                      {tree ? (
-                        <ChatPanel treeId={tree.id} projectId={tree.project_id} />
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                          <div className="text-center">
-                            <BrandMark size={32} className="mx-auto mb-2 opacity-20 text-[#0d9488]" />
-                            <p>Select a tree to start chatting</p>
-                          </div>
-                        </div>
-                      )}
+              {/* Right: Chat (collapsible — always mounted for state persistence) */}
+              <ResizableHandle withHandle className={chatPanelOpen ? "" : "hidden"} />
+              <ResizablePanel
+                id="chat"
+                panelRef={chatPanelRef}
+                defaultSize="30%"
+                minSize="20%"
+                maxSize="45%"
+                collapsible
+                collapsedSize={0}
+                onResize={(size) => {
+                  const collapsed = size.asPercentage === 0;
+                  if (collapsed && chatPanelOpen) setChatPanelOpen(false);
+                  else if (!collapsed && !chatPanelOpen) setChatPanelOpen(true);
+                }}
+              >
+                <div className="h-full overflow-hidden border-l bg-white">
+                  {tree ? (
+                    <ChatPanel treeId={tree.id} projectId={tree.project_id} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                      <div className="text-center">
+                        <BrandMark size={32} className="mx-auto mb-2 opacity-20 text-[#0d9488]" />
+                        <p>Select a tree to start chatting</p>
+                      </div>
                     </div>
-                  </ResizablePanel>
-                </>
-              ) : tree ? (
+                  )}
+                </div>
+              </ResizablePanel>
+              {!chatPanelOpen && tree && (
                 <div
-                  onClick={() => setChatPanelOpen(true)}
+                  onClick={() => chatPanelRef.current?.expand()}
                   className="w-6 flex items-center justify-center border-l bg-gray-50 hover:bg-gray-100 cursor-pointer shrink-0 transition-colors"
                   title="Open chat"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="15 18 9 12 15 6"/></svg>
                 </div>
-              ) : null}
+              )}
             </ResizablePanelGroup>
           </ResizablePanel>
 
