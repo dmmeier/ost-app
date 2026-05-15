@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
-import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-ost-sans",
@@ -39,7 +38,6 @@ export default function RootLayout({
       >
         <Providers>
           {children}
-          <FeedbackButton />
         </Providers>
       </body>
     </html>

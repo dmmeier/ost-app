@@ -5,7 +5,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from ost_api.routers import auth, chat, edges, feedback, git, members, nodes, projects, settings, tags, trees, validation
+from ost_api.routers import auth, chat, edges, git, members, nodes, projects, settings, tags, trees, validation
 
 app = FastAPI(
     title="OST API",
@@ -32,7 +32,6 @@ app.include_router(nodes.router, prefix="/api/v1/nodes", tags=["nodes"])
 app.include_router(edges.router, prefix="/api/v1/edges", tags=["edges"])
 app.include_router(validation.router, prefix="/api/v1/validation", tags=["validation"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
-app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["feedback"])
 app.include_router(tags.router, prefix="/api/v1/tags", tags=["tags"])
 app.include_router(settings.router, prefix="/api/v1/settings", tags=["settings"])
 app.include_router(git.router, prefix="/api/v1/git", tags=["git"])
