@@ -78,6 +78,10 @@ interface TreeStore {
   compactLayout: boolean;
   setCompactLayout: (compact: boolean) => void;
 
+  // Detail view toggle (expanded nodes showing full content)
+  detailView: boolean;
+  setDetailView: (detail: boolean) => void;
+
   // Conflict warning (optimistic locking)
   conflictWarning: string | null;
   setConflictWarning: (msg: string | null) => void;
@@ -200,6 +204,9 @@ export const useTreeStore = create<TreeStore>((set) => ({
 
   compactLayout: false,
   setCompactLayout: (compact) => set({ compactLayout: compact }),
+
+  detailView: false,
+  setDetailView: (detail) => set({ detailView: detail }),
 
   conflictWarning: null,
   setConflictWarning: (msg) => set({ conflictWarning: msg }),

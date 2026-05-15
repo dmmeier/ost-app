@@ -6,6 +6,13 @@ const SIBLING_GAP = 40;
 const RANK_SEP = NODE_HEIGHT + 80;
 const TREE_GAP = 3 * SIBLING_GAP;
 
+// Expanded (detail) view dimensions
+const EXPANDED_NODE_WIDTH = 480;
+const EXPANDED_NODE_HEIGHT = 320;
+const EXPANDED_SIBLING_GAP = 60;
+const EXPANDED_RANK_SEP = EXPANDED_NODE_HEIGHT + 100;
+const EXPANDED_TREE_GAP = 3 * EXPANDED_SIBLING_GAP;
+
 /**
  * Custom symmetric tree layout.
  * Children are centered under their parent, ordered by sort_order.
@@ -19,9 +26,17 @@ export function getLayoutedElements(
   nodes: RFNode[],
   edges: RFEdge[],
   direction: "TB" | "LR" = "TB",
-  compact: boolean = false
+  compact: boolean = false,
+  expanded: boolean = false
 ): { nodes: RFNode[]; edges: RFEdge[] } {
   if (nodes.length === 0) return { nodes, edges };
+
+  // Select dimensions based on expanded mode
+  const nw = expanded ? EXPANDED_NODE_WIDTH : NODE_WIDTH;
+  const nh = expanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT;
+  const sg = expanded ? EXPANDED_SIBLING_GAP : SIBLING_GAP;
+  const rs = expanded ? EXPANDED_RANK_SEP : RANK_SEP;
+  const tg = expanded ? EXPANDED_TREE_GAP : TREE_GAP;
 
   // Build parent -> children map from edges, preserving sort_order from node data
   const childrenMap = new Map<string, string[]>();
@@ -65,9 +80,9 @@ export function getLayoutedElements(
   if (roots.length === 1) {
     // Single root: use standard layout
     if (compact) {
-      layoutCompact(roots[0].id, childrenMap, positions);
+      layoutCompact(roots[0].id, childrenMap, positions, nw, sg, rs);
     } else {
-      layoutWide(roots[0].id, childrenMap, positions);
+      layoutWide(roots[0].id, childrenMap, positions, nw, sg, rs);
     }
   } else {
     // Multiple roots: layout each subtree independently, then arrange side by side
@@ -77,9 +92,9 @@ export function getLayoutedElements(
     for (const root of roots) {
       const subPos = new Map<string, { x: number; y: number }>();
       if (compact) {
-        layoutCompact(root.id, childrenMap, subPos);
+        layoutCompact(root.id, childrenMap, subPos, nw, sg, rs);
       } else {
-        layoutWide(root.id, childrenMap, subPos);
+        layoutWide(root.id, childrenMap, subPos, nw, sg, rs);
       }
       subtreePositions.push(subPos);
 
@@ -87,18 +102,17 @@ export function getLayoutedElements(
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       for (const pos of subPos.values()) {
         if (pos.x < minX) minX = pos.x;
-        if (pos.x + NODE_WIDTH > maxX) maxX = pos.x + NODE_WIDTH;
+        if (pos.x + nw > maxX) maxX = pos.x + nw;
         if (pos.y < minY) minY = pos.y;
-        if (pos.y + NODE_HEIGHT > maxY) maxY = pos.y + NODE_HEIGHT;
+        if (pos.y + nh > maxY) maxY = pos.y + nh;
       }
       subtreeBounds.push({ minX, maxX, minY, maxY });
     }
 
     // Arrange subtrees side by side
-    let currentX = 0;
     const totalWidth =
       subtreeBounds.reduce((sum, b) => sum + (b.maxX - b.minX), 0) +
-      (subtreeBounds.length - 1) * TREE_GAP;
+      (subtreeBounds.length - 1) * tg;
     let startX = -totalWidth / 2;
 
     for (let i = 0; i < roots.length; i++) {
@@ -114,7 +128,7 @@ export function getLayoutedElements(
         });
       }
 
-      startX += (bounds.maxX - bounds.minX) + TREE_GAP;
+      startX += (bounds.maxX - bounds.minX) + tg;
     }
   }
 
@@ -134,7 +148,10 @@ export function getLayoutedElements(
 function layoutWide(
   rootId: string,
   childrenMap: Map<string, string[]>,
-  positions: Map<string, { x: number; y: number }>
+  positions: Map<string, { x: number; y: number }>,
+  nw: number = NODE_WIDTH,
+  sg: number = SIBLING_GAP,
+  rs: number = RANK_SEP
 ) {
   const subtreeWidthCache = new Map<string, number>();
 
@@ -142,20 +159,20 @@ function layoutWide(
     if (subtreeWidthCache.has(nodeId)) return subtreeWidthCache.get(nodeId)!;
     const children = childrenMap.get(nodeId) || [];
     if (children.length === 0) {
-      subtreeWidthCache.set(nodeId, NODE_WIDTH);
-      return NODE_WIDTH;
+      subtreeWidthCache.set(nodeId, nw);
+      return nw;
     }
     const total =
       children.reduce((sum, cid) => sum + subtreeWidth(cid), 0) +
-      (children.length - 1) * SIBLING_GAP;
-    const width = Math.max(NODE_WIDTH, total);
+      (children.length - 1) * sg;
+    const width = Math.max(nw, total);
     subtreeWidthCache.set(nodeId, width);
     return width;
   }
 
   function layout(nodeId: string, centerX: number, y: number) {
     positions.set(nodeId, {
-      x: centerX - NODE_WIDTH / 2,
+      x: centerX - nw / 2,
       y,
     });
     const children = childrenMap.get(nodeId) || [];
@@ -163,14 +180,14 @@ function layoutWide(
 
     const totalChildrenWidth =
       children.reduce((sum, cid) => sum + subtreeWidth(cid), 0) +
-      (children.length - 1) * SIBLING_GAP;
+      (children.length - 1) * sg;
 
     let leftEdge = centerX - totalChildrenWidth / 2;
     for (const childId of children) {
       const childTreeWidth = subtreeWidth(childId);
       const childCenterX = leftEdge + childTreeWidth / 2;
-      layout(childId, childCenterX, y + RANK_SEP);
-      leftEdge += childTreeWidth + SIBLING_GAP;
+      layout(childId, childCenterX, y + rs);
+      leftEdge += childTreeWidth + sg;
     }
   }
 
@@ -196,15 +213,18 @@ interface SubtreeResult {
 function layoutCompact(
   rootId: string,
   childrenMap: Map<string, string[]>,
-  positions: Map<string, { x: number; y: number }>
+  positions: Map<string, { x: number; y: number }>,
+  nw: number = NODE_WIDTH,
+  sg: number = SIBLING_GAP,
+  rs: number = RANK_SEP
 ) {
-  const result = computeSubtree(rootId, childrenMap);
+  const result = computeSubtree(rootId, childrenMap, nw, sg, rs);
 
   // Convert relative positions to absolute (root at center 0,0)
   for (const [nodeId, rx] of result.relX) {
     const ry = result.relY.get(nodeId) ?? 0;
     positions.set(nodeId, {
-      x: rx - NODE_WIDTH / 2,
+      x: rx - nw / 2,
       y: ry,
     });
   }
@@ -212,7 +232,10 @@ function layoutCompact(
 
 function computeSubtree(
   nodeId: string,
-  childrenMap: Map<string, string[]>
+  childrenMap: Map<string, string[]>,
+  nw: number = NODE_WIDTH,
+  sg: number = SIBLING_GAP,
+  rs: number = RANK_SEP
 ): SubtreeResult {
   const children = childrenMap.get(nodeId) || [];
 
@@ -231,7 +254,7 @@ function computeSubtree(
 
   // Recursively compute subtrees for all children
   const childResults: SubtreeResult[] = children.map((cid) =>
-    computeSubtree(cid, childrenMap)
+    computeSubtree(cid, childrenMap, nw, sg, rs)
   );
 
   // Place children left-to-right using contour merging
@@ -256,11 +279,7 @@ function computeSubtree(
       const sharedDepths = Math.min(mergedContour.right.length, childContour.left.length);
       let minOffset = 0;
       for (let d = 0; d < sharedDepths; d++) {
-        // mergedContour.right[d] is the rightmost x at depth d of placed children
-        // childContour.left[d] is the leftmost x at depth d of new child
-        // We need: mergedRight + offset >= childLeft + childOffset, where
-        // the gap should be at least SIBLING_GAP + NODE_WIDTH (since contours track centers)
-        const needed = mergedContour.right[d] - childContour.left[d] + NODE_WIDTH + SIBLING_GAP;
+        const needed = mergedContour.right[d] - childContour.left[d] + nw + sg;
         if (needed > minOffset) minOffset = needed;
       }
 
@@ -306,7 +325,7 @@ function computeSubtree(
       relX.set(nid, rx + dx);
     }
     for (const [nid, ry] of childResult.relY) {
-      relY.set(nid, ry + RANK_SEP);
+      relY.set(nid, ry + rs);
     }
   }
 

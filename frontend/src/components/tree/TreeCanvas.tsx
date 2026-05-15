@@ -114,6 +114,7 @@ function buildReactFlowElements(
   bubbleDefaults?: BubbleDefaults,
   projectTags?: Tag[],
   compact: boolean = false,
+  detailView: boolean = false,
 ) {
   const selectedNodeId = useTreeStore.getState().selectedNodeId;
   const editingNodeId = useTreeStore.getState().editingNodeId;
@@ -278,6 +279,9 @@ function buildReactFlowElements(
         tagColorMap,
         sortOrder: node.sort_order ?? 0,
         isEditing: node.id === editingNodeId,
+        expanded: detailView,
+        assumptions: detailView ? (node.assumptions || []) : undefined,
+        nodeDescription: detailView ? (node.description || "") : undefined,
       },
     };
   });
@@ -300,7 +304,7 @@ function buildReactFlowElements(
       },
     }));
 
-  const { nodes: lNodes, edges: lEdges } = getLayoutedElements(rfNodes, rfEdges, "TB", compact);
+  const { nodes: lNodes, edges: lEdges } = getLayoutedElements(rfNodes, rfEdges, "TB", compact, detailView);
   return { nodes: lNodes, edges: lEdges };
 }
 
@@ -351,6 +355,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const editingNodeId = useTreeStore((s) => s.editingNodeId);
   const compactLayout = useTreeStore((s) => s.compactLayout);
   const setCompactLayout = useTreeStore((s) => s.setCompactLayout);
+  const detailView = useTreeStore((s) => s.detailView);
+  const setDetailView = useTreeStore((s) => s.setDetailView);
   const centerOnNodeId = useTreeStore((s) => s.centerOnNodeId);
   const setCenterOnNodeId = useTreeStore((s) => s.setCenterOnNodeId);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -380,8 +386,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   const effectiveBubbleDefaults = bubbleDefaults ?? DEFAULT_BUBBLE_DEFAULTS;
 
   const { nodes: layoutedNodes, edges: layoutedEdges } = useMemo(
-    () => buildReactFlowElements(tree, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags ?? undefined, compactLayout),
-    [tree, selectedNodeId, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags, editingNodeId, compactLayout]
+    () => buildReactFlowElements(tree, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags ?? undefined, compactLayout, detailView),
+    [tree, selectedNodeId, collapsedNodes, activeTagFilters, visibleDepth, expandedBeyondDepth, effectiveBubbleDefaults, projectTags, editingNodeId, compactLayout, detailView]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(layoutedNodes);
@@ -392,16 +398,18 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     setEdges(layoutedEdges);
   }, [layoutedNodes, layoutedEdges, setNodes, setEdges]);
 
-  // Auto-fit view when compact layout is toggled
+  // Auto-fit view when compact layout or detail view is toggled
   const prevCompactRef = useRef(compactLayout);
+  const prevDetailRef = useRef(detailView);
   useEffect(() => {
-    if (prevCompactRef.current !== compactLayout) {
+    if (prevCompactRef.current !== compactLayout || prevDetailRef.current !== detailView) {
       prevCompactRef.current = compactLayout;
+      prevDetailRef.current = detailView;
       setTimeout(() => {
         reactFlowInstance.fitView({ duration: 300, padding: 0.2 });
       }, 50);
     }
-  }, [compactLayout, reactFlowInstance]);
+  }, [compactLayout, detailView, reactFlowInstance]);
 
   // Track whether selection was triggered by keyboard (not click)
   const keyboardNavRef = useRef(false);
@@ -966,6 +974,21 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               title="Toggle compact layout (pack nodes closer together)"
             >
               Compact
+            </button>
+          </div>
+
+          {/* Row 3: Detail view toggle */}
+          <div className="px-2 py-1">
+            <button
+              onClick={() => setDetailView(!detailView)}
+              className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors w-full ${
+                detailView
+                  ? "bg-line text-ink"
+                  : "text-ost-muted hover:bg-chip"
+              }`}
+              title="Expand nodes to show full details (description, assumptions, evidence)"
+            >
+              Detail
             </button>
           </div>
 
