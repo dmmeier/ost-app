@@ -30,7 +30,7 @@ class TagCreate(BaseModel):
     """Data required to create a tag."""
 
     name: str = Field(..., min_length=1, max_length=100)
-    color: str = Field(default="#6b7280")
+    color: str = Field(default="#7a6f5b")
     fill_style: str | None = None
     font_light: bool = False
 
@@ -71,7 +71,7 @@ class Tag(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     project_id: UUID
     name: str
-    color: str = "#6b7280"
+    color: str = "#7a6f5b"
     fill_style: str | None = None
     font_light: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

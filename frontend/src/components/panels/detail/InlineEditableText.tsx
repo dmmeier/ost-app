@@ -53,7 +53,7 @@ export function InlineEditableText({
     if (richText && value) {
       return (
         <div
-          className={`${className} ${disabled ? "" : "cursor-pointer hover:bg-gray-50"} rounded px-1 -mx-1 transition-colors rich-text-display`}
+          className={`${className} ${disabled ? "" : "cursor-pointer hover:bg-chip"} rounded px-1 -mx-1 transition-colors rich-text-display`}
           onClick={disabled ? undefined : () => {
             setDraft(value);
             setEditing(true);
@@ -66,14 +66,14 @@ export function InlineEditableText({
 
     return (
       <div
-        className={`${className} ${disabled ? "" : "cursor-pointer hover:bg-gray-50"} rounded px-1 -mx-1 transition-colors`}
+        className={`${className} ${disabled ? "" : "cursor-pointer hover:bg-chip"} rounded px-1 -mx-1 transition-colors`}
         onClick={disabled ? undefined : () => {
           setDraft(value);
           setEditing(true);
         }}
         title={disabled ? undefined : "Click to edit"}
       >
-        {value || <span className="text-gray-400 italic">{placeholder}</span>}
+        {value || <span className="text-faint italic">{placeholder}</span>}
       </div>
     );
   }

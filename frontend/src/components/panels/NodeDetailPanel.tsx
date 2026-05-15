@@ -124,7 +124,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
   ) : null;
 
   const statusLabel = isConfirmed ? "Confirmed" : isRejected ? "Rejected" : `#${index + 1}`;
-  const statusColor = isConfirmed ? "text-green-600" : isRejected ? "text-red-400" : "text-gray-400";
+  const statusColor = isConfirmed ? "text-green-600" : isRejected ? "text-red-400" : "text-faint";
   const statusTitle = isConfirmed
     ? "Click to reject"
     : isRejected
@@ -138,7 +138,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
           ? "border-red-200 bg-red-50/40 opacity-60"
           : isConfirmed
             ? "border-green-200 bg-green-50/30"
-            : "border-gray-200 bg-white"
+            : "border-line bg-paper"
       }`}
     >
       {/* Card header: status toggle + index + delete */}
@@ -154,7 +154,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
                 ? "border-green-400 bg-green-50"
                 : isRejected
                   ? "border-red-400 bg-red-50"
-                  : "border-gray-300 bg-white group-hover:border-gray-400"
+                  : "border-line bg-paper group-hover:border-faint"
             }`}>
               {statusIcon}
             </span>
@@ -169,7 +169,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
                 ? "border-green-400 bg-green-50"
                 : isRejected
                   ? "border-red-400 bg-red-50"
-                  : "border-gray-300 bg-white"
+                  : "border-line bg-paper"
             }`}>
               {statusIcon}
             </span>
@@ -182,7 +182,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
         {canEdit && (
           <button
             onClick={handleDelete}
-            className="text-gray-300 hover:text-red-500 transition-colors"
+            className="text-line hover:text-red-500 transition-colors"
             title="Delete assumption"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -193,7 +193,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
       {/* Text + Evidence in 2-column grid */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-semibold uppercase text-gray-400 mb-0.5 block">
+          <label className="text-[10px] font-semibold uppercase text-faint mb-0.5 block">
             Assumption
           </label>
           <RichTextEditor
@@ -213,7 +213,7 @@ function AssumptionCard({ assumption, nodeId, treeId, nodeType, canEdit, index }
           />
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase text-gray-400 mb-0.5 block">
+          <label className="text-[10px] font-semibold uppercase text-faint mb-0.5 block">
             Evidence
           </label>
           <RichTextEditor
@@ -268,7 +268,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
 
   if (!selectedNode) {
     return (
-      <div className="p-3 text-center text-gray-500">
+      <div className="p-3 text-center text-ost-muted">
         <p className="text-sm">Click a node to see its details</p>
       </div>
     );
@@ -369,14 +369,14 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
             />
             <button
               onClick={handleChatAboutNode}
-              className="text-gray-400 hover:text-teal-600 shrink-0 mt-1"
+              className="text-faint hover:text-teal-600 shrink-0 mt-1"
               title="Chat about this node"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </button>
             <button
               onClick={() => setConfirmingDelete(true)}
-              className={`shrink-0 mt-1 ${canEdit ? "text-gray-400 hover:text-red-500" : "text-gray-200 cursor-not-allowed"}`}
+              className={`shrink-0 mt-1 ${canEdit ? "text-faint hover:text-red-500" : "text-line cursor-not-allowed"}`}
               title={canEdit ? "Delete node" : "View only"}
               disabled={!canEdit}
             >
@@ -385,8 +385,8 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
           </div>
           {/* Description + Tags side-by-side */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="border border-gray-200 rounded-lg p-2.5">
-              <p className="text-[10px] font-semibold uppercase text-gray-400 mb-0.5">Description</p>
+            <div className="border border-line rounded-lg p-2.5">
+              <p className="text-[10px] font-semibold uppercase text-faint mb-0.5">Description</p>
               <InlineEditableText
                 value={selectedNode.description || ""}
                 onSave={async (newDesc) => {
@@ -401,14 +401,14 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                     throw err;
                   }
                 }}
-                className="text-sm text-gray-600"
+                className="text-sm text-ost-muted"
                 multiline
                 richText
                 placeholder="Add a description..."
                 disabled={!canEdit}
               />
             </div>
-            <div className="border border-gray-200 rounded-lg p-2.5">
+            <div className="border border-line rounded-lg p-2.5">
               <NodeTagsSection
                 nodeId={selectedNode.id}
                 nodeTags={selectedNode.tags || []}
@@ -418,9 +418,9 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
           </div>
 
           {/* Assumptions section */}
-          <div className="border border-gray-200 rounded-lg p-2.5">
+          <div className="border border-line rounded-lg p-2.5">
             <div className="flex items-center justify-between mb-1.5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <p className="text-xs font-semibold uppercase tracking-wide text-faint">
                 Assumptions
                 {assumptions.length > 0 && (
                   <span className="ml-1 normal-case font-normal">
@@ -440,7 +440,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
               )}
             </div>
             {assumptions.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">
+              <p className="text-xs text-faint italic">
                 {selectedNode.node_type === "outcome"
                   ? `No assumptions yet.${canEdit ? " Click + Add to create one." : ""}`
                   : "Loading..."}
@@ -465,8 +465,8 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
 
         {/* RIGHT COLUMN: mini tree diagram, then add child */}
         <div className="space-y-3 min-w-0">
-          <div className="border border-gray-200 rounded-lg p-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+          <div className="border border-line rounded-lg p-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint mb-1.5">
               Focus View
             </p>
             <MiniTreeDiagram
@@ -479,7 +479,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
           </div>
 
           {canEdit && validChildTypes.length > 0 && (
-            <div className="border border-gray-200 rounded-lg p-2.5">
+            <div className="border border-line rounded-lg p-2.5">
               <AddChildForm
                 selectedNodeId={selectedNode.id}
                 treeId={tree.id}
@@ -493,7 +493,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
 
       {/* Footer metadata */}
       <div className="pt-1">
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-faint">
           ID: {selectedNode.id.slice(0, 8)}... &mdash; {new Date(selectedNode.created_at).toLocaleDateString()}
           {selectedNode.last_modified_by_name && (
             <> &mdash; Last edited by {selectedNode.last_modified_by_name}</>

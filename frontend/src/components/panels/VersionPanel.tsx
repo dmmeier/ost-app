@@ -116,7 +116,7 @@ export function VersionPanel({ tree }: VersionPanelProps) {
 
   const timeline = (
     <div className="p-3 space-y-3 overflow-y-auto h-full">
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-faint">
         Save and restore tree snapshots locally. Versions are stored in the app database.
       </p>
       {/* Compact commit bar */}
@@ -142,34 +142,34 @@ export function VersionPanel({ tree }: VersionPanelProps) {
 
       {/* Version history — compact timeline */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">Version History</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-faint mb-2">Version History</p>
         {isLoading ? (
-          <p className="text-xs text-gray-400">Loading...</p>
+          <p className="text-xs text-faint">Loading...</p>
         ) : snapshots.length === 0 ? (
-          <div className="bg-gray-50 border border-dashed rounded-md p-3 text-center text-xs text-gray-400">
+          <div className="bg-canvas border border-dashed rounded-md p-3 text-center text-xs text-faint">
             No versions saved yet. Commit your first version above.
           </div>
         ) : (
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-gray-200" />
+            <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-line" />
 
             <div className="space-y-0">
               {/* Current state */}
               <div className="flex items-center gap-3 relative py-1.5">
                 <div className="w-[14px] h-[14px] rounded-full bg-[#0d9488] border-2 border-white shadow-sm z-10 shrink-0" />
                 <span className="text-xs font-medium text-[#0b7a70]">Current state</span>
-                <span className="text-[10px] text-gray-400 ml-auto">now</span>
+                <span className="text-[10px] text-faint ml-auto">now</span>
               </div>
 
               {/* Snapshot rows */}
               {snapshots.map((snap) => (
                 <div
                   key={snap.id}
-                  className={`flex items-center gap-2 relative py-1.5 border-b border-gray-100 last:border-0 cursor-pointer rounded transition-colors ${
+                  className={`flex items-center gap-2 relative py-1.5 border-b border-line last:border-0 cursor-pointer rounded transition-colors ${
                     selectedSnapshotId === snap.id
                       ? "bg-[#e6f4f3] border-[#0d9488]/30"
-                      : "hover:bg-gray-50"
+                      : "hover:bg-canvas"
                   }`}
                   onClick={() => handleSnapshotClick(snap.id)}
                 >
@@ -177,12 +177,12 @@ export function VersionPanel({ tree }: VersionPanelProps) {
                     className={`w-[14px] h-[14px] rounded-full border-2 z-10 shrink-0 ${
                       selectedSnapshotId === snap.id
                         ? "bg-[#0d9488] border-[#0d9488]/50"
-                        : "bg-white border-gray-300"
+                        : "bg-paper border-line"
                     }`}
                   />
                   <span
                     className={`text-xs font-medium truncate min-w-0 ${
-                      selectedSnapshotId === snap.id ? "text-[#0b7a70]" : "text-gray-700"
+                      selectedSnapshotId === snap.id ? "text-[#0b7a70]" : "text-ink"
                     }`}
                     style={{ maxWidth: selectedSnapshotId ? "120px" : "200px" }}
                     title={snap.message}
@@ -227,7 +227,7 @@ export function VersionPanel({ tree }: VersionPanelProps) {
                     </Button>
                   )}
                   <span
-                    className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                    className="text-[10px] text-faint shrink-0 cursor-help"
                     title={absoluteTime(snap.created_at)}
                   >
                     {relativeTime(snap.created_at)}

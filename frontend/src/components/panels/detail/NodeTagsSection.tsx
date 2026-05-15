@@ -76,7 +76,7 @@ export function NodeTagsSection({
 
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Tags</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-faint mb-1.5">Tags</p>
       <div className="flex flex-wrap gap-1.5 items-center">
         {currentTagObjects.map((tag) => (
           <span
@@ -87,7 +87,7 @@ export function NodeTagsSection({
             <span style={{ color: tag.color }}>{tag.name}</span>
             <button
               onClick={() => handleRemove(tag)}
-              className="text-gray-400 hover:text-red-500 text-[10px] leading-none"
+              className="text-faint hover:text-red-500 text-[10px] leading-none"
             >
               &times;
             </button>
@@ -96,34 +96,34 @@ export function NodeTagsSection({
         {nodeTags
           .filter((tn) => !currentTagObjects.find((t) => t.name === tn))
           .map((tn) => (
-            <span key={tn} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 border text-gray-600">
+            <span key={tn} className="text-xs px-2 py-0.5 rounded-full bg-chip border text-ost-muted">
               {tn}
             </span>
           ))}
         <button
           ref={buttonRef}
           onClick={() => setShowDropdown(!showDropdown)}
-          className="text-xs px-2 py-0.5 rounded-full border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 hover:border-gray-400"
+          className="text-xs px-2 py-0.5 rounded-full border border-dashed border-line text-faint hover:text-ost-muted hover:border-faint"
         >
           + Tag
         </button>
         {showDropdown && createPortal(
           <div
             ref={dropdownRef}
-            className="fixed bg-white border rounded-lg shadow-lg w-52 z-50 pt-1 pb-2"
+            className="fixed bg-paper border rounded-lg shadow-lg w-52 z-50 pt-1 pb-2"
             style={{ top: pos.top, left: pos.left }}
           >
             {availableTags.map((tag) => (
               <button
                 key={tag.id}
                 onClick={() => handleAddExisting(tag.name)}
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-chip flex items-center gap-2"
               >
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
                 {tag.name}
               </button>
             ))}
-            <div className="h-px bg-gray-100 my-1" />
+            <div className="h-px bg-chip my-1" />
             <div className="px-2 py-1 flex gap-1">
               <input
                 type="text"

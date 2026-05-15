@@ -117,7 +117,7 @@ function ActionIcon({ action }: { action: string }) {
   }
   if (action === "node_reordered") {
     return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7a6f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
         <polyline points="7 15 12 20 17 15" /><polyline points="17 9 12 4 7 9" />
       </svg>
     );
@@ -145,7 +145,7 @@ function ActionIcon({ action }: { action: string }) {
   }
   // tree_created, tree_updated, tree_deleted, or unknown
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7a6f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
       <circle cx="12" cy="12" r="10" />
     </svg>
   );
@@ -187,7 +187,7 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
 
   if (isLoading) {
     return (
-      <div className="p-4 text-xs text-gray-400">Loading activity...</div>
+      <div className="p-4 text-xs text-faint">Loading activity...</div>
     );
   }
 
@@ -195,9 +195,9 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between px-3 pt-3 pb-1">
-          <p className="text-xs text-gray-400">Recent changes in this tree, newest first.</p>
+          <p className="text-xs text-faint">Recent changes in this tree, newest first.</p>
         </div>
-        <div className="flex-1 flex items-center justify-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-faint">
           <div className="text-center px-4">
             <p className="text-sm">No activity yet</p>
             <p className="text-xs mt-1">Changes will appear here as you edit.</p>
@@ -210,15 +210,15 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-3 pt-3 pb-1 shrink-0">
-        <p className="text-xs text-gray-400">Recent changes in this tree, newest first.</p>
+        <p className="text-xs text-faint">Recent changes in this tree, newest first.</p>
         {isAuthenticated && user && (
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded-md p-0.5">
+          <div className="flex items-center gap-0.5 bg-chip rounded-md p-0.5">
             <button
               onClick={() => setFilter("all")}
               className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
                 filter === "all"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-paper text-ink shadow-sm"
+                  : "text-ost-muted hover:text-ink"
               }`}
             >
               All
@@ -227,8 +227,8 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
               onClick={() => setFilter("mine")}
               className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
                 filter === "mine"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-paper text-ink shadow-sm"
+                  : "text-ost-muted hover:text-ink"
               }`}
             >
               Mine
@@ -237,7 +237,7 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
         )}
       </div>
       {condensed.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-faint">
           <div className="text-center px-4">
             <p className="text-sm">No changes by you yet</p>
             <p className="text-xs mt-1">Your edits will appear here.</p>
@@ -258,27 +258,27 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
                 onClick={() => handleClick(entry)}
                 className={`flex items-center gap-2 py-1.5 px-2 rounded text-xs transition-colors ${
                   clickable
-                    ? "cursor-pointer hover:bg-gray-50"
+                    ? "cursor-pointer hover:bg-chip"
                     : ""
                 }`}
               >
                 <ActionIcon action={entry.action} />
-                <span className="text-gray-700 min-w-0 truncate flex-1" title={entry.summary}>
-                  <span className="font-medium text-gray-900">
+                <span className="text-ink min-w-0 truncate flex-1" title={entry.summary}>
+                  <span className="font-medium text-ink">
                     {entry.user_display_name || "Someone"}
                   </span>{" "}
                   {entry.summary}
                 </span>
                 {group.count > 1 && (
                   <span
-                    className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5 shrink-0"
+                    className="text-[10px] text-faint bg-chip rounded-full px-1.5 py-0.5 shrink-0"
                     title={`${group.count} identical changes condensed`}
                   >
                     ×{group.count}
                   </span>
                 )}
                 <span
-                  className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                  className="text-[10px] text-faint shrink-0 cursor-help"
                   title={timeTitle}
                 >
                   {relativeTime(entry.created_at)}

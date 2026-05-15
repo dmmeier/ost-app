@@ -135,7 +135,7 @@ export function RichTextEditor({
         className={`p-1 rounded transition-colors ${
           active
             ? "bg-teal-100 text-teal-700"
-            : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            : "text-ost-muted hover:bg-chip hover:text-ink"
         } ${disabled ? "opacity-40 pointer-events-none" : ""}`}
         title={title}
       >
@@ -150,13 +150,13 @@ export function RichTextEditor({
   return (
     <div
       ref={wrapperRef}
-      className={`tiptap-editor border border-gray-200 rounded text-sm focus-within:ring-1 focus-within:ring-[#0d9488] ${
-        disabled ? "bg-gray-50 cursor-not-allowed" : ""
+      className={`tiptap-editor border border-line rounded text-sm focus-within:ring-1 focus-within:ring-teal ${
+        disabled ? "bg-canvas cursor-not-allowed" : ""
       } ${className}`}
     >
       {/* Toolbar — only visible when editor is focused */}
       {focused && !disabled && (
-        <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-gray-100">
+        <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-line">
           <ToolbarButton
             active={editor.isActive("bold")}
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -178,7 +178,7 @@ export function RichTextEditor({
           >
             <UnderlineIcon size={14} />
           </ToolbarButton>
-          <div className="w-px h-4 bg-gray-200 mx-1" />
+          <div className="w-px h-4 bg-line mx-1" />
           <ToolbarButton
             active={editor.isActive("bulletList")}
             onClick={() => editor.chain().focus().toggleBulletList().run()}

@@ -875,7 +875,7 @@ def edit(
     evidence: Optional[str] = typer.Option(None, help="Supporting data, research, or observations"),
     edge_thickness: Optional[float] = typer.Option(None, "--edge-thickness", help="Edge thickness (0.5-10, 0 to clear)"),
     edge_style: Optional[str] = typer.Option(None, "--edge-style", help="Edge line style: solid, dashed, dotted (empty to clear)"),
-    edge_color: Optional[str] = typer.Option(None, "--edge-color", help="Edge color as hex (e.g. #6b7280, empty to clear)"),
+    edge_color: Optional[str] = typer.Option(None, "--edge-color", help="Edge color as hex (e.g. #7a6f5b, empty to clear)"),
     version: Optional[int] = typer.Option(None, help="Expected version for conflict detection"),
 ):
     """Edit a node's title, description, status, assumption, evidence, or edge styling."""
@@ -1110,7 +1110,7 @@ def tag_list(
 def tag_create(
     project_id: str = typer.Argument(..., help="Project ID (or prefix)"),
     name: str = typer.Argument(..., help="Tag name"),
-    color: str = typer.Option("#6b7280", "--color", help="Tag color (hex)"),
+    color: str = typer.Option("#7a6f5b", "--color", help="Tag color (hex)"),
     font_light: bool = typer.Option(False, "--font-light/--no-font-light", help="Use light (white) text"),
 ):
     """Create a new tag for a project."""

@@ -39,7 +39,7 @@ export function AddChildForm({
 
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Add Child</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-faint mb-1.5">Add Child</p>
       <div className="space-y-1.5">
         <Input
           placeholder="Node title"

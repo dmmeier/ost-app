@@ -4,8 +4,8 @@
   "description": "Opportunity Solution Trees",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0d9488",
+  "background_color": "#f8f6f0",
+  "theme_color": "#f8f6f0",
   "icons": [
     {
       "src": "/favicon.svg",

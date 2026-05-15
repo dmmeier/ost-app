@@ -38,7 +38,7 @@ function getNodeColors(nodeType: string, bubbleDefaults?: BubbleDefaults): { fil
     return { fill: lightenColor(borderColor, 0.7), stroke: borderColor };
   }
   // Fallback gray
-  return { fill: "#f3f4f6", stroke: "#94a3b8" };
+  return { fill: "#f8f6f0", stroke: "#9a8d75" };
 }
 
 function truncate(text: string, maxLen: number) {
@@ -88,7 +88,7 @@ export function MiniTreeDiagram({ parent, selected, children, onNavigate, bubble
           <line
             x1={centerX} y1={parentY + NODE_H}
             x2={centerX} y2={selectedY}
-            stroke="#d1d5db" strokeWidth={1.5}
+            stroke="#d4c9af" strokeWidth={1.5}
           />
         )}
 
@@ -97,7 +97,7 @@ export function MiniTreeDiagram({ parent, selected, children, onNavigate, bubble
             <line
               x1={centerX} y1={selectedY + NODE_H}
               x2={centerX} y2={selectedY + NODE_H + V_GAP / 2}
-              stroke="#d1d5db" strokeWidth={1.5}
+              stroke="#d4c9af" strokeWidth={1.5}
             />
             {childCount > 1 && (
               <line
@@ -105,7 +105,7 @@ export function MiniTreeDiagram({ parent, selected, children, onNavigate, bubble
                 y1={selectedY + NODE_H + V_GAP / 2}
                 x2={childrenStartX + (childCount - 1) * (NODE_W + H_GAP) + NODE_W / 2}
                 y2={selectedY + NODE_H + V_GAP / 2}
-                stroke="#d1d5db" strokeWidth={1.5}
+                stroke="#d4c9af" strokeWidth={1.5}
               />
             )}
             {children.map((_, i) => {
@@ -115,7 +115,7 @@ export function MiniTreeDiagram({ parent, selected, children, onNavigate, bubble
                   key={`drop-${i}`}
                   x1={cx} y1={selectedY + NODE_H + V_GAP / 2}
                   x2={cx} y2={childrenY}
-                  stroke="#d1d5db" strokeWidth={1.5}
+                  stroke="#d4c9af" strokeWidth={1.5}
                 />
               );
             })}
@@ -201,7 +201,7 @@ function NodePill({
         textAnchor="middle"
         fontSize={11}
         fontWeight={isSelected ? 600 : 400}
-        fill="#1f2937"
+        fill="#2c2620"
       >
         {label}
       </text>

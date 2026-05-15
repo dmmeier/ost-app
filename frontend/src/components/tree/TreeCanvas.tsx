@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   Node as RFNode,
@@ -927,18 +928,18 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
     <div className="w-full h-full relative">
       {/* Unified viewing controls */}
       {tree.nodes.length > 1 && (
-        <div className="absolute top-3 left-3 z-40 bg-white rounded-lg border shadow-sm flex flex-col divide-y divide-gray-100">
+        <div className="absolute top-3 left-3 z-40 rounded-lg shadow-sm flex flex-col" style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)' }}>
           {/* Row 1: Level collapse/expand */}
           <div className="flex items-center gap-1 px-2 py-1">
             <button
               onClick={collapseOneLevel}
               disabled={visibleDepth !== null && visibleDepth <= 0}
-              className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-sm px-1.5 py-0.5 rounded hover:bg-chip disabled:opacity-30 disabled:cursor-not-allowed"
               title="Collapse one level"
             >
               −
             </button>
-            <span className="text-[11px] text-gray-500 min-w-[56px] text-center font-medium">
+            <span className="text-[11px] text-ost-muted min-w-[56px] text-center font-medium">
               {visibleDepth === null
                 ? `All (${maxTreeDepth})`
                 : `Level ${visibleDepth}/${maxTreeDepth}`}
@@ -946,7 +947,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             <button
               onClick={expandOneLevel}
               disabled={visibleDepth === null}
-              className="text-sm px-1.5 py-0.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="text-sm px-1.5 py-0.5 rounded hover:bg-chip disabled:opacity-30 disabled:cursor-not-allowed"
               title="Expand one level"
             >
               +
@@ -959,8 +960,8 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               onClick={() => setCompactLayout(!compactLayout)}
               className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors w-full ${
                 compactLayout
-                  ? "bg-gray-200 text-gray-700"
-                  : "text-gray-500 hover:bg-gray-100"
+                  ? "bg-line text-ink"
+                  : "text-ost-muted hover:bg-chip"
               }`}
               title="Toggle compact layout (pack nodes closer together)"
             >
@@ -985,13 +986,13 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                   className="px-2 py-0.5 text-[11px] w-36 outline-none border rounded"
                 />
                 {searchQuery.trim() && (
-                  <div className="absolute top-full mt-1 left-0 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto w-64 z-50">
+                  <div className="absolute top-full mt-1 left-0 rounded-lg shadow-lg max-h-48 overflow-y-auto w-64 z-50" style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)' }}>
                     {searchResults.length > 0 ? (
                       searchResults.map((n) => (
                         <button
                           key={n.id}
                           onClick={() => handleSearchResultClick(n.id)}
-                          className="w-full text-left px-2 py-1 text-[11px] hover:bg-gray-50 border-b last:border-b-0 flex items-center gap-1.5"
+                          className="w-full text-left px-2 py-1 text-[11px] hover:bg-chip border-b last:border-b-0 flex items-center gap-1.5"
                         >
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: effectiveBubbleDefaults[n.node_type]?.border_color ?? "#94a3b8" }} />
                           <span>
@@ -1000,7 +1001,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                         </button>
                       ))
                     ) : (
-                      <div className="px-2 py-2 text-[11px] text-gray-400 text-center">
+                      <div className="px-2 py-2 text-[11px] text-faint text-center">
                         No results for &quot;{searchQuery}&quot;
                       </div>
                     )}
@@ -1010,10 +1011,10 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             ) : (
               <button
                 onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
-                className="text-[11px] px-2 py-0.5 rounded text-gray-500 hover:bg-gray-100 flex items-center gap-1 w-full justify-center"
+                className="text-[11px] px-2 py-0.5 rounded text-ost-muted hover:bg-chip flex items-center gap-1 w-full justify-center"
                 title="Search nodes (Ctrl+F)"
               >
-                Search <kbd className="text-[10px] bg-gray-100 rounded px-1 py-0.5 text-gray-400">⌘F</kbd>
+                Search <kbd className="text-[10px] bg-chip rounded px-1 py-0.5 text-faint">⌘F</kbd>
               </button>
             )}
           </div>
@@ -1021,7 +1022,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
       )}
 
       {/* Legend + tag filter */}
-      <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-sm rounded-lg border shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)" }}>
+      <div className="absolute top-3 right-3 z-20 backdrop-blur-sm rounded-lg shadow-sm px-3 py-2 space-y-1.5" style={{ maxWidth: "calc(100% - 200px)", background: 'color-mix(in srgb, var(--ost-paper) 92%, transparent)', border: '1px solid var(--ost-line)' }}>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
             {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((t) => (
               <div key={t} className="flex items-center gap-1">
@@ -1029,18 +1030,18 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                   className="w-2.5 h-2.5 rounded-sm"
                   style={{ backgroundColor: effectiveBubbleDefaults[t]?.border_color ?? DEFAULT_BUBBLE_DEFAULTS[t as keyof typeof DEFAULT_BUBBLE_DEFAULTS]?.border_color ?? "#94a3b8" }}
                 />
-                <span className="text-gray-600">{getNodeLabel(t, effectiveBubbleDefaults)}</span>
-                {stats.typeCounts[t] && <span className="text-gray-400">({stats.typeCounts[t]})</span>}
+                <span className="text-ost-muted">{getNodeLabel(t, effectiveBubbleDefaults)}</span>
+                {stats.typeCounts[t] && <span className="text-faint">({stats.typeCounts[t]})</span>}
               </div>
             ))}
           </div>
           {allTags.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] text-gray-400">Tags:</span>
+              <span className="text-[10px] text-faint">Tags:</span>
               {allTags.map((t) => {
                 const isActive = activeTagFilters.has(t);
                 const tagObj = projectTags?.find((pt) => pt.name === t);
-                const tagColor = tagObj?.color ?? "#6b7280";
+                const tagColor = tagObj?.color ?? "#7a6f5b";
                 return (
                   <button
                     key={t}
@@ -1048,7 +1049,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                     className={`text-[11px] px-1.5 py-0.5 rounded-full border cursor-pointer transition-colors ${
                       isActive
                         ? ""
-                        : "bg-white hover:border-gray-400"
+                        : "bg-paper hover:border-ost-muted"
                     }`}
                     style={isActive ? {
                       backgroundColor: tagColor + "20",
@@ -1089,7 +1090,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
-        <Background />
+        <Background variant={BackgroundVariant.Dots} color="var(--ost-dot)" gap={14} size={1.5} />
         <Controls />
         <MiniMap
           nodeColor={(node) => {
@@ -1145,14 +1146,14 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
         return (
           <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center" onClick={() => setReparentNodeId(null)}>
             <div
-              className="bg-white rounded-lg border shadow-xl p-4 w-80"
+              className="rounded-lg shadow-xl p-4 w-80" style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)' }}
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-sm font-semibold mb-1">Attach to New Parent</h3>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-ost-muted mb-3">
                 Move #{currentIdx} &quot;{node.title}&quot; and its subtree to a new parent node.
               </p>
-              <label className="text-xs text-gray-600 mb-1 block">Target node #</label>
+              <label className="text-xs text-ost-muted mb-1 block">Target node #</label>
               <input
                 autoFocus
                 type="number"
@@ -1172,7 +1173,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setReparentNodeId(null)}
-                  className="px-3 py-1.5 text-xs rounded border hover:bg-gray-50"
+                  className="px-3 py-1.5 text-xs rounded border hover:bg-chip"
                 >
                   Cancel
                 </button>
@@ -1192,18 +1193,18 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
       {/* Context menu */}
       {contextMenu && (
         <div
-          className="fixed bg-white rounded-lg border shadow-lg py-1 z-50 min-w-[180px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          className="fixed rounded-lg shadow-lg py-1 z-50 min-w-[180px]"
+          style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)', left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-1.5 text-xs text-gray-400 font-medium truncate max-w-[200px] flex items-center gap-1.5">
+          <div className="px-3 py-1.5 text-xs text-faint font-medium truncate max-w-[200px] flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: effectiveBubbleDefaults[contextMenu.nodeType]?.border_color ?? "#94a3b8" }} />
             {contextMenu.nodeTitle}
           </div>
-          <div className="h-px bg-gray-100 my-1" />
+          <div className="h-px bg-chip my-1" />
           <button
             onClick={handleEditNode}
-            className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+            className="w-full text-left px-3 py-1.5 text-sm hover:bg-chip flex items-center gap-2"
           >
             Edit Details
           </button>
@@ -1211,31 +1212,31 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             <>
               <button
                 onClick={handleOpenStyleDialog}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-chip flex items-center gap-2"
               >
                 Style Override
               </button>
               <button
                 onClick={handleOpenReparent}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-chip flex items-center gap-2"
               >
                 Attach to…
               </button>
               {(contextNodeSiblingInfo.canMoveLeft || contextNodeSiblingInfo.canMoveRight) && (
                 <>
-                  <div className="h-px bg-gray-100 my-1" />
+                  <div className="h-px bg-chip my-1" />
                   <div className="flex gap-1 px-3 py-1">
                     <button
                       onClick={handleMoveLeft}
                       disabled={!contextNodeSiblingInfo.canMoveLeft}
-                      className="flex-1 text-center py-1 text-sm rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex-1 text-center py-1 text-sm rounded hover:bg-chip disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       Move Left
                     </button>
                     <button
                       onClick={handleMoveRight}
                       disabled={!contextNodeSiblingInfo.canMoveRight}
-                      className="flex-1 text-center py-1 text-sm rounded hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex-1 text-center py-1 text-sm rounded hover:bg-chip disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       Move Right
                     </button>
@@ -1244,20 +1245,20 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               )}
               {validChildren.length > 0 && (
                 <>
-                  <div className="h-px bg-gray-100 my-1" />
-                  <div className="px-3 py-1 text-xs text-gray-400">Add Child</div>
+                  <div className="h-px bg-chip my-1" />
+                  <div className="px-3 py-1 text-xs text-faint">Add Child</div>
                   {validChildren.map((childType) => (
                     <button
                       key={childType}
                       onClick={() => handleAddChild(childType)}
-                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-chip flex items-center gap-2"
                     >
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: effectiveBubbleDefaults[childType]?.border_color ?? "#94a3b8" }} /> {getNodeLabel(childType, effectiveBubbleDefaults)}
                     </button>
                   ))}
                 </>
               )}
-              <div className="h-px bg-gray-100 my-1" />
+              <div className="h-px bg-chip my-1" />
               {confirmDelete ? (
                 <div className="px-3 py-1.5 flex items-center gap-2">
                   <button
@@ -1268,7 +1269,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                   </button>
                   <button
                     onClick={() => { setConfirmDelete(false); setContextMenu(null); }}
-                    className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                    className="text-xs px-2 py-1 bg-chip text-ost-muted rounded hover:bg-line"
                   >
                     Cancel
                   </button>
@@ -1288,13 +1289,13 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
       {/* Edge context menu (thickness slider + line style) — editors only */}
       {canEdit && edgeContextMenu && (
         <div
-          className="fixed bg-white rounded-lg border shadow-lg py-2 z-50 w-[220px]"
-          style={{ left: edgeContextMenu.x, top: edgeContextMenu.y }}
+          className="fixed rounded-lg shadow-lg py-2 z-50 w-[220px]"
+          style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)', left: edgeContextMenu.x, top: edgeContextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Thickness slider */}
           <div className="px-3 pb-1">
-            <div className="text-xs text-gray-400 font-medium mb-2">Thickness</div>
+            <div className="text-xs text-faint font-medium mb-2">Thickness</div>
             <div className="flex items-center gap-2">
               <input
                 type="range"
@@ -1307,7 +1308,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                 onTouchEnd={() => handleSetEdgeThickness(localThickness)}
                 className="flex-1 h-1.5 accent-[#0d9488] cursor-pointer"
               />
-              <span className="text-xs text-gray-500 w-8 text-right tabular-nums">{localThickness}px</span>
+              <span className="text-xs text-ost-muted w-8 text-right tabular-nums">{localThickness}px</span>
             </div>
             {/* Live preview bar */}
             <div className="mt-1.5 flex items-center justify-center h-4">
@@ -1320,10 +1321,10 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               />
             </div>
           </div>
-          <div className="h-px bg-gray-100 my-1.5" />
+          <div className="h-px bg-chip my-1.5" />
           {/* Line style */}
           <div className="px-3 pt-0.5">
-            <div className="text-xs text-gray-400 font-medium mb-2">Line Style</div>
+            <div className="text-xs text-faint font-medium mb-2">Line Style</div>
             <div className="flex gap-1">
               {(["solid", "dashed", "dotted"] as const).map((style) => {
                 const isActive = (edgeContextMenu.currentStyle || "solid") === style;
@@ -1334,7 +1335,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                     className={`flex-1 flex flex-col items-center gap-1 py-1.5 px-1 rounded border text-[11px] transition-colors ${
                       isActive
                         ? "border-[#0d9488] bg-[#e6f4f3] text-[#0b7a70]"
-                        : "border-gray-200 hover:border-gray-300 text-gray-500"
+                        : "border-line hover:border-faint text-ost-muted"
                     }`}
                   >
                     <svg width="40" height="6" viewBox="0 0 40 6">
@@ -1354,17 +1355,17 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
               })}
             </div>
           </div>
-          <div className="h-px bg-gray-100 my-1.5" />
+          <div className="h-px bg-chip my-1.5" />
           {/* Edge color (grey tones) */}
           <div className="px-3 pt-0.5 pb-1">
-            <div className="text-xs text-gray-400 font-medium mb-2">Color</div>
+            <div className="text-xs text-faint font-medium mb-2">Color</div>
             <div className="flex gap-1 flex-wrap">
               {[
                 { label: "Default", value: "", color: "#94a3b8" },
-                { label: "Near White", value: "#f3f4f6", color: "#f3f4f6", light: true },
-                { label: "Light", value: "#e5e7eb", color: "#e5e7eb", light: true },
-                { label: "Silver", value: "#d1d5db", color: "#d1d5db" },
-                { label: "Stone", value: "#6b7280", color: "#6b7280" },
+                { label: "Near White", value: "#f8f6f0", color: "#f8f6f0", light: true },
+                { label: "Light", value: "#ece6d3", color: "#ece6d3", light: true },
+                { label: "Silver", value: "#d4c9af", color: "#d4c9af" },
+                { label: "Stone", value: "#7a6f5b", color: "#7a6f5b" },
                 { label: "Charcoal", value: "#1f2937", color: "#1f2937" },
               ].map((swatch) => {
                 const isActive = (edgeContextMenu.currentColor || "") === swatch.value;
@@ -1376,7 +1377,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
                     className={`w-7 h-7 rounded border-2 transition-all ${
                       isActive
                         ? "border-[#0d9488] scale-110 shadow-sm"
-                        : "border-gray-200 hover:border-gray-400"
+                        : "border-line hover:border-ost-muted"
                     }`}
                     style={{
                       backgroundColor: swatch.color,
@@ -1392,19 +1393,19 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
       {/* Pane context menu (right-click on empty canvas to create standalone node) — editors only */}
       {canEdit && paneContextMenu && (
         <div
-          className="fixed bg-white rounded-lg border shadow-lg py-1 z-50 min-w-[180px]"
-          style={{ left: paneContextMenu.x, top: paneContextMenu.y }}
+          className="fixed rounded-lg shadow-lg py-1 z-50 min-w-[180px]"
+          style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)', left: paneContextMenu.x, top: paneContextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-1.5 text-xs text-gray-400 font-medium">
+          <div className="px-3 py-1.5 text-xs text-faint font-medium">
             Create Standalone Node
           </div>
-          <div className="h-px bg-gray-100 my-1" />
+          <div className="h-px bg-chip my-1" />
           {[...STANDARD_NODE_TYPES, ...customTypeKeys].map((nodeType) => (
             <button
               key={nodeType}
               onClick={() => handleCreateStandalone(nodeType)}
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center gap-2"
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-chip flex items-center gap-2"
             >
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: effectiveBubbleDefaults[nodeType]?.border_color ?? "#94a3b8" }} /> {getNodeLabel(nodeType, effectiveBubbleDefaults)}
             </button>

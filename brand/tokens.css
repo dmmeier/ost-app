@@ -1,23 +1,75 @@
-/* OST app — brand tokens
- * Drop into your global CSS or import as a partial.
+/* OST app — brand tokens (v2 · "Paper · Whisper")
+ *
+ * Warmed-paper direction with the Whisper canvas tone (less saturated,
+ * lighter than the initial v2 cream). Drop into your global CSS or import
+ * as a partial.
+ *
+ * What changed from v1:
+ *   --ost-paper:    #ffffff → #fefdf9    (warmed, elevated paper)
+ *   --ost-canvas:   new     → #f8f6f0    (the page surface — Whisper)
+ *   --ost-ink:      #1a1a1a → #2c2620    (warmed)
+ *   --ost-muted:    #6b7280 → #7a6f5b    (warmed)
+ *   --ost-line:     #e5e1d8 → #ece6d3    (warmed)
+ *   --ost-dot:      new     → #dad2b6    (canvas dot-pattern color)
+ *   --ost-font-display: new (Newsreader) — used for titles & section heads
+ *   Top-bar:        was near-black; now light, joins the canvas. See README.
+ *
+ * What did NOT change:
+ *   --ost-teal, --ost-teal-deep, --ost-teal-tint
+ *   --ost-font-sans (IBM Plex Sans), --ost-font-mono (IBM Plex Mono)
+ *   wordmark form, mark proportions, node-type colors.
  */
+
 :root {
-  /* Primary */
-  --ost-teal: #0d9488;       /* teal-600 — disc, primary actions, links */
+  /* ── Brand ──────────────────────────────────────── */
+  --ost-teal:      #0d9488;  /* primary — disc, accent, active tab, links */
   --ost-teal-deep: #0b7a70;  /* hover / pressed */
-  --ost-teal-tint: #e6f4f3;  /* subtle backgrounds */
+  --ost-teal-soft: #86c5be;  /* inactive tree-glyph, soft chip outline */
+  --ost-teal-tint: #e6f4f3;  /* subtle teal-tinted backgrounds */
 
-  /* Ink & paper */
-  --ost-ink: #1a1a1a;        /* body text, wordmark on light */
-  --ost-muted: #6b7280;      /* secondary text, "app" in wordmark */
-  --ost-paper: #ffffff;      /* surfaces */
-  --ost-line: #e5e1d8;       /* hairlines on warm bg */
+  /* ── Paper (the surface palette) ────────────────── */
+  --ost-canvas:    #f8f6f0;  /* page / canvas — Whisper cream */
+  --ost-paper:     #fefdf9;  /* elevated paper — cards, fields, panels */
+  --ost-sidebar:   #fbf9f3;  /* sidebar/chrome — sits between canvas & paper */
+  --ost-dot:       #dad2b6;  /* canvas dot-pattern color (fainter than line) */
 
-  /* Type */
-  --ost-font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --ost-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* ── Ink & text ─────────────────────────────────── */
+  --ost-ink:       #2c2620;  /* body text, primary content */
+  --ost-muted:     #7a6f5b;  /* secondary text, field labels, timestamps */
+  --ost-faint:     #9a8d75;  /* placeholder text, tertiary, very faint copy */
+  --ost-line:      #ece6d3;  /* hairline borders, table separators */
 
-  /* Wordmark spec */
-  --ost-wordmark-weight: 600;
+  /* ── Fill & chip ────────────────────────────────── */
+  --ost-chip:           #f1ece0; /* count chips, hover fills */
+  --ost-row-active:     #f1ebdf; /* active row background in sidebar/lists */
+
+  /* ── Type ────────────────────────────────────────── */
+  --ost-font-display:   'Newsreader', Georgia, serif;
+  --ost-font-sans:      'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --ost-font-mono:      'IBM Plex Mono', ui-monospace, 'JetBrains Mono', monospace;
+
+  /* ── Wordmark spec (unchanged) ──────────────────── */
+  --ost-wordmark-weight:   600;
   --ost-wordmark-tracking: -0.02em;
+
+  /* ── Node-type palette (unchanged from app defaults) ─ */
+  --ost-node-outcome:     #93c5fd;
+  --ost-node-opportunity: #fdba74;
+  --ost-node-child:       #fcd34d;
+  --ost-node-solution:    #6ee7b7;
+  --ost-node-experiment:  #c4b5fd;
+}
+
+/* ── Inverted figure/ground ──────────────────────────────
+ * Apply with data-paper="inverted" on the region root.
+ * Use for the detail drawer, settings forms, anywhere fields
+ * should feel like physical blocks resting on the page.
+ *
+ * Same two hex values, swapped:
+ *   canvas (page) becomes the light surface
+ *   paper  (fields/cards) becomes the cream
+ */
+[data-paper="inverted"] {
+  --ost-canvas: #fefdf9;
+  --ost-paper:  #f8f6f0;
 }

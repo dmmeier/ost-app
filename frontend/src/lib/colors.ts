@@ -75,5 +75,5 @@ export function getNodeLabel(nodeType: string, bubbleDefaults?: BubbleDefaults):
 export function getNodeColor(nodeType: string, bubbleDefaults?: BubbleDefaults): { bg: string; border: string; text: string; light: string } {
   if (NODE_COLORS[nodeType]) return NODE_COLORS[nodeType];
   // For custom types, return generic gray TW classes (actual border color comes from bubbleDefaults inline styles)
-  return { bg: "bg-gray-300", border: "border-gray-300", text: "text-gray-600", light: "bg-gray-50" };
+  return { bg: "bg-line", border: "border-line", text: "text-ost-muted", light: "bg-canvas" };
 }

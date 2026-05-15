@@ -83,19 +83,19 @@ export function NodeStyleDialog({
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-white rounded-lg shadow-xl border w-[360px] max-h-[90vh] overflow-y-auto"
+        className="bg-paper rounded-lg shadow-xl border w-[360px] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="px-4 py-3 border-b flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800">Style Override</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+          <h3 className="text-sm font-semibold text-ink">Style Override</h3>
+          <button onClick={onClose} className="text-faint hover:text-ost-muted text-lg leading-none">&times;</button>
         </div>
 
         <div className="p-4 space-y-4">
           {/* Preview */}
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-16">Preview</span>
+            <span className="text-xs text-faint w-16">Preview</span>
             <div
               className="w-24 h-16 rounded-lg flex items-center justify-center"
               style={{
@@ -105,18 +105,18 @@ export function NodeStyleDialog({
                 ...getFillStyle(effectiveFillColor, effectiveFillStyle),
               }}
             >
-              <span className={`text-sm font-medium ${effectiveFontLight ? "text-white" : "text-gray-900"}`}>Aa</span>
+              <span className={`text-sm font-medium ${effectiveFontLight ? "text-white" : "text-ink"}`}>Aa</span>
             </div>
           </div>
 
           {/* Border Color */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium text-gray-600">Border Color</span>
+              <span className="text-xs font-medium text-ost-muted">Border Color</span>
               {borderColor !== null && (
                 <button
                   onClick={() => setBorderColor(null)}
-                  className="text-[9px] text-gray-400 hover:text-gray-600 underline"
+                  className="text-[9px] text-faint hover:text-ost-muted underline"
                 >
                   use default
                 </button>
@@ -124,15 +124,15 @@ export function NodeStyleDialog({
             </div>
             <div className="relative">
               <button
-                className="flex items-center gap-2 border rounded px-2 py-1.5 hover:bg-gray-50"
+                className="flex items-center gap-2 border rounded px-2 py-1.5 hover:bg-chip"
                 onClick={() => setBorderColorPickerOpen(!borderColorPickerOpen)}
               >
                 <span
                   className="w-5 h-5 rounded border"
                   style={{ backgroundColor: effectiveBorderColor }}
                 />
-                <span className="text-xs font-mono text-gray-500">{effectiveBorderColor}</span>
-                {borderColor === null && <span className="text-[9px] text-gray-400">(default)</span>}
+                <span className="text-xs font-mono text-ost-muted">{effectiveBorderColor}</span>
+                {borderColor === null && <span className="text-[9px] text-faint">(default)</span>}
               </button>
               {borderColorPickerOpen && (
                 <ColorPicker
@@ -147,11 +147,11 @@ export function NodeStyleDialog({
           {/* Border Width */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium text-gray-600">Border Width</span>
+              <span className="text-xs font-medium text-ost-muted">Border Width</span>
               {borderWidth !== null && (
                 <button
                   onClick={() => setBorderWidth(null)}
-                  className="text-[9px] text-gray-400 hover:text-gray-600 underline"
+                  className="text-[9px] text-faint hover:text-ost-muted underline"
                 >
                   use default
                 </button>
@@ -165,23 +165,23 @@ export function NodeStyleDialog({
                 step={0.5}
                 value={effectiveBorderWidth}
                 onChange={(e) => setBorderWidth(parseFloat(e.target.value))}
-                className="w-40 h-3 accent-gray-500"
+                className="w-40 h-3 accent-teal"
               />
-              <span className="text-xs font-medium text-gray-600 w-8 text-center bg-gray-100 rounded px-1">
+              <span className="text-xs font-medium text-ost-muted w-8 text-center bg-chip rounded px-1">
                 {effectiveBorderWidth}px
               </span>
-              {borderWidth === null && <span className="text-[9px] text-gray-400">(default)</span>}
+              {borderWidth === null && <span className="text-[9px] text-faint">(default)</span>}
             </div>
           </div>
 
           {/* Fill Color */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium text-gray-600">Fill Color</span>
+              <span className="text-xs font-medium text-ost-muted">Fill Color</span>
               {fillColor !== null && (
                 <button
                   onClick={() => setFillColor(null)}
-                  className="text-[9px] text-gray-400 hover:text-gray-600 underline"
+                  className="text-[9px] text-faint hover:text-ost-muted underline"
                 >
                   clear
                 </button>
@@ -189,14 +189,14 @@ export function NodeStyleDialog({
             </div>
             <div className="relative">
               <button
-                className="flex items-center gap-2 border rounded px-2 py-1.5 hover:bg-gray-50"
+                className="flex items-center gap-2 border rounded px-2 py-1.5 hover:bg-chip"
                 onClick={() => setFillColorPickerOpen(!fillColorPickerOpen)}
               >
                 <span
                   className="w-5 h-5 rounded border"
                   style={{ backgroundColor: fillColor ?? "#ffffff" }}
                 />
-                <span className="text-xs font-mono text-gray-500">{fillColor ?? "none"}</span>
+                <span className="text-xs font-mono text-ost-muted">{fillColor ?? "none"}</span>
               </button>
               {fillColorPickerOpen && (
                 <ColorPicker
@@ -211,11 +211,11 @@ export function NodeStyleDialog({
           {/* Fill Style */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium text-gray-600">Fill Style</span>
+              <span className="text-xs font-medium text-ost-muted">Fill Style</span>
               {fillStyle !== null && (
                 <button
                   onClick={() => setFillStyle(null)}
-                  className="text-[9px] text-gray-400 hover:text-gray-600 underline"
+                  className="text-[9px] text-faint hover:text-ost-muted underline"
                 >
                   clear
                 </button>
@@ -231,11 +231,11 @@ export function NodeStyleDialog({
                     className={`flex flex-col items-center gap-1 p-2 rounded border text-[10px] ${
                       isActive
                         ? "border-[#0d9488] bg-[#e6f4f3] text-[#0b7a70]"
-                        : "border-gray-200 hover:border-gray-300 text-gray-500"
+                        : "border-line hover:border-faint text-ost-muted"
                     }`}
                   >
                     <div
-                      className="w-8 h-5 rounded border border-gray-300"
+                      className="w-8 h-5 rounded border border-line"
                       style={getFillStyle(effectiveFillColor, opt.value)}
                     />
                     {opt.label}
@@ -248,11 +248,11 @@ export function NodeStyleDialog({
           {/* Light Font */}
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium text-gray-600">Light Font</span>
+              <span className="text-xs font-medium text-ost-muted">Light Font</span>
               {fontLight !== null && (
                 <button
                   onClick={() => setFontLight(null)}
-                  className="text-[9px] text-gray-400 hover:text-gray-600 underline"
+                  className="text-[9px] text-faint hover:text-ost-muted underline"
                 >
                   use default
                 </button>
@@ -263,12 +263,12 @@ export function NodeStyleDialog({
                 type="checkbox"
                 checked={effectiveFontLight}
                 onChange={(e) => setFontLight(e.target.checked)}
-                className="w-4 h-4 accent-gray-500"
+                className="w-4 h-4 accent-teal"
               />
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-ost-muted">
                 White text (for dark fill colors)
               </span>
-              {fontLight === null && <span className="text-[9px] text-gray-400">(default)</span>}
+              {fontLight === null && <span className="text-[9px] text-faint">(default)</span>}
             </label>
           </div>
         </div>
@@ -278,7 +278,7 @@ export function NodeStyleDialog({
           <button
             onClick={handleReset}
             disabled={!hasOverrides}
-            className="text-xs text-gray-400 hover:text-gray-600 underline disabled:opacity-30 disabled:cursor-not-allowed"
+            className="text-xs text-faint hover:text-ost-muted underline disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Reset to defaults
           </button>

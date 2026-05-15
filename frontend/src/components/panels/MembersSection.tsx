@@ -55,21 +55,21 @@ export default function MembersSection({ projectId }: MembersSectionProps) {
   if (!projectId) return null;
 
   const roleBadgeColors: Record<string, string> = {
-    owner: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-    editor: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-    viewer: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    owner: "bg-red-100 text-red-800",
+    editor: "bg-green-100 text-green-800",
+    viewer: "bg-blue-100 text-blue-800",
   };
 
   return (
     <div className="p-3 space-y-3">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+      <h3 className="text-sm font-semibold text-ink">
         Members
       </h3>
 
       {isLoading ? (
-        <p className="text-xs text-gray-500">Loading...</p>
+        <p className="text-xs text-ost-muted">Loading...</p>
       ) : members.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">
+        <p className="text-xs text-ost-muted italic">
           No members (open mode or single-user)
         </p>
       ) : (
@@ -77,13 +77,13 @@ export default function MembersSection({ projectId }: MembersSectionProps) {
           {members.map((m: ProjectMember) => (
             <div
               key={m.user_id}
-              className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800 rounded px-2 py-1.5"
+              className="flex items-center justify-between text-xs bg-canvas rounded px-2 py-1.5"
             >
               <div className="flex-1 min-w-0">
                 <span className="font-medium truncate block">
                   {m.display_name}
                 </span>
-                <span className="text-gray-500 truncate block">{m.email}</span>
+                <span className="text-ost-muted truncate block">{m.email}</span>
               </div>
               <div className="flex items-center gap-1.5 ml-2">
                 {isOwner ? (
@@ -95,7 +95,7 @@ export default function MembersSection({ projectId }: MembersSectionProps) {
                         role: e.target.value,
                       })
                     }
-                    className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-700 dark:border-gray-600"
+                    className="text-xs border rounded px-1 py-0.5 bg-paper"
                   >
                     <option value="owner">Owner</option>
                     <option value="editor">Editor</option>
@@ -130,8 +130,8 @@ export default function MembersSection({ projectId }: MembersSectionProps) {
       )}
 
       {isOwner && (
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
-          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+        <div className="border-t border-line pt-2 mt-2">
+          <p className="text-xs font-medium text-ost-muted mb-1">
             Add member
           </p>
           <div className="flex gap-1.5">
@@ -140,12 +140,12 @@ export default function MembersSection({ projectId }: MembersSectionProps) {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               placeholder="user@example.com"
-              className="flex-1 text-xs border rounded px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600"
+              className="flex-1 text-xs border rounded px-2 py-1 bg-paper"
             />
             <select
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as ProjectRole)}
-              className="text-xs border rounded px-1 py-1 bg-white dark:bg-gray-700 dark:border-gray-600"
+              className="text-xs border rounded px-1 py-1 bg-paper"
             >
               <option value="editor">Editor</option>
               <option value="viewer">Viewer</option>

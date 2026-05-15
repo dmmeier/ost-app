@@ -112,13 +112,14 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         borderColor,
         borderWidth: `${borderWidth}px`,
         borderStyle: "solid",
+        backgroundColor: 'var(--ost-paper)',
         ...fillStyles,
         ...(nodeData.isSelected ? { ringColor: borderColor } : {}),
       }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-gray-400" />
+      <Handle type="target" position={Position.Top} className="!bg-[#7a6f5b]" />
       {nodeData.index != null && (
-        <span className={`absolute top-1.5 right-2 text-[10px] rounded px-1 min-w-[18px] text-center ${fontLight ? "text-white/50 bg-white/10" : "text-gray-500 bg-gray-50"}`}>
+        <span className={`absolute top-1.5 right-2 text-[10px] rounded px-1 min-w-[18px] text-center ${fontLight ? "text-white/50 bg-white/10" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-muted)', background: 'var(--ost-chip)' }}>
           #{nodeData.index}
         </span>
       )}
@@ -132,20 +133,22 @@ function OSTNodeComponent({ id, data }: NodeProps) {
             if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
             if (e.key === "Escape") { setEditTitle(nodeData.title); setEditingNodeId(null); }
           }}
-          className={`text-[15px] font-semibold leading-snug pr-8 w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : "text-gray-900 border-gray-400"}`}
+          className={`text-[15px] font-semibold leading-snug pr-8 w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : ""}`}
+          style={fontLight ? undefined : { color: 'var(--ost-ink)', borderColor: 'var(--ost-muted)' }}
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <div className={`text-[15px] font-semibold leading-snug line-clamp-3 pr-8 ${fontLight ? "text-white" : "text-gray-900"}`}>{nodeData.title}</div>
+        <div className={`text-[15px] font-semibold leading-snug line-clamp-3 pr-8 ${fontLight ? "text-white" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-ink)' }}>{nodeData.title}</div>
       )}
       {nodeData.status && nodeData.status !== "active" && (
-        <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${fontLight ? "bg-white/15 text-white/80" : "bg-gray-200 text-gray-600"}`}>
+        <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${fontLight ? "bg-white/15 text-white/80" : ""}`} style={fontLight ? undefined : { background: 'var(--ost-chip)', color: 'var(--ost-muted)' }}>
           {nodeData.status}
         </span>
       )}
       {nodeData.description && (
         <div
-          className={`text-xs mt-1 line-clamp-2 rich-text-display ${fontLight ? "text-white/80" : "text-gray-600"}`}
+          className={`text-xs mt-1 line-clamp-2 rich-text-display ${fontLight ? "text-white/80" : ""}`}
+          style={fontLight ? undefined : { color: 'var(--ost-muted)' }}
           dangerouslySetInnerHTML={{ __html: descriptionHtml }}
         />
       )}
@@ -163,9 +166,9 @@ function OSTNodeComponent({ id, data }: NodeProps) {
                   borderColor: tagColor,
                   color: tagColor,
                 } : {
-                  backgroundColor: "#f3f4f6",
-                  borderColor: "#d1d5db",
-                  color: "#4b5563",
+                  backgroundColor: 'var(--ost-chip)',
+                  borderColor: 'var(--ost-line)',
+                  color: 'var(--ost-muted)',
                 }}
               >
                 {tag}
@@ -173,7 +176,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
             );
           })}
           {nodeData.tags.length > 3 && (
-            <span className="text-[10px] text-gray-500">+{nodeData.tags.length - 3}</span>
+            <span className="text-[10px] text-ost-muted">+{nodeData.tags.length - 3}</span>
           )}
         </div>
       )}
@@ -215,7 +218,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           </span>
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-gray-400" />
+      <Handle type="source" position={Position.Bottom} className="!bg-[#7a6f5b]" />
       {(nodeData.childCount ?? 0) > 0 && (() => {
         // Determine button behavior based on whether depth filter hides children
         const depthHides = nodeData.depthHidesChildren;
@@ -225,7 +228,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           // Children hidden by global depth — show expand button
           return (
             <button
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10"
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)' }}
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpandBeyondDepth(id);
@@ -240,7 +243,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           // Children visible via per-node expansion — show collapse button
           return (
             <button
-              className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10"
+              className="absolute -bottom-3 left-1/2 -translate-x-1/2 border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)' }}
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpandBeyondDepth(id);
@@ -254,7 +257,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         // Normal behavior (depth doesn't affect children)
         return (
           <button
-            className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-gray-300 rounded-full w-6 h-6 flex items-center justify-center text-xs text-gray-500 hover:bg-gray-100 shadow-sm z-10"
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)', border: '1px solid var(--ost-line)', color: 'var(--ost-muted)' }}
             onClick={(e) => {
               e.stopPropagation();
               toggleCollapse(id);

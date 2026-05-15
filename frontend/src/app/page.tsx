@@ -139,8 +139,8 @@ export default function Home() {
   // Show loading while checking auth status
   if (!authChecked) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="text-gray-400 text-sm">Loading...</div>
+      <div className="h-screen flex items-center justify-center" style={{ background: 'var(--ost-canvas)' }}>
+        <div className="text-sm" style={{ color: 'var(--ost-muted)' }}>Loading...</div>
       </div>
     );
   }
@@ -161,9 +161,9 @@ export default function Home() {
       )}
 
       {/* Header */}
-      <header className="h-12 border-b border-gray-800 flex items-center justify-between px-4 bg-[#1a1a1a] shrink-0">
+      <header className="h-12 border-b flex items-center justify-between px-4 shrink-0" style={{ background: 'var(--ost-canvas)', borderColor: 'var(--ost-line)', color: 'var(--ost-ink)' }}>
         <div className="flex items-center gap-3 min-w-0">
-          <Wordmark height={28} className="shrink-0" variant="dark" />
+          <Wordmark height={28} className="shrink-0" variant="light" />
           <Breadcrumbs tree={tree ?? null} />
         </div>
         <div className="flex items-center gap-2">
@@ -173,8 +173,9 @@ export default function Home() {
               className={`text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 ${
                 chatPanelOpen
                   ? "bg-[#0d9488] text-white"
-                  : "text-gray-300 hover:bg-white/10"
+                  : "hover:bg-[var(--ost-chip)]"
               }`}
+              style={chatPanelOpen ? undefined : { color: 'var(--ost-ink)' }}
               title={chatPanelOpen ? "Hide chat panel" : "Show chat panel"}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -188,13 +189,14 @@ export default function Home() {
           )}
           <SettingsDialog />
           {isAuthenticated && user && (
-            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-gray-700">
-              <span className="text-xs text-gray-400 truncate max-w-[120px]" title={user.email}>
+            <div className="flex items-center gap-2 ml-2 pl-2" style={{ borderLeft: '1px solid var(--ost-line)' }}>
+              <span className="text-xs truncate max-w-[120px]" style={{ color: 'var(--ost-muted)' }} title={user.email}>
                 {user.display_name}
               </span>
               <button
                 onClick={() => { clearAuth(); router.push("/login"); }}
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                className="text-xs transition-colors"
+                style={{ color: 'var(--ost-muted)' }}
                 title="Sign out"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -214,12 +216,13 @@ export default function Home() {
               {sidebarOpen ? (
                 <>
                   <ResizablePanel id="sidebar" defaultSize="18%" minSize="12%" maxSize="28%">
-                    <div className="h-full overflow-y-auto border-r bg-gray-50/50 p-3">
+                    <div className="h-full overflow-y-auto border-r p-3" style={{ background: 'var(--ost-sidebar)', borderColor: 'var(--ost-line)' }}>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-semibold uppercase text-gray-400">Projects</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--ost-muted)', fontFamily: 'var(--font-ost-mono)' }}>Projects</span>
                         <button
                           onClick={() => setSidebarOpen(false)}
-                          className="text-gray-400 hover:text-gray-600 p-0.5"
+                          className="p-0.5 transition-colors"
+                          style={{ color: 'var(--ost-muted)' }}
                           title="Collapse sidebar"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -236,18 +239,19 @@ export default function Home() {
               ) : (
                 <div
                   onClick={() => setSidebarOpen(true)}
-                  className="w-6 flex items-center justify-center border-r bg-gray-50 hover:bg-gray-100 cursor-pointer shrink-0 transition-colors"
+                  className="w-6 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                  style={{ background: 'var(--ost-sidebar)', borderRight: '1px solid var(--ost-line)', color: 'var(--ost-muted)' }}
                   title="Open sidebar"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="9 18 15 12 9 6"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
               )}
 
               {/* Center: Tree canvas */}
               <ResizablePanel id="canvas" defaultSize="52%" minSize="30%">
-                <div className="h-full bg-white">
+                <div className="h-full" style={{ background: 'var(--ost-canvas)' }}>
                   {!selectedTreeId ? (
-                    <div className="h-full flex items-center justify-center text-gray-400">
+                    <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
                       <div className="text-center max-w-md">
                         <BrandMark size={48} className="mx-auto mb-4 opacity-25 text-[#0d9488]" />
                         <p className="text-lg mb-2">Select or create a tree to get started</p>
@@ -255,7 +259,7 @@ export default function Home() {
                       </div>
                     </div>
                   ) : isLoading ? (
-                    <div className="h-full flex items-center justify-center text-gray-400">
+                    <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
                       Loading tree...
                     </div>
                   ) : error ? (
@@ -288,11 +292,11 @@ export default function Home() {
                   else if (!collapsed && !chatPanelOpen) setChatPanelOpen(true);
                 }}
               >
-                <div className="h-full overflow-hidden border-l bg-white">
+                <div className="h-full overflow-hidden" style={{ borderLeft: '1px solid var(--ost-line)', background: 'var(--ost-paper)' }}>
                   {tree ? (
                     <ChatPanel treeId={tree.id} projectId={tree.project_id} />
                   ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                    <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--ost-muted)' }}>
                       <div className="text-center">
                         <BrandMark size={32} className="mx-auto mb-2 opacity-20 text-[#0d9488]" />
                         <p>Select a tree to start chatting</p>
@@ -304,10 +308,11 @@ export default function Home() {
               {!chatPanelOpen && tree && (
                 <div
                   onClick={() => chatPanelRef.current?.expand()}
-                  className="w-6 flex items-center justify-center border-l bg-gray-50 hover:bg-gray-100 cursor-pointer shrink-0 transition-colors"
+                  className="w-6 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                  style={{ borderLeft: '1px solid var(--ost-line)', background: 'var(--ost-sidebar)', color: 'var(--ost-muted)' }}
                   title="Open chat"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><polyline points="15 18 9 12 15 6"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </div>
               )}
             </ResizablePanelGroup>
@@ -317,10 +322,11 @@ export default function Home() {
           {!bottomPanelOpen && tree && (
             <div
               onClick={() => setBottomPanelOpen(true)}
-              className="h-6 flex items-center justify-center border-t bg-gray-50 hover:bg-gray-100 cursor-pointer shrink-0 transition-colors"
+              className="h-6 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+              style={{ borderTop: '1px solid var(--ost-line)', background: 'var(--ost-sidebar)', color: 'var(--ost-muted)' }}
               title="Open panel"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400"><polyline points="18 15 12 9 6 15" /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="18 15 12 9 6 15" /></svg>
             </div>
           )}
 
@@ -329,19 +335,20 @@ export default function Home() {
             <>
               <ResizableHandle withHandle />
               <ResizablePanel id="bottom" defaultSize="30%" minSize="15%" maxSize="60%">
-                <div className="h-full flex flex-col border-t bg-white">
+                <div className="h-full flex flex-col" style={{ borderTop: '1px solid var(--ost-line)', background: 'var(--ost-paper)' }}>
                   {/* Tab bar */}
-                  <div className="flex items-center justify-between px-3 py-1 border-b bg-gray-50 shrink-0">
+                  <div className="flex items-center justify-between px-3 py-1 shrink-0" style={{ borderBottom: '1px solid var(--ost-line)', background: 'var(--ost-sidebar)' }}>
                     <div className="flex items-center gap-1">
                       {BOTTOM_TABS.map((tab) => (
                         <button
                           key={tab.key}
                           onClick={() => setBottomPanel(tab.key)}
-                          className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
                             bottomPanel === tab.key
-                              ? "bg-[#0d9488] text-white"
-                              : "text-gray-600 hover:bg-gray-100"
+                              ? "bg-[#0d9488] text-white font-medium"
+                              : "hover:bg-[var(--ost-chip)]"
                           }`}
+                          style={bottomPanel === tab.key ? undefined : { color: 'var(--ost-muted)' }}
                         >
                           {tab.label}
                         </button>
@@ -349,7 +356,8 @@ export default function Home() {
                     </div>
                     <button
                       onClick={() => setBottomPanelOpen(false)}
-                      className="text-gray-400 hover:text-gray-600 p-0.5"
+                      className="p-0.5 transition-colors"
+                      style={{ color: 'var(--ost-muted)' }}
                       title="Collapse panel"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -379,14 +387,14 @@ export default function Home() {
 
 function EmptyTreePrompt({ treeId }: { treeId: string }) {
   return (
-    <div className="h-full flex items-center justify-center text-gray-400">
+    <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
       <div className="text-center max-w-lg">
         <BrandMark size={48} className="mx-auto mb-4 opacity-30 text-[#0d9488]" />
-        <p className="text-lg font-medium text-gray-600 mb-2">Start with your Outcome</p>
-        <p className="text-sm text-gray-500 mb-1">
+        <p className="text-lg font-medium mb-2" style={{ color: 'var(--ost-ink)', fontFamily: 'var(--font-ost-display)' }}>Start with your Outcome</p>
+        <p className="text-sm mb-1" style={{ color: 'var(--ost-ink)' }}>
           An <strong>Outcome</strong> is the measurable business result you want to achieve.
         </p>
-        <p className="text-sm text-gray-400 mb-5">
+        <p className="text-sm mb-5" style={{ color: 'var(--ost-muted)' }}>
           Good outcomes include a metric and target, e.g. &quot;Increase mobile app DAU to 500K&quot;
           or &quot;Reduce churn rate to below 5%&quot;.
         </p>
@@ -403,9 +411,9 @@ function Breadcrumbs({ tree }: { tree: { name: string; project_id: string } | nu
   if (!project) return null;
   return (
     <div className="flex items-center gap-1.5 text-sm min-w-0 overflow-hidden">
-      <span className="text-gray-400 truncate max-w-[200px]" title={project.name}>{project.name}</span>
-      <span className="text-gray-200 shrink-0">&rsaquo;</span>
-      <span className="text-gray-200 font-medium truncate max-w-[240px]" title={tree.name}>{tree.name}</span>
+      <span className="truncate max-w-[200px]" style={{ color: 'var(--ost-muted)' }} title={project.name}>{project.name}</span>
+      <span className="shrink-0" style={{ color: '#c8bea5' }}>&rsaquo;</span>
+      <span className="font-medium truncate max-w-[240px]" style={{ color: 'var(--ost-ink)' }} title={tree.name}>{tree.name}</span>
     </div>
   );
 }

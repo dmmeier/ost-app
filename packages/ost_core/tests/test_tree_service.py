@@ -470,7 +470,7 @@ class TestTagCRUD:
         tag = service.create_tag(sample_project.id, TagCreate(name="UX"))
         assert tag.name == "UX"
         assert tag.project_id == sample_project.id
-        assert tag.color == "#6b7280"  # default color
+        assert tag.color == "#7a6f5b"  # default color
         assert tag.id is not None
 
     def test_create_tag_with_color(self, service: TreeService, sample_project):

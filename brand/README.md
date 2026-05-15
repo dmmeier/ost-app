@@ -1,6 +1,41 @@
-# OST app — Brand assets
+# OST app — Brand assets · v2 (Whisper)
 
-This folder contains the favicon, wordmark, and brand tokens for the **OST app** (Opportunity Solution Trees). It is designed for direct drop-in to the repo by Claude Code.
+This folder supersedes `brand/`. It documents the **Paper · Whisper**
+direction: lightly-warmed surfaces, a light unified header, and a serif
+display face for titles. The mark, wordmark form, teal accent, and
+node-type palette are **unchanged** — this is a refinement of the *room*
+the brand lives in, not the brand itself.
+
+> *Whisper note.* The v2 spec initially used a more saturated cream
+> (`#f5f0e6`) for the canvas. At full-screen scale that read khaki, so the
+> canvas tone has been re-tuned: lighter and less saturated, still warm.
+> All hexes below reflect the current values.
+
+---
+
+## What's new in v2
+
+| | v1 | v2 (Whisper) |
+|---|---|---|
+| Page / canvas | `#ffffff` pure white | `#f8f6f0` Whisper |
+| Elevated paper (cards, fields) | (same as page) | `#fefdf9` |
+| Ink (body text) | `#1a1a1a` cool near-black | `#2c2620` warm dark brown |
+| Muted (secondary text) | `#6b7280` cool gray | `#7a6f5b` warm taupe |
+| Faint (placeholder) | (none) | `#9a8d75` |
+| Line / hairline | `#e5e1d8` | `#ece6d3` |
+| Dot-pattern color | (inherited from line) | `#dad2b6` (own value, fainter than line) |
+| Top bar | `#1a1a1a` near-black slab | **light, same surface as the canvas** |
+| Display face | (none — Plex throughout) | **Newsreader** serif for titles |
+| Body face | IBM Plex Sans | IBM Plex Sans (unchanged) |
+| Mono face | IBM Plex Mono | IBM Plex Mono (unchanged) |
+| Brand teal `#0d9488` | — | **unchanged** |
+| Disc + tree mark | — | **unchanged** |
+| Node-type colors | — | **unchanged** |
+
+The biggest practical change is the top bar: the v1 brief was firm about a
+near-black anchor. v2 lets the header join the rest of the surface so the
+app reads as one continuous, quiet plane — closer in spirit to the
+understated design tools the product is trying to feel like.
 
 ---
 
@@ -8,268 +43,397 @@ This folder contains the favicon, wordmark, and brand tokens for the **OST app**
 
 | File | Purpose |
 |---|---|
-| `favicon.svg` | Primary favicon — teal disc + white tree |
-| `mark-monochrome.svg` | Flat teal tree (no disc) — for masks, dark-mode UI, single-color contexts |
-| `mark-white.svg` | Flat white tree (no disc) — for placement on solid teal/dark surfaces |
-| `wordmark.svg` | Disc + "OST app" lockup, ink on light backgrounds |
-| `wordmark-on-dark.svg` | Disc + "OST app" lockup, white on dark backgrounds |
-| `apple-touch-icon.svg` | iOS home-screen icon (rounded square, 180×180 source) — convert to PNG before shipping |
-| `site.webmanifest` | PWA manifest with name, theme color, icon refs |
-| `tokens.css` | CSS variables for color + type — single source of truth |
+| `tokens.css` | CSS variables — single source of truth |
+| `favicon.svg` *(from v1)* | Primary favicon — teal disc + white tree |
+| `mark-monochrome.svg` *(from v1)* | Flat teal tree (no disc) — masks, inline use |
+| `mark-white.svg` *(from v1)* | Flat white tree — placement on dark/teal surfaces (rare in v2) |
+| `wordmark.svg` *(from v1)* | Disc + "OST app" lockup, ink on light backgrounds — **now the primary lockup** |
+| `wordmark-on-dark.svg` *(from v1)* | Same on dark — for occasional dark dialogs / marketing only |
+| `apple-touch-icon.svg` *(from v1)* | iOS home-screen icon — convert to PNG before shipping |
+| `site.webmanifest` *(from v1)* | PWA manifest |
+
+The SVG assets are **identical to v1**. Carry them forward as-is.
 
 ---
 
-## Design rationale
+## Color system
 
-- **Mark:** simplified opportunity-solution-tree — root node, three child nodes, three connecting branches. Reverse-out white on a teal disc.
-- **Why not the existing `icon.svg`?** That icon is a literal tree diagram with thin strokes. It looks great at 96px and turns into a green smudge at 16px (the actual favicon size). The new mark thickens strokes and enlarges nodes so it survives 16px while keeping the same visual language.
-- **Color:** anchored on the existing brand teal `#0d9488` (teal-600). No color shift — this is a refinement, not a rebrand.
-- **Type:** IBM Plex Sans for the wordmark (humanist sans, friendly, with a technical heritage that fits a product tool). Weight 600, letter-spacing −0.02em.
+### Brand
+
+| Token | Value | Use |
+|---|---|---|
+| `--ost-teal` | `#0d9488` | Primary accent — disc, active tab, links, "Send" pill, active-tree marker |
+| `--ost-teal-deep` | `#0b7a70` | Hover / pressed |
+| `--ost-teal-soft` | `#86c5be` | Inactive tree-glyph icon, soft chip outline |
+| `--ost-teal-tint` | `#e6f4f3` | Subtle teal-tinted backgrounds |
+
+### Paper — the surface palette
+
+A two-surface system. The **canvas** is the page; **paper** is what rests on
+it (cards, fields, drawer tabs). The two are very close in value but
+intentionally different so panels read as discrete objects.
+
+| Token | Value | Role |
+|---|---|---|
+| `--ost-canvas` | `#f8f6f0` | The page itself — tree canvas, drawer background, sidebar empty space |
+| `--ost-paper` | `#fefdf9` | Elevated paper — cards, text fields, focus-view, mini-panels |
+| `--ost-sidebar` | `#fbf9f3` | Sidebar chrome — sits between canvas and paper |
+| `--ost-dot` | `#dad2b6` | Canvas dot-pattern color — fainter than line on purpose |
+
+**The dot pattern matters.** If you're using `<Background variant="dots">`
+from React Flow (or a CSS `radial-gradient` background), bind it to
+`--ost-dot`, **not** `--ost-line`. Using `--ost-line` saturates the canvas
+because every dot picks up the warm border tone — at canvas scale it
+reads textured-khaki rather than tinted-paper. `--ost-dot` is sat-shifted
+and lightness-shifted so the dots register as texture without colouring
+the page.
+
+```tsx
+// ReactFlow
+<Background variant="dots" color="var(--ost-dot)" gap={14} size={1.5} />
+```
+
+**Inverted variant.** For dense form views (the detail drawer is the main
+candidate), swap which surface holds the cream. The page becomes light and
+the fields become cream, so each field reads as a tactile block sitting on
+the page. Apply with `data-paper="inverted"` on the region root — tokens.css
+re-binds the two values for that subtree.
+
+```html
+<section data-paper="inverted">…drawer contents…</section>
+```
+
+### Ink
+
+| Token | Value | Use |
+|---|---|---|
+| `--ost-ink` | `#2c2620` | Body text, primary content, headings |
+| `--ost-muted` | `#7a6f5b` | Secondary text, field labels, timestamps |
+| `--ost-faint` | `#9a8d75` | Placeholder text, tertiary copy |
+| `--ost-line` | `#ece6d3` | Hairline borders, table separators |
+| `--ost-chip` | `#f1ece0` | Count chips, hover fills, embedded mono inputs |
+| `--ost-row-active` | `#f1ebdf` | Active row background in sidebar/lists |
+
+The warmer ink (`#2c2620` vs v1's `#1a1a1a`) is critical — pure cool ink
+fights the warm paper and reads as a foreign object on the page. Keep the
+warmth coordinated.
+
+### Node-type palette (unchanged)
+
+Used on the tree canvas. These are per-tree defaults that the user can
+override; they are **not** rebrand candidates.
+
+| Token | Value | Type |
+|---|---|---|
+| `--ost-node-outcome` | `#93c5fd` | Outcome |
+| `--ost-node-opportunity` | `#fdba74` | Opportunity |
+| `--ost-node-child` | `#fcd34d` | Child Opportunity |
+| `--ost-node-solution` | `#6ee7b7` | Solution |
+| `--ost-node-experiment` | `#c4b5fd` | Experiment |
 
 ---
 
-## ⚠️ Mark-vs-glyph hierarchy (read this before placing icons in the UI)
+## Type
 
-There are three forms of the mark and they are **not interchangeable**. Misusing them dilutes the brand.
+A three-face system. **Newsreader** is new in v2 and carries the display
+voice; the existing IBM Plex faces continue to do the heavy lifting for UI.
+
+| Token | Face | Use |
+|---|---|---|
+| `--ost-font-display` | **Newsreader** | Section titles, drawer-tab page titles, node names in detail view, sidebar "Projects" header |
+| `--ost-font-sans` | IBM Plex Sans | Body, navigation, form controls, buttons, chips, breadcrumbs |
+| `--ost-font-mono` | IBM Plex Mono | Field labels (UPPERCASE), timestamps, IDs, commit hashes, count badges |
+
+**Why Newsreader?** A modern editorial serif. Variable optical sizing
+(`opsz`) means it reads warmly at headline sizes without becoming a
+collector's serif. It pairs naturally with Plex (both are humanist) and
+distinguishes the product from the wall of geometric-sans tools.
+
+**Imports.**
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+```
+
+**Sizes (UI defaults — not exhaustive).**
+
+| Role | Face | Size | Weight | Tracking |
+|---|---|---|---|---|
+| Drawer page title | Display | 30 / 1.12 | 500 | −0.012em |
+| Section title | Display | 18 / 1.15 | 500 | −0.012em |
+| Sidebar "Projects" | Display | 18 / 1.15 | 500 | −0.012em |
+| Body | Sans | 13 / 1.55 | 400 | 0 |
+| UI labels | Sans | 13 / 1.3 | 500 | −0.005em |
+| Section sub-label | Mono UPPERCASE | 10.5 | 500 | 0.16em |
+| Timestamps, IDs | Mono | 11 | 400 | 0 |
+
+---
+
+## Header treatment (v2 · light)
+
+The v1 spec called for a `#1a1a1a` near-black bar. v2 lets the header sit
+on the same surface as the rest of the app.
+
+| Property | Value |
+|---|---|
+| Background | `var(--ost-canvas)` or `var(--ost-sidebar)` (matches whichever chrome surface) |
+| Bottom border | `1px solid var(--ost-line)` — hairline divider only |
+| Height | 56–64px (unchanged) |
+| Wordmark | `wordmark.svg` (disc + ink "OST" + muted "app") — **the light lockup** |
+| Breadcrumb — current page | `var(--ost-ink)` |
+| Breadcrumb — parent crumbs | `var(--ost-muted)` |
+| Breadcrumb separator (`›`) | `#c8bea5` (line color, slightly more saturated) |
+| Right-side actions | `var(--ost-ink)` text; hover bg `var(--ost-chip)`; radius `8px` |
+| "Chat" pill | `var(--ost-teal)` bg / white text — unchanged |
+| Focus ring | `2px solid var(--ost-teal)` |
+
+**CSS.**
+
+```css
+.app-header {
+  background: var(--ost-canvas);
+  border-bottom: 1px solid var(--ost-line);
+  color: var(--ost-ink);
+}
+.app-header .breadcrumb-current { color: var(--ost-ink); }
+.app-header .breadcrumb-parent  { color: var(--ost-muted); }
+.app-header .breadcrumb-sep     { color: #c8bea5; }
+.app-header .header-action      { color: var(--ost-ink); border-radius: 8px; padding: 6px 10px; }
+.app-header .header-action:hover { background: var(--ost-chip); }
+.app-header .header-action:focus-visible { outline: 2px solid var(--ost-teal); outline-offset: 2px; }
+```
+
+**Why this works.**
+The brand is anchored by the teal disc, not by chrome contrast. On cream,
+the disc is more legible — not less — because the teal pops harder against
+warm cream than against any near-black. The continuous surface makes the
+canvas feel like the working surface and the header like the index card on
+top of it, rather than a slab pressed onto the document.
+
+**Don't.**
+- Don't switch back to a near-black header for "more contrast" — the teal
+  reads strongly on cream and you'll lose the calm.
+- Don't tint the header a different cream than the rest — match exactly.
+- Don't add a drop shadow under the header. A hairline is enough.
+- Don't bring the brand teal into the header background. Reserve teal for
+  accents (Chat pill, active tab, links).
+
+---
+
+## Mark-vs-glyph hierarchy *(unchanged from v1, included for completeness)*
+
+Three forms of the mark; they are **not interchangeable**.
 
 | Form | File | Means | Use it for |
 |---|---|---|---|
 | **Disc + white tree** | `favicon.svg` | "This is the OST product" | Browser favicon, top-bar wordmark, app icon, OS dock, OG image, login splash |
 | **Flat teal tree** | `mark-monochrome.svg` | "This is a tree (instance)" | Sidebar tree-row icons, breadcrumbs referencing a tree, empty states, inline references |
-| **Flat white tree** | `mark-white.svg` | "This is a tree, on a dark/teal surface" | Same as flat teal, but on dark mode or solid teal backgrounds |
+| **Flat white tree** | `mark-white.svg` | "This is a tree on a dark surface" | Dark-mode contexts, solid-teal surfaces |
 
-**The rule:** the **disc form appears once per screen** (the product wordmark in the top-left). Every other "tree" reference inside the app — sidebar items, breadcrumbs, empty states, anywhere the UI is talking about *a* tree rather than *the* product — uses the **flat glyph**.
-
-**Concretely:**
-- ✅ Top header wordmark → disc form (`wordmark.svg`)
-- ✅ Browser tab → disc form (`favicon.svg`)
-- ✅ Sidebar row "Customer Retention Strategy" → flat teal glyph (`mark-monochrome.svg`)
-- ✅ Empty state "Select or create a tree" → flat teal glyph
-- ❌ Do **not** put the disc-form next to every tree in the sidebar. The disc is the product, not a tree instance.
-- ❌ Do **not** use the flat glyph as a favicon — it lacks a contained shape and reads weakly at 16px.
+The disc appears **once per screen** (the product wordmark, top-left).
+Every other "tree" reference inside the app uses the flat glyph.
 
 ---
 
-## File-by-file usage
+## Drawer tabs (Detail / Context / History / Activity)
 
-### `favicon.svg` — primary favicon
-**Use when:** the browser/OS needs a small square mark — browser tabs, bookmarks, history lists, share previews where no other size is available.
-
-**Where to place:** `frontend/public/favicon.svg` (or wherever Next.js serves your existing icon — likely replacing or sitting alongside `frontend/src/app/icon.svg`).
-
-**Wire up in HTML head:**
-```html
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-```
-
-For Next.js App Router you can also drop it as `frontend/src/app/icon.svg` — Next will auto-generate the `<link>` tag. If keeping the old `icon.svg` for any reason, this file should win precedence.
-
-**Do not** scale the disc proportions — it's designed as a 64×64 viewBox with a perfectly inscribed circle. SVG handles all sizes from a single file.
-
----
-
-### `mark-monochrome.svg` — flat teal mark
-**Use when:** referencing *a tree instance* — sidebar tree-row icons, breadcrumbs that name a tree, empty states ("Select or create a tree"), inline mentions, decorative section dividers, watermark behind tree visualizations.
-
-**This is the icon to use next to every tree row in the sidebar.** Not the disc.
-
-**Do not** use this as a favicon — it lacks a contained shape and looks weak at small sizes.
-
----
-
-### `mark-white.svg` — flat white mark
-**Use when:** placing the tree on a solid teal, dark, or photographic background where you want the mark to read as part of the surface (no disc enclosure). Examples: dark-mode top bar, hero section over a teal panel, login screen splash.
-
----
-
-### `wordmark.svg` — full lockup (light)
-**Use when:** introducing the product name alongside the mark — marketing site header, README hero, login screen, "About" dialogs, email signatures.
-
-**Do not** recreate the lockup by hand-typesetting the disc next to "OST app" — the spacing in this file is tuned. If you need different proportions, scale this SVG; don't rebuild it.
-
-**Minimum width:** 120px. Below that, use `favicon.svg` alone.
-
----
-
-### `wordmark-on-dark.svg` — full lockup (dark)
-**Use when:** the same as `wordmark.svg`, but on dark backgrounds (>50% gray, near-black, dark mode).
-
-The disc itself stays teal — only the text color flips. This is intentional: the teal disc is the brand anchor and shouldn't invert.
-
----
-
-### `apple-touch-icon.svg` — iOS home-screen
-**Use when:** users save the web app to their iOS home screen.
-
-This is a **rounded-square** version (40px corner radius on a 180×180 canvas) because iOS expects a squircle, not a circle, and applies its own mask. The disc is replaced by a teal rounded-square; the tree glyph is enlarged to fit the new canvas.
-
-**Important:** iOS prefers PNG for `apple-touch-icon`. Export this SVG to a 180×180 PNG before shipping:
-```bash
-# Using rsvg-convert (or any SVG→PNG tool)
-rsvg-convert -w 180 -h 180 apple-touch-icon.svg -o apple-touch-icon.png
-```
-
-Then in HTML:
-```html
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-```
-
----
-
-### `site.webmanifest` — PWA manifest
-**Use when:** the app is installable as a PWA, or you want richer metadata for browsers and OS integrations.
-
-Wire up in HTML head:
-```html
-<link rel="manifest" href="/site.webmanifest" />
-<meta name="theme-color" content="#0d9488" />
-```
-
-Adjust `start_url`, `name`, and `description` if your routing or product naming differs.
-
----
-
-### `tokens.css` — brand CSS variables
-**Use when:** you want a single source of truth for brand colors and type. Import once at the root of your styles and reference the variables everywhere.
+Tabs share the chrome with the rest of the app. The active tab uses the
+teal pill on cream — high enough contrast to scan in a tab strip without
+shouting.
 
 ```css
-@import './brand/tokens.css';
-
-.cta-button {
-  background: var(--ost-teal);
-  color: var(--ost-paper);
-  font-family: var(--ost-font-sans);
-}
+.tab-strip       { background: var(--ost-sidebar); border-bottom: 1px solid var(--ost-line); padding: 12px 24px 0; }
+.tab             { padding: 7px 14px 9px; color: var(--ost-muted); font: 400 13px var(--ost-font-sans); border-radius: 8px; }
+.tab[aria-selected="true"] { background: var(--ost-teal); color: #fff; font-weight: 500; }
 ```
 
-If the project already has design tokens (Tailwind config, CSS Modules, theme object), **map these into that system** rather than duplicating. The values that matter: `#0d9488` for teal, IBM Plex Sans for the wordmark.
+The drawer content area is a strong candidate for `data-paper="inverted"` —
+fields and cards read as physical blocks on the page, which suits dense
+form UI better than the default figure/ground.
 
 ---
 
-## Top-bar treatment
+## Sidebar / project navigator
 
-The app's top bar (wordmark + breadcrumbs + right-side actions) sits on a **near-black** background. This gives the product a slick, modern pro-tool feel and lets the teal disc in the wordmark visually anchor every screen. The tree canvas below stays light, so the dark bar reads as architecture rather than decoration.
-
-**Spec:**
-
-| Property | Value |
-|---|---|
-| Background | `#1a1a1a` (`var(--ost-ink)`) — near-black, not pure `#000` |
-| Bottom border | none (the value contrast against the canvas is enough); optional `1px solid rgba(255,255,255,0.06)` for subtle definition |
-| Height | 56–64px (keep current — don't change) |
-| Wordmark | `wordmark-on-dark.svg` (disc stays teal, "OST" white, "app" light gray) |
-| Breadcrumb — current page | `#ffffff` |
-| Breadcrumb — parent crumbs | `#9ca3af` (`var(--ost-muted)`) |
-| Breadcrumb separator (`›`) | `#4b5563` |
-| Right-side actions (Settings, etc.) | `#ffffff` text/icons |
-| Right-side hover state | background `rgba(255, 255, 255, 0.08)`, radius `8px` |
-| Active "Chat" pill | teal `#0d9488` background, white text — keep as-is, contrast against black is great |
-| Focus ring | `2px solid #5eead4` (teal-300) for visibility on dark |
-
-**CSS:**
+Projects are boxed cards with **no chevron disclosure**. The `(n)` count
+after the project name carries the same information without an arrow that
+rotates.
 
 ```css
-.app-header {
-  background: var(--ost-ink);            /* #1a1a1a */
-  color: #ffffff;
-  /* optional hairline: */
-  /* border-bottom: 1px solid rgba(255, 255, 255, 0.06); */
-}
-
-.app-header .breadcrumb-current { color: #ffffff; }
-.app-header .breadcrumb-parent  { color: var(--ost-muted); }   /* #6b7280 also acceptable; #9ca3af reads better on black */
-.app-header .breadcrumb-sep     { color: #4b5563; }
-
-.app-header .header-action {
-  color: #ffffff;
-  border-radius: 8px;
-  padding: 6px 10px;
-}
-.app-header .header-action:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-.app-header .header-action:focus-visible {
-  outline: 2px solid #5eead4;
-  outline-offset: 2px;
-}
+.project           { background: transparent; border: 1px solid var(--ost-line); border-radius: 8px; padding: 8px 10px; }
+.project[aria-expanded="true"] { background: var(--ost-paper); }
+.project-name      { font: 600 13px var(--ost-font-sans); color: var(--ost-ink); letter-spacing: -0.005em; }
+.project-count     { color: var(--ost-muted); font-weight: 400; font-size: 12px; }
 ```
-
-**Why this works:**
-- The teal disc on near-black is the most visually striking placement of the brand — it sings.
-- A dark architectural bar makes the white canvas read clearly as the working surface.
-- Future-proofs dark mode: the header already lives there.
-- Near-black (`#1a1a1a`) softens the slickness so the product still feels approachable, not corporate.
-
-**Don't:**
-- Don't use pure `#000` — it's harsher and less modern than `#1a1a1a`. Linear, Notion, and most modern pro tools use a near-black for exactly this reason.
-- Don't use the teal `#0d9488` as the header background — it would compete with the node-type color legend immediately below, and the disc would dissolve.
-- Don't apply the dark treatment to the project sidebar — keep that surface white/paper. Only the top horizontal bar is dark.
-- Don't add gradients, glows, or inner shadows. Flat near-black, full stop.
-- Don't swap the wordmark for the light-mode variant — use `wordmark-on-dark.svg` so the text colors are correct.
 
 ---
 
-Drop this into the root layout (`frontend/src/app/layout.tsx` or equivalent):
+## Migrating from Tailwind grays
 
-```html
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-<link rel="manifest" href="/site.webmanifest" />
-<meta name="theme-color" content="#0d9488" />
-```
+The most common mistake after a v1→v2 swap is leaving cool Tailwind grays
+(`text-gray-500`, `bg-white`, `border-gray-200`, etc.) on warm cream
+surfaces. Visually this reads as a temperature clash — cool foreign objects
+sitting on warm paper. Per element it's subtle; over a whole screen it
+quietly drains the calm out of the palette.
 
-For Next.js App Router, `metadata` export equivalent:
+**Step 1 — make the tokens first-class Tailwind colors.** Extend
+`tailwind.config.ts` so `text-muted`, `bg-paper`, `border-line` etc. work
+without the `[var(...)]` escape hatch:
 
 ```ts
+// tailwind.config.ts
+import type { Config } from 'tailwindcss';
+
+export default {
+  content: ['./src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // Brand
+        teal:       'var(--ost-teal)',
+        'teal-deep':'var(--ost-teal-deep)',
+        'teal-soft':'var(--ost-teal-soft)',
+        'teal-tint':'var(--ost-teal-tint)',
+        // Paper
+        canvas:     'var(--ost-canvas)',
+        paper:      'var(--ost-paper)',
+        sidebar:    'var(--ost-sidebar)',
+        dot:        'var(--ost-dot)',
+        // Ink
+        ink:        'var(--ost-ink)',
+        muted:      'var(--ost-muted)',
+        faint:      'var(--ost-faint)',
+        line:       'var(--ost-line)',
+        chip:       'var(--ost-chip)',
+        'row-active': 'var(--ost-row-active)',
+      },
+      fontFamily: {
+        display: ['var(--ost-font-display)'],
+        sans:    ['var(--ost-font-sans)'],
+        mono:    ['var(--ost-font-mono)'],
+      },
+    },
+  },
+} satisfies Config;
+```
+
+**Step 2 — find and replace.** Map every cool gray onto a warm token:
+
+| Tailwind class | Replace with | Notes |
+|---|---|---|
+| `text-black`, `text-gray-900` / `-800` / `-700` | `text-ink` | body & headings |
+| `text-gray-600`, `text-gray-500` | `text-muted` | labels, timestamps, secondary |
+| `text-gray-400` | `text-faint` | placeholder, very faint copy |
+| `text-gray-300` | `text-faint opacity-70` | rare |
+| `bg-white` | `bg-paper` | cards, fields, panels |
+| `bg-gray-50` | `bg-canvas` | page background |
+| `bg-gray-100` | `bg-chip` | hover fills, soft tints |
+| `bg-gray-200` (as fill) | `bg-line` | rare; usually a divider, not a fill |
+| `bg-black` | (keep — only for intentional dark regions) | should be rare in v2 |
+| `border-gray-100` | `border-line` | very faint divider |
+| `border-gray-200` | `border-line` | standard hairline |
+| `border-gray-300` | `border-line` | tighten if needed; line tokens are warm |
+| `divide-gray-200` | `divide-line` | tables, lists |
+| `placeholder-gray-400` / `-500` | `placeholder-muted` | inputs |
+| `placeholder-gray-300` | `placeholder-faint` | inputs |
+| `ring-gray-*` | `ring-teal` | focus rings should always use the brand accent |
+| `hover:bg-gray-50` | `hover:bg-chip` | row & item hover |
+| `hover:bg-gray-100` | `hover:bg-chip` | same |
+
+**Find these patterns:**
+
+```bash
+# Sanity check before the refactor — count what's left to do:
+rg -c "text-gray|bg-gray|border-gray|divide-gray|ring-gray|placeholder-gray|bg-white|text-black|bg-black" src
+```
+
+**Step 3 — codemod (optional).** For a one-pass replace, this
+`sed` script handles ~90% of the mechanical cases. Run it once, review
+the diff carefully, then hand-fix the long tail (anywhere the *intent* of
+a neutral gray was special — e.g. status indicators, marketing screenshots —
+revert it after the codemod).
+
+```bash
+# Run from the repo root. Adjust the path glob as needed.
+fd -e tsx -e ts -e jsx -e js . src | xargs sed -i '' \
+  -e 's/\btext-black\b/text-ink/g' \
+  -e 's/\btext-gray-900\b/text-ink/g' \
+  -e 's/\btext-gray-800\b/text-ink/g' \
+  -e 's/\btext-gray-700\b/text-ink/g' \
+  -e 's/\btext-gray-600\b/text-muted/g' \
+  -e 's/\btext-gray-500\b/text-muted/g' \
+  -e 's/\btext-gray-400\b/text-faint/g' \
+  -e 's/\bbg-white\b/bg-paper/g' \
+  -e 's/\bbg-gray-50\b/bg-canvas/g' \
+  -e 's/\bbg-gray-100\b/bg-chip/g' \
+  -e 's/\bborder-gray-100\b/border-line/g' \
+  -e 's/\bborder-gray-200\b/border-line/g' \
+  -e 's/\bborder-gray-300\b/border-line/g' \
+  -e 's/\bdivide-gray-200\b/divide-line/g' \
+  -e 's/\bplaceholder-gray-400\b/placeholder-muted/g' \
+  -e 's/\bplaceholder-gray-500\b/placeholder-muted/g' \
+  -e 's/\bplaceholder-gray-300\b/placeholder-faint/g' \
+  -e 's/\bring-gray-300\b/ring-teal/g' \
+  -e 's/\bring-gray-400\b/ring-teal/g' \
+  -e 's/\bhover:bg-gray-50\b/hover:bg-chip/g' \
+  -e 's/\bhover:bg-gray-100\b/hover:bg-chip/g'
+```
+
+**Step 4 — guardrail.** Once migrated, add a lint rule so cool grays
+can't sneak back in. The simplest is an ESLint custom rule on the
+`className` attribute that bans the patterns; alternatively a CI grep:
+
+```bash
+# .github/workflows/check-warm-tokens.yml — fail if any cool gray reappears
+- run: |
+    if rg -q "text-gray|bg-gray|border-gray|divide-gray|bg-white" src; then
+      echo "Cool Tailwind grays found. Use warm tokens instead."
+      rg -n "text-gray|bg-gray|border-gray|divide-gray|bg-white" src
+      exit 1
+    fi
+```
+
+**Intentional exceptions.** Not every neutral is wrong:
+- Pure black/white inside a screenshot or marketing image — leave alone.
+- Status indicators on data (e.g. a tooltip showing a dump of JSON, code
+  blocks) — `bg-gray-900 text-gray-100` for a code-block tone is legitimate
+  because it's standing in for a terminal, not for the app surface.
+- Third-party widgets (charts, embeds) that need a neutral surrounding —
+  isolate them in a container that explicitly opts out of paper.
+
+For those cases, name the intent: add a `--ost-code-bg`, `--ost-code-ink`
+token (or similar) and use it, rather than reaching back to raw Tailwind
+grays.
+
+---
+
+## Drop-in for Next.js (App Router)
+
+```ts
+// frontend/src/app/layout.tsx
+import './styles/brand-tokens.css';
+
 export const metadata = {
   title: 'OST app',
   description: 'Opportunity Solution Trees',
-  themeColor: '#0d9488',
-  icons: {
-    icon: '/favicon.svg',
-    apple: '/apple-touch-icon.png',
-  },
+  themeColor: '#f8f6f0',          // ← was #0d9488; now matches the page
+  icons:    { icon: '/favicon.svg', apple: '/apple-touch-icon.png' },
   manifest: '/site.webmanifest',
 };
 ```
 
----
+Update `site.webmanifest` to match:
 
-## What to install where
-
-Suggested mapping into the existing repo (adjust to your conventions):
-
+```json
+{
+  "name": "OST app",
+  "short_name": "OST",
+  "theme_color": "#f8f6f0",
+  "background_color": "#f8f6f0"
+}
 ```
-frontend/public/
-  ├── favicon.svg                ← from brand/favicon.svg
-  ├── apple-touch-icon.png       ← exported from brand/apple-touch-icon.svg (180×180)
-  └── site.webmanifest           ← from brand/site.webmanifest
-
-frontend/src/app/
-  └── icon.svg                   ← REPLACE with brand/favicon.svg contents
-                                   (Next.js auto-generates the <link> tag from this)
-
-frontend/src/styles/
-  ├── brand-tokens.css           ← from brand/tokens.css
-  └── (import in your global stylesheet)
-
-frontend/src/components/brand/
-  ├── Wordmark.tsx               ← inline brand/wordmark.svg
-  └── Mark.tsx                   ← inline brand/mark-monochrome.svg or mark-white.svg
-```
-
-For the React components, inline the SVG content rather than `<img src>` — this lets you control color via `currentColor` if you want and avoids an extra request.
-
----
-
-## Don'ts
-
-- **Don't** modify the proportions of the mark — disc radius, node sizes, stroke weight (3.5) are tuned for legibility down to 16px.
-- **Don't** rotate, skew, or apply effects (drop shadows, gradients, glows) to the mark or wordmark.
-- **Don't** change the teal `#0d9488`. If a different surface needs more contrast, place the mark on a neutral container — don't recolor the disc itself.
-- **Don't** stretch the wordmark — scale uniformly only.
-- **Don't** typeset "OST app" by hand to recreate the wordmark. Use `wordmark.svg`.
-- **Don't** use `mark-monochrome.svg` or `mark-white.svg` as a favicon — they lack the contained disc shape.
 
 ---
 
@@ -277,20 +441,43 @@ For the React components, inline the SVG content rather than `<img src>` — thi
 
 | Token | Value |
 |---|---|
-| Brand color | `#0d9488` (teal-600) |
-| Brand color, deep | `#0b7a70` |
-| Brand color, tint | `#e6f4f3` |
-| Ink | `#1a1a1a` |
-| Muted | `#6b7280` |
-| Wordmark face | IBM Plex Sans |
-| Wordmark weight | 600 (regular for "app") |
+| Brand teal | `#0d9488` |
+| Brand teal deep | `#0b7a70` |
+| Brand teal soft | `#86c5be` |
+| Canvas (page) | `#f8f6f0` |
+| Paper (elevated) | `#fefdf9` |
+| Sidebar | `#fbf9f3` |
+| Dot pattern | `#dad2b6` |
+| Ink | `#2c2620` |
+| Muted | `#7a6f5b` |
+| Faint | `#9a8d75` |
+| Line | `#ece6d3` |
+| Chip | `#f1ece0` |
+| Display face | Newsreader |
+| Body face | IBM Plex Sans |
+| Mono face | IBM Plex Mono |
+| Wordmark weight | 600 |
 | Wordmark tracking | −0.02em |
 | Mark canvas | 64 × 64 viewBox |
 | Mark stroke | 3.5 |
-| Apple-touch corner radius | 40 / 180 ≈ 22% |
+
+---
+
+## Don'ts
+
+- **Don't** modify the mark — disc, node sizes, stroke weight (3.5) are tuned for 16px legibility.
+- **Don't** change the brand teal `#0d9488`. If contrast is short on a surface, place the mark on a neutral container.
+- **Don't** invert the paper relationship globally (light page becomes the rule). Inverted is **per region** and lives behind `data-paper="inverted"`.
+- **Don't** reintroduce a near-black slab header. If you need a dark surface (modal, code preview), use a dark *region* inside the app — not a piece of chrome.
+- **Don't** use Newsreader for body. It's a display face — drop it below ~16px and the eye fights it.
+- **Don't** use IBM Plex Mono for prose. Reserve for labels, timestamps, IDs, hashes.
+- **Don't** typeset "OST app" by hand. Use `wordmark.svg`.
 
 ---
 
 ## Provenance
 
-These assets supersede `frontend/src/app/icon.svg` (the original literal tree diagram). The original may be kept for backward compatibility or removed; either is fine. The new mark is a deliberate refinement — same teal, same tree metaphor, simplified for small-size legibility.
+v2 emerged from the *Paper* exploration. v1's near-black-anchor reasoning
+("the teal disc sings on near-black") was sound for the contrast model but
+fought the calm-tool feel the product was reaching for. v2 lets the room go
+quiet and trusts the teal to carry the brand on its own, which it does.

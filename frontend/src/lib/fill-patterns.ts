@@ -16,7 +16,7 @@ export function getFillStyle(
 
     case "none":
     default:
-      return { backgroundColor: "white" };
+      return {};
   }
 }
 

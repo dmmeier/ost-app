@@ -69,7 +69,7 @@ export function ColorPicker({ color, onChange, onClose, position = "below" }: Co
   return (
     <div
       ref={ref}
-      className="fixed bg-white border rounded-lg shadow-lg p-2 z-50 w-[200px]"
+      className="fixed bg-paper border rounded-lg shadow-lg p-2 z-50 w-[200px]"
       style={coords ? {
         ...(coords.top != null ? { top: coords.top } : {}),
         ...(coords.bottom != null ? { bottom: coords.bottom } : {}),
@@ -84,8 +84,8 @@ export function ColorPicker({ color, onChange, onClose, position = "below" }: Co
             title={c}
             className={`w-6 h-6 rounded border-2 ${
               c === color
-                ? "border-gray-800 ring-1 ring-gray-400"
-                : "border-transparent hover:border-gray-300"
+                ? "border-ink ring-1 ring-faint"
+                : "border-transparent hover:border-line"
             }`}
             style={{ backgroundColor: c }}
             onClick={() => {

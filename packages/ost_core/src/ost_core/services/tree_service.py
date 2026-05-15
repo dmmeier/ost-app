@@ -317,7 +317,7 @@ class TreeService:
                     project_id,
                     TagCreate(
                         name=tag_data["name"],
-                        color=tag_data.get("color", "#6b7280"),
+                        color=tag_data.get("color", "#7a6f5b"),
                         fill_style=fill_style,
                         font_light=tag_data.get("font_light", False),
                     ),

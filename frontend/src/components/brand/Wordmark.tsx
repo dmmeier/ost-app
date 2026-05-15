@@ -10,9 +10,9 @@ export function Wordmark({ height = 28, className = "", variant = "light" }: Wor
   // Aspect ratio from brand SVG: 220w x 64h
   const width = (height / 64) * 220;
   // On dark backgrounds: "OST" is white, "app" is light gray
-  // On light backgrounds: "OST" is ink (#1a1a1a), "app" is muted (#6b7280)
-  const ostColor = variant === "dark" ? "#ffffff" : "#1a1a1a";
-  const appColor = variant === "dark" ? "#9ca3af" : "#6b7280";
+  // On light backgrounds: "OST" is warm ink (#2c2620), "app" is warm muted (#7a6f5b)
+  const ostColor = variant === "dark" ? "#ffffff" : "#2c2620";
+  const appColor = variant === "dark" ? "#9ca3af" : "#7a6f5b";
 
   return (
     <svg

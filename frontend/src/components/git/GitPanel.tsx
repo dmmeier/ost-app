@@ -191,15 +191,15 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
 
   return (
     <div className="p-4 space-y-5 text-sm max-w-3xl">
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-faint">
         Export tree data as JSON and push it to a remote Git repository.
       </p>
       {/* ── Settings Section ─────────────────────────────── */}
       <section>
-        <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">Settings</h3>
+        <h3 className="text-xs font-semibold uppercase text-faint mb-2">Settings</h3>
         <div className="space-y-2">
           <div>
-            <label className="text-xs font-medium text-gray-600">Remote URL</label>
+            <label className="text-xs font-medium text-ost-muted">Remote URL</label>
             <input
               className="w-full border rounded px-2 py-1.5 text-sm mt-0.5"
               placeholder="https://github.com/org/repo.git"
@@ -208,7 +208,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600">Branch</label>
+            <label className="text-xs font-medium text-ost-muted">Branch</label>
             <input
               className="w-full border rounded px-2 py-1.5 text-sm mt-0.5"
               placeholder="main"
@@ -217,14 +217,14 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
             />
           </div>
           <div className="flex items-center gap-2 text-xs mt-1">
-            <span className="text-gray-500">Token:</span>
+            <span className="text-ost-muted">Token:</span>
             {status?.token_configured ? (
               <span className="text-green-600 font-medium">configured</span>
             ) : (
-              <span className="text-gray-500">
+              <span className="text-ost-muted">
                 not set — if your remote requires token auth, add{" "}
-                <code className="bg-gray-100 px-1 rounded">GIT_TOKEN</code> to{" "}
-                <code className="bg-gray-100 px-1 rounded">.env</code>
+                <code className="bg-chip px-1 rounded">GIT_TOKEN</code> to{" "}
+                <code className="bg-chip px-1 rounded">.env</code>
               </span>
             )}
           </div>
@@ -233,7 +233,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
 
       {/* ── Author Section ───────────────────────────────── */}
       <section>
-        <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">Author</h3>
+        <h3 className="text-xs font-semibold uppercase text-faint mb-2">Author</h3>
         {authors.length > 0 && !showNewAuthor ? (
           <div className="space-y-2">
             <select
@@ -283,7 +283,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
                   setNewAuthorName("");
                   setNewAuthorEmail("");
                 }}
-                className="text-xs text-gray-500 hover:text-gray-700"
+                className="text-xs text-ost-muted hover:text-ink"
               >
                 Cancel — use existing author
               </button>
@@ -294,7 +294,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
 
       {/* ── Commit Section ───────────────────────────────── */}
       <section>
-        <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">Commit</h3>
+        <h3 className="text-xs font-semibold uppercase text-faint mb-2">Commit</h3>
         <div className="space-y-2">
           <textarea
             className="w-full border rounded px-2 py-1.5 text-sm resize-y"
@@ -348,7 +348,7 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
             className={`w-full py-2 rounded text-sm font-medium transition-colors ${
               canCommit
                 ? "bg-[#0d9488] text-white hover:bg-[#0b7a70]"
-                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-line text-faint cursor-not-allowed"
             }`}
           >
             {committing ? "Committing..." : "Commit & Push"}
@@ -358,31 +358,31 @@ export function GitPanel({ projectId, treeId, treeName }: GitPanelProps) {
 
       {/* ── History Section ──────────────────────────────── */}
       <section>
-        <h3 className="text-xs font-semibold uppercase text-gray-400 mb-2">History</h3>
+        <h3 className="text-xs font-semibold uppercase text-faint mb-2">History</h3>
         {historyLoading ? (
-          <div className="text-xs text-gray-400">Loading...</div>
+          <div className="text-xs text-faint">Loading...</div>
         ) : history.length === 0 ? (
-          <div className="text-xs text-gray-400">No commits yet.</div>
+          <div className="text-xs text-faint">No commits yet.</div>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {history.map((log) => (
               <div
                 key={log.id}
-                className="border rounded px-3 py-2 text-xs bg-gray-50"
+                className="border rounded px-3 py-2 text-xs bg-canvas"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-gray-800 truncate flex-1">
+                  <span className="font-medium text-ink truncate flex-1">
                     {log.commit_message}
                   </span>
-                  <span className="text-gray-400 ml-2 shrink-0">
+                  <span className="text-faint ml-2 shrink-0">
                     {_relativeTime(log.created_at)}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 mt-1 text-gray-500">
+                <div className="flex items-center gap-3 mt-1 text-ost-muted">
                   <span>
                     {log.author_name} &lt;{log.author_email}&gt;
                   </span>
-                  <code className="text-gray-400">{log.commit_sha.slice(0, 8)}</code>
+                  <code className="text-faint">{log.commit_sha.slice(0, 8)}</code>
                 </div>
               </div>
             ))}

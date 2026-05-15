@@ -65,7 +65,7 @@ export function SnapshotDiffViewer({
 
   if (isLoading) {
     return (
-      <div className="p-4 text-sm text-gray-400 flex items-center gap-2">
+      <div className="p-4 text-sm text-faint flex items-center gap-2">
         <span className="animate-spin">&#9696;</span> Loading diff...
       </div>
     );
@@ -95,9 +95,9 @@ export function SnapshotDiffViewer({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-2 border-b bg-gray-50 shrink-0">
+      <div className="px-3 py-2 border-b bg-canvas shrink-0">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-gray-700">
+          <p className="text-xs font-semibold text-ink">
             &ldquo;{snapshotMessage}&rdquo; vs &ldquo;{baseLabel}&rdquo;
           </p>
           <Button variant="ghost" size="sm" className="text-xs h-5 px-1.5" onClick={onClose}>
@@ -121,7 +121,7 @@ export function SnapshotDiffViewer({
             </span>
           )}
           {changes.length === 0 && (
-            <span className="text-[10px] text-gray-500">No changes</span>
+            <span className="text-[10px] text-ost-muted">No changes</span>
           )}
         </div>
       </div>
@@ -129,7 +129,7 @@ export function SnapshotDiffViewer({
       {/* Changes list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
         {changes.length === 0 && (
-          <div className="bg-gray-50 border border-dashed rounded-md p-4 text-center text-gray-400">
+          <div className="bg-canvas border border-dashed rounded-md p-4 text-center text-faint">
             No changes in this version.
           </div>
         )}
@@ -151,7 +151,7 @@ export function SnapshotDiffViewer({
 function ChangeSection({ title, changes }: { title: string; changes: SemanticChange[] }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-faint mb-1.5">
         {title}
       </p>
       <div className="space-y-1">
@@ -185,15 +185,15 @@ function ChangeRow({ change }: { change: SemanticChange }) {
           {kindPrefix[change.kind]}
         </span>
         {colors && <span className={`w-2 h-2 rounded-full ${colors.bg} inline-block`} />}
-        <span className={`font-medium ${colors?.text || "text-gray-700"}`}>
+        <span className={`font-medium ${colors?.text || "text-ink"}`}>
           {change.title}
         </span>
         {change.nodeType && (
-          <span className="text-[10px] text-gray-400">({change.nodeType.replace("_", " ")})</span>
+          <span className="text-[10px] text-faint">({change.nodeType.replace("_", " ")})</span>
         )}
       </div>
       {change.field && (
-        <div className="ml-6 mt-0.5 text-[11px] text-gray-500">
+        <div className="ml-6 mt-0.5 text-[11px] text-ost-muted">
           <span className="font-medium">{change.field}:</span>{" "}
           <span className="line-through text-red-600/70">{change.oldValue}</span>
           {" \u2192 "}

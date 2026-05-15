@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { IBM_Plex_Sans, IBM_Plex_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 
@@ -15,8 +15,14 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+const newsreader = Newsreader({
+  variable: "--font-ost-display",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
 export const viewport: Viewport = {
-  themeColor: "#0d9488",
+  themeColor: "#f8f6f0",
 };
 
 export const metadata: Metadata = {
@@ -34,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} antialiased`}
+        className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${newsreader.variable} antialiased`}
       >
         <Providers>
           {children}

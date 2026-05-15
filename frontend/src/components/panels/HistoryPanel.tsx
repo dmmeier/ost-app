@@ -439,31 +439,31 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
     <div className="p-3 space-y-3 overflow-y-auto h-full">
 
         {/* ─── 1. Git Settings Accordion ──────────────── */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="border border-line rounded-lg overflow-hidden">
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
             className="flex items-center gap-2 w-full px-3 py-2 bg-transparent border-0 cursor-pointer"
           >
             <ChevronDown
               size={12}
-              className="text-gray-400 shrink-0 transition-transform duration-150"
+              className="text-faint shrink-0 transition-transform duration-150"
               style={{ transform: settingsOpen ? "rotate(180deg)" : "rotate(0deg)" }}
             />
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-faint">
               Git Settings
             </span>
-            <span className="ml-auto text-[10px] text-gray-400 truncate">
+            <span className="ml-auto text-[10px] text-faint truncate">
               {[repoShortName, branch, currentAuthorInitial].filter(Boolean).join(" · ")}
             </span>
           </button>
 
           {settingsOpen && (
-            <div className="grid grid-cols-2 gap-2.5 gap-x-3 px-3 pb-3 pt-1 border-t border-gray-200">
+            <div className="grid grid-cols-2 gap-2.5 gap-x-3 px-3 pb-3 pt-1 border-t border-line">
               {/* Remote URL — full width */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label className="text-[10px] font-medium text-gray-500">Remote URL</label>
+                <label className="text-[10px] font-medium text-ost-muted">Remote URL</label>
                 <input
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-[#0d9488]"
+                  className="w-full border border-line rounded px-2 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-[#0d9488]"
                   placeholder="https://github.com/org/repo.git"
                   value={remoteUrl}
                   onChange={(e) => handleRemoteChange(e.target.value)}
@@ -472,9 +472,9 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
 
               {/* Branch */}
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-medium text-gray-500">Branch</label>
+                <label className="text-[10px] font-medium text-ost-muted">Branch</label>
                 <input
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
+                  className="w-full border border-line rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                   placeholder="main"
                   value={branch}
                   onChange={(e) => handleBranchChange(e.target.value)}
@@ -483,11 +483,11 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
 
               {/* Author */}
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-medium text-gray-500">Author</label>
+                <label className="text-[10px] font-medium text-ost-muted">Author</label>
                 {authors.length > 0 && !showNewAuthor ? (
                   <div className="flex flex-col gap-1.5">
                     <select
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
+                      className="w-full border border-line rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                       value={selectedAuthorIdx ?? ""}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -518,7 +518,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                 ) : (
                   <div className="flex flex-col gap-1.5">
                     <input
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
+                      className="w-full border border-line rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                       placeholder="Name"
                       value={newAuthorName}
                       onChange={(e) => {
@@ -527,7 +527,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                       }}
                     />
                     <input
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
+                      className="w-full border border-line rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#0d9488]"
                       placeholder="Email address"
                       type="email"
                       value={newAuthorEmail}
@@ -543,7 +543,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                           setNewAuthorName("");
                           setNewAuthorEmail("");
                         }}
-                        className="text-[10px] text-gray-500 hover:text-gray-700 text-left p-0 bg-transparent border-0 cursor-pointer"
+                        className="text-[10px] text-ost-muted hover:text-ink text-left p-0 bg-transparent border-0 cursor-pointer"
                       >
                         Cancel — use existing author
                       </button>
@@ -553,15 +553,15 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
               </div>
 
               {/* Token status */}
-              <div className="col-span-2 text-xs text-gray-500">
+              <div className="col-span-2 text-xs text-ost-muted">
                 Token:{" "}
                 {gitStatus?.token_configured ? (
                   <span className="text-green-600 font-medium">configured</span>
                 ) : (
                   <span>
                     not set — add{" "}
-                    <code className="bg-gray-100 px-1 rounded text-[10px]">GIT_TOKEN</code> to{" "}
-                    <code className="bg-gray-100 px-1 rounded text-[10px]">.env</code>
+                    <code className="bg-chip px-1 rounded text-[10px]">GIT_TOKEN</code> to{" "}
+                    <code className="bg-chip px-1 rounded text-[10px]">.env</code>
                   </span>
                 )}
               </div>
@@ -636,13 +636,13 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
 
         {/* ─── 3. History List ───────────────────────── */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint mb-2">
             History
           </p>
           {isLoading ? (
-            <p className="text-xs text-gray-400">Loading...</p>
+            <p className="text-xs text-faint">Loading...</p>
           ) : displayedEntries.length === 0 ? (
-            <div className="bg-gray-50 border border-dashed rounded-md p-3 text-center text-xs text-gray-400">
+            <div className="bg-canvas border border-dashed rounded-md p-3 text-center text-xs text-faint">
               No history yet. Save a snapshot or make a git commit to get started.
             </div>
           ) : (
@@ -651,14 +651,14 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
               <div style={{ position: "absolute", left: 11, top: 14, bottom: 14, width: 1.5, background: T.border }} />
 
               {/* Current state row */}
-              <li className="flex items-center gap-3 py-1.5 border-b border-gray-100">
-                <span className="relative z-10 bg-white py-0.5 shrink-0">
+              <li className="flex items-center gap-3 py-1.5 border-b border-line">
+                <span className="relative z-10 bg-paper py-0.5 shrink-0">
                   <EntryGlyph kind="current" />
                 </span>
                 <span className="flex-1 min-w-0 text-xs font-semibold text-[#0d9488] truncate">
                   Current state
                 </span>
-                <span className="text-[10px] text-gray-400 shrink-0">now</span>
+                <span className="text-[10px] text-faint shrink-0">now</span>
               </li>
 
               {/* Timeline entries */}
@@ -672,24 +672,24 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                       key={`snap-${snap.id}`}
                       onClick={() => handleSnapshotClick(snap.id)}
                       className={`flex items-center gap-3 py-1.5 relative cursor-pointer transition-colors rounded ${
-                        isLast ? "" : "border-b border-gray-100"
+                        isLast ? "" : "border-b border-line"
                       } ${
                         selectedSnapshotId === snap.id
                           ? "bg-[#e6f4f3]"
-                          : "hover:bg-gray-50"
+                          : "hover:bg-chip"
                       }`}
                     >
-                      <span className="relative z-10 bg-white py-0.5 shrink-0">
+                      <span className="relative z-10 bg-paper py-0.5 shrink-0">
                         <EntryGlyph kind="snapshot" />
                       </span>
                       <span
-                        className="flex-1 min-w-0 text-xs font-medium text-gray-700 truncate"
+                        className="flex-1 min-w-0 text-xs font-medium text-ink truncate"
                         title={snap.message}
                       >
                         {snap.message}
                       </span>
                       <span
-                        className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                        className="text-[10px] text-faint shrink-0 cursor-help"
                         title={absoluteTime(snap.created_at)}
                       >
                         {relativeTime(snap.created_at)}
@@ -742,19 +742,19 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                   return (
                     <li
                       key={`git-${commit.id}`}
-                      className={`flex items-center gap-3 py-1.5 relative transition-colors rounded hover:bg-gray-50 ${
-                        isLast ? "" : "border-b border-gray-100"
+                      className={`flex items-center gap-3 py-1.5 relative transition-colors rounded hover:bg-chip ${
+                        isLast ? "" : "border-b border-line"
                       }`}
                     >
-                      <span className="relative z-10 bg-white py-0.5 shrink-0">
+                      <span className="relative z-10 bg-paper py-0.5 shrink-0">
                         <EntryGlyph kind="commit" />
                       </span>
                       <span
-                        className="flex-1 min-w-0 text-xs font-medium text-gray-700 truncate"
+                        className="flex-1 min-w-0 text-xs font-medium text-ink truncate"
                         title={commit.commit_message}
                       >
                         {commit.commit_message}
-                        <code className="ml-2 text-[10px] text-gray-400">
+                        <code className="ml-2 text-[10px] text-faint">
                           {commit.commit_sha.slice(0, 8)}
                         </code>
                         <span className="ml-2 inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full text-[9px] font-semibold align-middle">
@@ -762,7 +762,7 @@ export function HistoryPanel({ tree }: HistoryPanelProps) {
                         </span>
                       </span>
                       <span
-                        className="text-[10px] text-gray-400 shrink-0 cursor-help"
+                        className="text-[10px] text-faint shrink-0 cursor-help"
                         title={absoluteTime(commit.created_at)}
                       >
                         {relativeTime(commit.created_at)}

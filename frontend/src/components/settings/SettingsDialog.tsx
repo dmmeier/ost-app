@@ -103,7 +103,7 @@ export function SettingsDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-xs h-8 px-2 text-gray-300 hover:bg-white/10 hover:text-white">
+        <Button variant="ghost" size="sm" className="text-xs h-8 px-2" style={{ color: 'var(--ost-ink)' }}>
           Settings
         </Button>
       </DialogTrigger>
@@ -113,7 +113,7 @@ export function SettingsDialog() {
         </DialogHeader>
 
         {loading || !settings ? (
-          <div className="py-4 text-center text-gray-500 text-sm">Loading...</div>
+          <div className="py-4 text-center text-ost-muted text-sm">Loading...</div>
         ) : (
           <div className="space-y-5">
             {/* Provider selection */}
@@ -131,7 +131,7 @@ export function SettingsDialog() {
                       className={`flex-1 text-xs rounded-md border px-3 py-2 transition-colors ${
                         settings.llm_provider === p
                           ? "border-[#0d9488] bg-[#e6f4f3] text-[#0b7a70] font-medium"
-                          : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          : "border-line text-ost-muted hover:border-faint"
                       }`}
                     >
                       <div>{PROVIDER_LABELS[p]}</div>
@@ -170,7 +170,7 @@ export function SettingsDialog() {
             {/* API Keys */}
             <div className="space-y-3">
               <label className="text-sm font-medium">API Keys</label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ost-muted">
                 Keys are stored in server memory only (not persisted to disk).
               </p>
 
@@ -180,7 +180,7 @@ export function SettingsDialog() {
                 return (
                   <div key={p} className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-600">{PROVIDER_LABELS[p]}</span>
+                      <span className="text-xs text-ost-muted">{PROVIDER_LABELS[p]}</span>
                       {hasKey && (
                         <Badge variant="outline" className="text-[9px] text-green-600 border-green-300">
                           configured

@@ -185,7 +185,7 @@ class ProjectTagRow(Base):
         String(36), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    color: Mapped[str] = mapped_column(String(20), default="#6b7280")
+    color: Mapped[str] = mapped_column(String(20), default="#7a6f5b")
     fill_style: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     font_light: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

@@ -179,7 +179,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
         {/* Project Context */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Project Context</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">Project Context</span>
             <Badge variant="outline" className="text-[10px] py-0">shared</Badge>
           </div>
           <div className="relative">
@@ -207,7 +207,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
         {/* Tree Context */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Tree Context</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">Tree Context</span>
             <Badge variant="outline" className="text-[10px] py-0">this tree</Badge>
           </div>
           <div className="relative">
@@ -234,33 +234,33 @@ export function ContextPanel({ tree }: ContextPanelProps) {
       </div>
 
       {/* Agent Knowledge */}
-      <div className="border-t border-gray-100 pt-3">
+      <div className="border-t border-line pt-3">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Agent Knowledge</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-faint">Agent Knowledge</span>
           <Badge variant="outline" className="text-[10px] py-0">AI-maintained</Badge>
         </div>
         {tree.agent_knowledge ? (
-          <div className="bg-gray-50 border rounded-md p-3 text-sm text-gray-700 whitespace-pre-wrap max-h-[160px] overflow-y-auto">
+          <div className="bg-canvas border rounded-md p-3 text-sm text-ink whitespace-pre-wrap max-h-[160px] overflow-y-auto">
             {tree.agent_knowledge}
           </div>
         ) : (
-          <div className="bg-gray-50 border border-dashed rounded-md p-3 text-center text-xs text-gray-400">
+          <div className="bg-canvas border border-dashed rounded-md p-3 text-center text-xs text-faint">
             The AI coach will populate this as it learns about your project through chat.
           </div>
         )}
       </div>
 
       {/* Bubble Type Defaults + Tags side-by-side */}
-      <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-3">
+      <div className="grid grid-cols-2 gap-4 border-t border-line pt-3">
         {/* Left: Bubble Type Defaults */}
-        <div className="border border-gray-200 rounded-lg p-3">
+        <div className="border border-line rounded-lg p-3">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Bubble Type Defaults</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">Bubble Type Defaults</span>
             <Badge variant="outline" className="text-[10px] py-0">project-wide</Badge>
             {!isDefaultColors && (
               <button
                 onClick={handleResetDefaults}
-                className="ml-auto text-[10px] text-gray-400 hover:text-gray-600 underline"
+                className="ml-auto text-[10px] text-faint hover:text-ost-muted underline"
               >
                 Reset
               </button>
@@ -271,7 +271,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
               const defaults = currentDefaults[nt] ?? DEFAULT_BUBBLE_DEFAULTS[nt] ?? { border_color: "#94a3b8", border_width: 2 };
               const isCustom = !standardTypes.includes(nt);
               return (
-                <div key={nt} className="px-1.5 py-1 rounded-md hover:bg-gray-50">
+                <div key={nt} className="px-1.5 py-1 rounded-md hover:bg-chip">
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Preview swatch */}
                     <div
@@ -280,20 +280,20 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                         borderColor: defaults.border_color,
                         borderWidth: `${defaults.border_width}px`,
                         borderStyle: "solid",
-                        backgroundColor: "white",
+                        backgroundColor: "var(--ost-paper)",
                       }}
                     >
-                      {defaults.font_light && <span className="text-[9px] font-bold text-gray-400" title="Light font enabled">L</span>}
+                      {defaults.font_light && <span className="text-[9px] font-bold text-faint" title="Light font enabled">L</span>}
                     </div>
                     {/* Type label */}
-                    <span className="text-xs font-medium text-gray-700 min-w-[80px] truncate" title={nt}>
+                    <span className="text-xs font-medium text-ink min-w-[80px] truncate" title={nt}>
                       {getNodeLabel(nt, currentDefaults)}
-                      {isCustom && <span className="text-[9px] text-gray-400 ml-1">custom</span>}
+                      {isCustom && <span className="text-[9px] text-faint ml-1">custom</span>}
                     </span>
                     {/* Color picker */}
                     <div className="relative ml-auto">
                       <button
-                        className="flex items-center gap-1 border rounded px-1.5 py-0.5 hover:bg-gray-50"
+                        className="flex items-center gap-1 border rounded px-1.5 py-0.5 hover:bg-chip"
                         onClick={() => setColorPickerOpen(colorPickerOpen === nt ? null : nt)}
                         aria-label={`Change color for ${getNodeLabel(nt, currentDefaults)}`}
                       >
@@ -301,7 +301,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                           className="w-3.5 h-3.5 rounded border"
                           style={{ backgroundColor: defaults.border_color }}
                         />
-                        <span className="text-[10px] font-mono text-gray-500">{defaults.border_color}</span>
+                        <span className="text-[10px] font-mono text-ost-muted">{defaults.border_color}</span>
                       </button>
                       {colorPickerOpen === nt && (
                         <ColorPicker
@@ -313,7 +313,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                     </div>
                     {/* Width control */}
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-gray-400">W</span>
+                      <span className="text-[10px] text-faint">W</span>
                       <input
                         type="range"
                         min={1}
@@ -321,19 +321,19 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                         step={0.5}
                         value={defaults.border_width}
                         onChange={(e) => handleBubbleDefaultChange(nt, "border_width", parseFloat(e.target.value))}
-                        className="w-14 h-3 accent-gray-500"
+                        className="w-14 h-3 accent-teal"
                         aria-label={`Border width for ${getNodeLabel(nt, currentDefaults)}`}
                       />
-                      <span className="text-[10px] font-medium text-gray-600 w-5 text-center bg-gray-100 rounded">{defaults.border_width}</span>
+                      <span className="text-[10px] font-medium text-ost-muted w-5 text-center bg-chip rounded">{defaults.border_width}</span>
                     </div>
                     {/* Light font toggle */}
                     <label className="flex items-center gap-0.5 cursor-pointer" title="Light (white) text for dark fill colors">
-                      <span className="text-[10px] text-gray-400">L</span>
+                      <span className="text-[10px] text-faint">L</span>
                       <input
                         type="checkbox"
                         checked={defaults.font_light ?? false}
                         onChange={(e) => handleBubbleDefaultChange(nt, "font_light", e.target.checked)}
-                        className="w-3 h-3 accent-gray-500"
+                        className="w-3 h-3 accent-teal"
                       />
                     </label>
                     {/* Delete button for custom types */}
@@ -354,7 +354,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                             </button>
                             <button
                               onClick={() => setDeletingCustomType(null)}
-                              className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded"
+                              className="text-[9px] px-1.5 py-0.5 bg-line text-ost-muted rounded"
                             >
                               Cancel
                             </button>
@@ -362,7 +362,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                         ) : (
                           <button
                             onClick={() => setDeletingCustomType(nt)}
-                            className="text-gray-400 hover:text-red-500 text-sm"
+                            className="text-faint hover:text-red-500 text-sm"
                             title="Delete custom type"
                           >
                             ×
@@ -377,8 +377,8 @@ export function ContextPanel({ tree }: ContextPanelProps) {
           </div>
 
           {/* Add Custom Bubble Type */}
-          <div className="mt-2 border-t border-gray-100 pt-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Add Custom Type</p>
+          <div className="mt-2 border-t border-line pt-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-faint mb-1">Add Custom Type</p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <input
                 type="text"
@@ -388,13 +388,13 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                 onKeyDown={(e) => e.key === "Enter" && handleAddCustomType()}
                 className="text-xs border rounded px-2 py-1 outline-none w-28"
               />
-              <div className="text-[10px] text-gray-400 font-mono truncate max-w-[60px]" title={newBubbleSlug || "slug"}>
+              <div className="text-[10px] text-faint font-mono truncate max-w-[60px]" title={newBubbleSlug || "slug"}>
                 {newBubbleSlug || "slug"}
               </div>
               {/* Color swatch */}
               <div className="relative">
                 <button
-                  className="w-5 h-5 rounded border-2 border-gray-200"
+                  className="w-5 h-5 rounded border-2 border-line"
                   style={{ backgroundColor: newBubbleColor }}
                   onClick={() => setNewBubbleColorPickerOpen(!newBubbleColorPickerOpen)}
                   title="Pick color"
@@ -421,14 +421,14 @@ export function ContextPanel({ tree }: ContextPanelProps) {
         </div>
 
         {/* Right: Tags */}
-        <div className="border border-gray-200 rounded-lg p-3">
+        <div className="border border-line rounded-lg p-3">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Tags</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-faint">Tags</span>
             <Badge variant="outline" className="text-[10px] py-0">project-wide</Badge>
           </div>
           <div className="space-y-1">
             {projectTags && projectTags.length > 0 && projectTags.map((tag) => (
-              <div key={tag.id} className="px-1.5 py-1 rounded-md hover:bg-gray-50">
+              <div key={tag.id} className="px-1.5 py-1 rounded-md hover:bg-chip">
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Preview swatch with fill */}
                   <div
@@ -440,14 +440,14 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                     }}
                   />
                   {/* Tag name + usage count */}
-                  <span className="text-xs font-medium text-gray-700 min-w-[50px] truncate" title={tag.name}>
+                  <span className="text-xs font-medium text-ink min-w-[50px] truncate" title={tag.name}>
                     {tag.name}
-                    <span className="text-[10px] text-gray-400 ml-1">({tagUsageCounts.get(tag.name) || 0})</span>
+                    <span className="text-[10px] text-faint ml-1">({tagUsageCounts.get(tag.name) || 0})</span>
                   </span>
                   {/* Color picker */}
                   <div className="relative ml-auto">
                     <button
-                      className="flex items-center gap-1 border rounded px-1.5 py-0.5 hover:bg-gray-50"
+                      className="flex items-center gap-1 border rounded px-1.5 py-0.5 hover:bg-chip"
                       onClick={() => setTagColorPickerOpen(tagColorPickerOpen === tag.id ? null : tag.id)}
                       aria-label={`Change color for tag ${tag.name}`}
                     >
@@ -455,7 +455,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                         className="w-3.5 h-3.5 rounded border"
                         style={{ backgroundColor: tag.color }}
                       />
-                      <span className="text-[10px] font-mono text-gray-500">{tag.color}</span>
+                      <span className="text-[10px] font-mono text-ost-muted">{tag.color}</span>
                     </button>
                     {tagColorPickerOpen === tag.id && (
                       <ColorPicker
@@ -469,7 +469,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                   <select
                     value={tag.fill_style || "none"}
                     onChange={(e) => updateTag.mutate({ tagId: tag.id, data: { fill_style: e.target.value } })}
-                    className="text-[10px] border rounded px-1 py-0.5 bg-white text-gray-600 outline-none"
+                    className="text-[10px] border rounded px-1 py-0.5 bg-paper text-ost-muted outline-none"
                     aria-label={`Fill style for tag ${tag.name}`}
                   >
                     {FILL_STYLE_OPTIONS.map((opt) => (
@@ -478,12 +478,12 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                   </select>
                   {/* Light font toggle */}
                   <label className="flex items-center gap-0.5 cursor-pointer" title="Light (white) text for dark fill colors">
-                    <span className="text-[10px] text-gray-400">L</span>
+                    <span className="text-[10px] text-faint">L</span>
                     <input
                       type="checkbox"
                       checked={tag.font_light ?? false}
                       onChange={(e) => updateTag.mutate({ tagId: tag.id, data: { font_light: e.target.checked } })}
-                      className="w-3 h-3 accent-gray-500"
+                      className="w-3 h-3 accent-teal"
                     />
                   </label>
                   {/* Delete button */}
@@ -497,7 +497,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                       </button>
                       <button
                         onClick={() => setDeletingTagId(null)}
-                        className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded"
+                        className="text-[9px] px-1.5 py-0.5 bg-line text-ost-muted rounded"
                       >
                         Cancel
                       </button>
@@ -505,7 +505,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
                   ) : (
                     <button
                       onClick={() => setDeletingTagId(tag.id)}
-                      className="text-gray-400 hover:text-red-500 text-sm"
+                      className="text-faint hover:text-red-500 text-sm"
                       title="Delete tag"
                       aria-label={`Delete tag ${tag.name}`}
                     >
@@ -547,7 +547,7 @@ export function ContextPanel({ tree }: ContextPanelProps) {
       </div>
 
       {/* Members */}
-      <div className="border-t border-gray-100 pt-3">
+      <div className="border-t border-line pt-3">
         <MembersSection projectId={tree.project_id} />
       </div>
     </div>

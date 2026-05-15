@@ -212,7 +212,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
       return (
         <div key={idx} className="rounded border border-[#0d9488]/30 bg-[#e6f4f3] p-2">
           <p className="text-[9px] font-bold text-[#0b7a70] uppercase mb-1">User</p>
-          <pre className="text-[10px] text-gray-900 whitespace-pre-wrap font-mono leading-tight">
+          <pre className="text-[10px] text-ink whitespace-pre-wrap font-mono leading-tight">
             {msg.content}
           </pre>
         </div>
@@ -277,15 +277,16 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Chat header with collapse button */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b bg-gray-50 shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 shrink-0" style={{ borderBottom: '1px solid var(--ost-line)', background: 'var(--ost-sidebar)' }}>
         <button
           onClick={() => setChatPanelOpen(false)}
-          className="text-gray-400 hover:text-gray-600 p-0.5"
+          className="p-0.5 transition-colors"
+          style={{ color: 'var(--ost-muted)' }}
           title="Collapse chat"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-        <span className="text-[10px] font-semibold uppercase text-gray-400">Chat</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--ost-muted)', fontFamily: 'var(--font-ost-mono)' }}>Chat</span>
       </div>
 
       {/* Builder mode banner */}
@@ -310,7 +311,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
 
       {/* Debug mode toggle */}
       <div className="flex items-center justify-end px-3 py-1 border-b">
-        <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer">
+        <label className="flex items-center gap-1.5 text-[10px] text-faint cursor-pointer">
           <input
             type="checkbox"
             checked={debugMode}
@@ -325,7 +326,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
       <ScrollArea className="flex-1 min-h-0 p-4">
         <div className="space-y-4">
           {displayMessages.length === 0 && historyLoaded && !debugMode && (
-            <div className="text-center text-gray-400 text-sm mt-8 space-y-3">
+            <div className="text-center text-faint text-sm mt-8 space-y-3">
               <p className="font-medium">
                 {chatMode === "builder" ? "OST Builder" : "OST Coach"}
               </p>
@@ -366,13 +367,14 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
                     className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                       msg.role === "user"
                         ? "bg-[#0d9488] text-white"
-                        : "bg-gray-100 text-gray-900"
+                        : ""
                     }`}
+                    style={msg.role === "user" ? undefined : { background: 'var(--ost-chip)', color: 'var(--ost-ink)' }}
                   >
                     {msg.toolCalls && msg.toolCalls.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-2">
                         {msg.toolCalls.map((tc) => (
-                          <Badge key={tc.id} variant="outline" className="text-[10px] bg-white/80">
+                          <Badge key={tc.id} variant="outline" className="text-[10px] bg-paper/80">
                             {tc.name}
                           </Badge>
                         ))}
@@ -405,13 +407,13 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
               )}
 
               {/* Separator */}
-              <div className="text-[9px] text-gray-400 uppercase font-bold px-1">
+              <div className="text-[9px] text-faint uppercase font-bold px-1">
                 Messages ({conversationHistory.length})
               </div>
 
               {/* Full conversation history — exactly what gets sent to the LLM */}
               {conversationHistory.length === 0 ? (
-                <p className="text-[10px] text-gray-400 italic px-1">No messages yet.</p>
+                <p className="text-[10px] text-faint italic px-1">No messages yet.</p>
               ) : (
                 conversationHistory.map((msg, idx) => renderRawMessage(msg, idx))
               )}
@@ -420,7 +422,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg px-3 py-2 text-sm text-gray-500">
+              <div className="rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--ost-chip)', color: 'var(--ost-muted)' }}>
                 Thinking...
               </div>
             </div>
@@ -456,7 +458,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
               className={`text-xs transition-colors ${
                 confirmClear
                   ? "text-red-600 font-medium"
-                  : "text-gray-400 hover:text-red-500"
+                  : "text-faint hover:text-red-500"
               }`}
             >
               {confirmClear ? "Click again to confirm" : "Clear history"}

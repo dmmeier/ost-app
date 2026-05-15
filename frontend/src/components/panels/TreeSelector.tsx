@@ -158,12 +158,12 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
     queryClient.invalidateQueries({ queryKey: ["project"] });
   };
 
-  if (isLoading) return <div className="p-2 text-sm text-gray-500">Loading...</div>;
+  if (isLoading) return <div className="p-2 text-sm" style={{ color: 'var(--ost-muted)' }}>Loading...</div>;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-700">Projects</h2>
+        <h2 className="text-sm font-semibold" style={{ color: 'var(--ost-ink)' }}>Projects</h2>
         <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" variant="outline">
@@ -251,7 +251,7 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
           />
         ))}
         {projects?.length === 0 && (
-          <p className="text-xs text-gray-400 text-center py-4">
+          <p className="text-xs text-faint text-center py-4">
             No projects yet. Create one to get started!
           </p>
         )}
@@ -277,13 +277,13 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
           </DialogHeader>
           <div className="space-y-3 pt-2">
             {/* Mode toggle */}
-            <div className="flex gap-1 bg-gray-100 rounded-md p-0.5">
+            <div className="flex gap-1 bg-chip rounded-md p-0.5">
               <button
                 onClick={() => setTreeDialogMode("create")}
                 className={`flex-1 text-xs py-1.5 rounded transition-colors ${
                   treeDialogMode === "create"
-                    ? "bg-white shadow-sm font-medium text-gray-900"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-paper shadow-sm font-medium text-ink"
+                    : "text-ost-muted hover:text-ink"
                 }`}
               >
                 Create New
@@ -292,8 +292,8 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
                 onClick={() => setTreeDialogMode("import")}
                 className={`flex-1 text-xs py-1.5 rounded transition-colors ${
                   treeDialogMode === "import"
-                    ? "bg-white shadow-sm font-medium text-gray-900"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-paper shadow-sm font-medium text-ink"
+                    : "text-ost-muted hover:text-ink"
                 }`}
               >
                 Import from File
@@ -324,7 +324,7 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
               </>
             ) : (
               <>
-                <div className="border-2 border-dashed border-gray-200 rounded-md p-4 text-center">
+                <div className="border-2 border-dashed border-line rounded-md p-4 text-center">
                   <input
                     type="file"
                     accept=".json"
@@ -338,10 +338,10 @@ export function TreeSelector({ selectedTreeId, onSelectTree }: TreeSelectorProps
                   />
                   <label
                     htmlFor="import-tree-file"
-                    className="cursor-pointer text-sm text-gray-500 hover:text-[#0d9488]"
+                    className="cursor-pointer text-sm text-ost-muted hover:text-[#0d9488]"
                   >
                     {importFile ? (
-                      <span className="text-gray-900 font-medium">{importFile.name}</span>
+                      <span className="text-ink font-medium">{importFile.name}</span>
                     ) : (
                       "Click to select a JSON file"
                     )}
@@ -431,17 +431,20 @@ function ProjectAccordion({
   const trees = projectData?.trees ?? [];
 
   return (
-    <div className="border rounded-md overflow-hidden">
+    <div className="rounded-md overflow-hidden" style={{ border: '1px solid var(--ost-line)' }}>
       {/* Project header */}
       <div className="group">
         <div
           onClick={onToggle}
-          className="flex items-center justify-between px-2 py-1.5 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+          className="flex items-center justify-between px-2 py-1.5 cursor-pointer transition-colors"
+          style={{ background: 'var(--ost-sidebar)', }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--ost-chip)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'var(--ost-sidebar)'}
         >
           <div className="flex items-center gap-1.5 min-w-0">
             {editingProjectId === project.id ? (
               <input
-                className="text-sm font-medium bg-white border rounded px-1 py-0.5 w-full"
+                className="text-sm font-medium bg-paper border rounded px-1 py-0.5 w-full"
                 value={editProjectName}
                 onChange={(e) => onEditNameChange(e.target.value)}
                 onKeyDown={(e) => {
@@ -454,7 +457,7 @@ function ProjectAccordion({
             ) : (
               <span className="text-sm font-semibold truncate" title={project.name}>{project.name}</span>
             )}
-            <span className="text-[10px] text-gray-400 shrink-0">
+            <span className="text-[10px] shrink-0" style={{ color: 'var(--ost-muted)' }}>
               ({projectData ? trees.length : "…"})
             </span>
           </div>
@@ -465,7 +468,7 @@ function ProjectAccordion({
                   e.stopPropagation();
                   onStartEdit();
                 }}
-                className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
+                className="p-0.5 rounded hover:text-[#0d9488] hover:bg-[#e6f4f3] transition-colors" style={{ color: 'var(--ost-muted)' }}
                 title="Rename project"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -474,7 +477,7 @@ function ProjectAccordion({
             {isOwner && (
               <button
                 onClick={onDeleteProjectClick}
-                className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
+                className="p-0.5 rounded hover:text-red-500 hover:bg-red-50 transition-colors" style={{ color: 'var(--ost-muted)' }}
                 title="Delete project"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -483,7 +486,7 @@ function ProjectAccordion({
           </div>
         </div>
         {confirmDeleteProjectId === project.id && (
-          <div className="flex gap-1 px-2 py-1 bg-gray-50" onClick={(e) => e.stopPropagation()}>
+          <div className="flex gap-1 px-2 py-1" style={{ background: 'var(--ost-chip)' }} onClick={(e) => e.stopPropagation()}>
             <Button
               variant="destructive"
               size="sm"
@@ -506,22 +509,23 @@ function ProjectAccordion({
 
       {/* Trees list */}
       {isExpanded && (
-        <div className="bg-white">
+        <div style={{ background: 'var(--ost-paper)' }}>
           {trees.map((tree) => (
             <div key={tree.id} className="group/tree">
               <div
                 onClick={() => onSelectTree(tree.id)}
-                className={`flex items-center justify-between pl-5 pr-2 py-1.5 cursor-pointer text-sm ${
-                  selectedTreeId === tree.id
-                    ? "bg-[#e6f4f3] text-[#0b7a70] border-l-2 border-[#0d9488]"
-                    : "hover:bg-gray-50"
-                }`}
+                className="flex items-center justify-between pl-5 pr-2 py-1.5 cursor-pointer text-sm transition-colors"
+                style={selectedTreeId === tree.id
+                  ? { background: 'var(--ost-row-active)', color: 'var(--ost-ink)', borderLeft: '2px solid var(--ost-teal)' }
+                  : { color: 'var(--ost-ink)' }}
+                onMouseEnter={(e) => { if (selectedTreeId !== tree.id) e.currentTarget.style.background = 'var(--ost-chip)'; }}
+                onMouseLeave={(e) => { if (selectedTreeId !== tree.id) e.currentTarget.style.background = ''; }}
               >
                 <div className="flex items-center gap-1.5 min-w-0">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width={14} height={14} className="shrink-0 text-[#0d9488]"><circle cx="32" cy="18" r="5" fill="currentColor"/><path d="M32 23L32 32M32 32L18 42M32 32L32 42M32 32L46 42" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" fill="none"/><circle cx="18" cy="45" r="4" fill="currentColor"/><circle cx="32" cy="45" r="4" fill="currentColor"/><circle cx="46" cy="45" r="4" fill="currentColor"/></svg>
                   {editingTreeId === tree.id ? (
                     <input
-                      className="text-sm bg-white border rounded px-1 py-0.5 w-full"
+                      className="text-sm bg-paper border rounded px-1 py-0.5 w-full"
                       value={editTreeName}
                       onChange={(e) => onEditTreeNameChange(e.target.value)}
                       onKeyDown={(e) => {
@@ -543,7 +547,7 @@ function ProjectAccordion({
                         e.stopPropagation();
                         onStartTreeEdit(tree.id, tree.name);
                       }}
-                      className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
+                      className="p-0.5 rounded hover:text-[#0d9488] hover:bg-[#e6f4f3] transition-colors" style={{ color: 'var(--ost-muted)' }}
                       title="Rename tree"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -563,7 +567,7 @@ function ProjectAccordion({
                         URL.revokeObjectURL(url);
                       });
                     }}
-                    className="text-gray-400 hover:text-[#0d9488] p-0.5 rounded hover:bg-[#e6f4f3]"
+                    className="p-0.5 rounded hover:text-[#0d9488] hover:bg-[#e6f4f3] transition-colors" style={{ color: 'var(--ost-muted)' }}
                     title="Export as JSON"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
@@ -571,7 +575,7 @@ function ProjectAccordion({
                   {canEdit && (
                     <button
                       onClick={(e) => onDeleteClick(tree.id, e)}
-                      className="text-gray-400 hover:text-red-500 p-0.5 rounded hover:bg-red-50"
+                      className="p-0.5 rounded hover:text-red-500 hover:bg-red-50 transition-colors" style={{ color: 'var(--ost-muted)' }}
                       title="Delete tree"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -604,7 +608,8 @@ function ProjectAccordion({
           {canEdit && (
             <button
               onClick={onNewTree}
-              className="w-full text-left pl-6 pr-2 py-1.5 text-xs text-gray-400 hover:text-[#0d9488] hover:bg-gray-50"
+              className="w-full text-left pl-6 pr-2 py-1.5 text-xs hover:text-[#0d9488] transition-colors"
+              style={{ color: 'var(--ost-muted)' }}
             >
               + New Tree
             </button>
@@ -634,7 +639,7 @@ function TreeNodeCount({ treeId }: { treeId: string }) {
   });
   if (!data || data.nodes.length === 0) return null;
   return (
-    <span className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5 min-w-[20px] text-center ml-1">
+    <span className="text-[10px] rounded-full px-1.5 py-0.5 min-w-[20px] text-center ml-1" style={{ color: 'var(--ost-muted)', background: 'var(--ost-chip)' }}>
       {data.nodes.length}
     </span>
   );
