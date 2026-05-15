@@ -246,6 +246,26 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
 
   const selectedNode = tree.nodes.find((n) => n.id === selectedNodeId);
 
+  // Auto-create one empty assumption for non-outcome nodes that have none
+  // (hooks must be called unconditionally — before the early return below)
+  const autoCreateRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      selectedNode &&
+      selectedNode.node_type !== "outcome" &&
+      (selectedNode.assumptions || []).length === 0 &&
+      canEdit &&
+      autoCreateRef.current !== selectedNode.id
+    ) {
+      autoCreateRef.current = selectedNode.id;
+      api.assumptions.create(selectedNode.id, {}).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+      }).catch((err) => {
+        console.error("Failed to auto-create assumption:", err);
+      });
+    }
+  }, [selectedNode?.id, selectedNode?.node_type, selectedNode?.assumptions?.length, canEdit, queryClient, tree.id]);
+
   if (!selectedNode) {
     return (
       <div className="p-3 text-center text-gray-500">
@@ -302,25 +322,6 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
       console.error("Failed to add assumption:", err);
     }
   };
-
-  // Auto-create one empty assumption for non-outcome nodes that have none
-  const autoCreateRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (
-      selectedNode &&
-      selectedNode.node_type !== "outcome" &&
-      (selectedNode.assumptions || []).length === 0 &&
-      canEdit &&
-      autoCreateRef.current !== selectedNode.id
-    ) {
-      autoCreateRef.current = selectedNode.id;
-      api.assumptions.create(selectedNode.id, {}).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
-      }).catch((err) => {
-        console.error("Failed to auto-create assumption:", err);
-      });
-    }
-  }, [selectedNode?.id, selectedNode?.node_type, selectedNode?.assumptions?.length, canEdit, queryClient, tree.id]);
 
   // Assumption stats
   const assumptions = selectedNode.assumptions || [];

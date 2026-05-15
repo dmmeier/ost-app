@@ -439,9 +439,6 @@ function ProjectAccordion({
           className="flex items-center justify-between px-2 py-1.5 bg-gray-50 hover:bg-gray-100 cursor-pointer"
         >
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-xs text-gray-400 shrink-0">
-              {isExpanded ? "▼\uFE0E" : "▶\uFE0E"}
-            </span>
             {editingProjectId === project.id ? (
               <input
                 className="text-sm font-medium bg-white border rounded px-1 py-0.5 w-full"
