@@ -44,7 +44,7 @@ interface OSTNodeData {
 }
 
 // ── Read-only assumption card for expanded view ──────────────
-function ExpandedAssumptionCard({ assumption, index }: { assumption: NodeAssumption; index: number }) {
+function ExpandedAssumptionCard({ assumption, index, fontLight }: { assumption: NodeAssumption; index: number; fontLight?: boolean }) {
   const status = assumption.status || "untested";
   const isRejected = status === "rejected";
   const isConfirmed = status === "confirmed";
@@ -53,36 +53,36 @@ function ExpandedAssumptionCard({ assumption, index }: { assumption: NodeAssumpt
   const evidenceHtml = useMemo(() => markdownToHtml(assumption.evidence || ""), [assumption.evidence]);
 
   const statusIcon = isConfirmed ? (
-    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green-500"><path d="M20 6 9 17l-5-5"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={fontLight ? "text-green-300" : "text-green-500"}><path d="M20 6 9 17l-5-5"/></svg>
   ) : isRejected ? (
-    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={fontLight ? "text-red-300" : "text-red-500"}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
   ) : null;
 
   const statusLabel = isConfirmed ? "Confirmed" : isRejected ? "Rejected" : `#${index + 1}`;
 
   return (
     <div
-      className={`border rounded px-2 py-1.5 text-[10px] ${
-        isRejected
-          ? "border-red-200 bg-red-50/40 opacity-60"
-          : isConfirmed
-            ? "border-green-200 bg-green-50/30"
-            : "border-line bg-paper"
-      }`}
+      className={`rounded px-2 py-1.5 text-[10px] ${isRejected ? "opacity-60" : ""}`}
+      style={{
+        backgroundColor: fontLight ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.04)",
+        border: `1px solid ${fontLight ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.08)"}`,
+      }}
     >
       {/* Status header */}
       <div className="flex items-center gap-1 mb-1">
-        <span className={`w-3 h-3 rounded border flex items-center justify-center shrink-0 ${
-          isConfirmed
-            ? "border-green-400 bg-green-50"
-            : isRejected
-              ? "border-red-400 bg-red-50"
-              : "border-line bg-paper"
-        }`}>
+        <span
+          className="w-3 h-3 rounded border flex items-center justify-center shrink-0"
+          style={{
+            borderColor: fontLight ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.15)",
+            backgroundColor: fontLight ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.6)",
+          }}
+        >
           {statusIcon}
         </span>
         <span className={`uppercase font-semibold text-[9px] ${
-          isConfirmed ? "text-green-600" : isRejected ? "text-red-400" : "text-faint"
+          fontLight
+            ? (isConfirmed ? "text-green-300" : isRejected ? "text-red-300" : "text-white/50")
+            : (isConfirmed ? "text-green-600" : isRejected ? "text-red-400" : "text-faint")
         }`}>
           {statusLabel}
         </span>
@@ -91,25 +91,27 @@ function ExpandedAssumptionCard({ assumption, index }: { assumption: NodeAssumpt
       <div className="grid grid-cols-2 gap-1.5">
         {(assumption.text || "").trim() ? (
           <div>
-            <div className="text-[9px] uppercase font-semibold text-faint mb-0.5">Assumption</div>
+            <div className={`text-[9px] uppercase font-semibold mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Assumption</div>
             <div
-              className="text-[10px] leading-tight rich-text-display text-ink"
+              className={`text-[10px] leading-tight rich-text-display ${fontLight ? "text-white/90" : ""}`}
+              style={fontLight ? undefined : { color: 'var(--ost-ink)' }}
               dangerouslySetInnerHTML={{ __html: textHtml }}
             />
           </div>
         ) : (
-          <div className="text-[10px] text-faint italic">No assumption text</div>
+          <div className={`text-[10px] italic ${fontLight ? "text-white/40" : "text-faint"}`}>No assumption text</div>
         )}
         {(assumption.evidence || "").trim() ? (
           <div>
-            <div className="text-[9px] uppercase font-semibold text-faint mb-0.5">Evidence</div>
+            <div className={`text-[9px] uppercase font-semibold mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Evidence</div>
             <div
-              className="text-[10px] leading-tight rich-text-display text-ink"
+              className={`text-[10px] leading-tight rich-text-display ${fontLight ? "text-white/90" : ""}`}
+              style={fontLight ? undefined : { color: 'var(--ost-ink)' }}
               dangerouslySetInnerHTML={{ __html: evidenceHtml }}
             />
           </div>
         ) : (
-          <div className="text-[10px] text-faint italic">No evidence</div>
+          <div className={`text-[10px] italic ${fontLight ? "text-white/40" : "text-faint"}`}>No evidence</div>
         )}
       </div>
     </div>
@@ -242,7 +244,14 @@ function OSTNodeComponent({ id, data }: NodeProps) {
       >
         <Handle type="target" position={Position.Top} className="!bg-[#7a6f5b]" />
 
-        {/* Header: type badge + index */}
+        {/* Index badge (top-right, like normal view) */}
+        {nodeData.index != null && (
+          <span className={`absolute top-1.5 right-2 text-[10px] rounded px-1 min-w-[18px] text-center ${fontLight ? "text-white/50 bg-white/10" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-muted)', background: 'var(--ost-chip)' }}>
+            #{nodeData.index}
+          </span>
+        )}
+
+        {/* Header: type badge + status */}
         <div className="flex items-center gap-2 px-4 pt-3 pb-1">
           <span
             className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded text-white"
@@ -250,11 +259,6 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           >
             {nodeTypeLabel}
           </span>
-          {nodeData.index != null && (
-            <span className={`text-[10px] rounded px-1 ${fontLight ? "text-white/50 bg-white/10" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-muted)', background: 'var(--ost-chip)' }}>
-              #{nodeData.index}
-            </span>
-          )}
           {nodeData.status && nodeData.status !== "active" && (
             <span className={`text-[10px] px-1.5 py-0.5 rounded ${fontLight ? "bg-white/15 text-white/80" : ""}`} style={fontLight ? undefined : { background: 'var(--ost-chip)', color: 'var(--ost-muted)' }}>
               {nodeData.status}
@@ -287,13 +291,13 @@ function OSTNodeComponent({ id, data }: NodeProps) {
 
         {/* Divider */}
         {(descriptionHtml?.trim() || (nodeData.tags && nodeData.tags.length > 0) || filledAssumptions.length > 0) && (
-          <div className="mx-4 mb-2 border-t" style={{ borderColor: 'var(--ost-line)' }} />
+          <div className="mx-4 mb-2 border-t" style={{ borderColor: fontLight ? 'rgba(255,255,255,0.2)' : 'var(--ost-line)' }} />
         )}
 
         {/* Description (full, no line-clamp) */}
         {descriptionHtml && descriptionHtml.trim() && (
           <div className="px-4 pb-2">
-            <div className="text-[9px] uppercase font-bold tracking-wider text-faint mb-0.5">Description</div>
+            <div className={`text-[9px] uppercase font-bold tracking-wider mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Description</div>
             <div
               className={`text-[11px] leading-relaxed rich-text-display break-words ${fontLight ? "text-white/80" : ""}`}
               style={fontLight ? undefined : { color: 'var(--ost-ink)' }}
@@ -332,20 +336,20 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         {filledAssumptions.length > 0 && (
           <div className="px-4 pb-4">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <span className="text-[9px] uppercase font-bold tracking-wider text-faint">Assumptions</span>
+              <span className={`text-[9px] uppercase font-bold tracking-wider ${fontLight ? "text-white/40" : "text-faint"}`}>Assumptions</span>
               {confirmed > 0 && (
-                <span className="text-[9px] text-green-600">{confirmed} &#10003;</span>
+                <span className={`text-[9px] ${fontLight ? "text-green-300" : "text-green-600"}`}>{confirmed} &#10003;</span>
               )}
               {untested > 0 && (
-                <span className="text-[9px] text-blue-500">{untested} untested</span>
+                <span className={`text-[9px] ${fontLight ? "text-blue-300" : "text-blue-500"}`}>{untested} untested</span>
               )}
               {rejected > 0 && (
-                <span className="text-[9px] text-red-400">{rejected} &#10007;</span>
+                <span className={`text-[9px] ${fontLight ? "text-red-300" : "text-red-400"}`}>{rejected} &#10007;</span>
               )}
             </div>
             <div className="space-y-1.5">
               {filledAssumptions.map((a, i) => (
-                <ExpandedAssumptionCard key={a.id} assumption={a} index={i} />
+                <ExpandedAssumptionCard key={a.id} assumption={a} index={i} fontLight={fontLight} />
               ))}
             </div>
           </div>
