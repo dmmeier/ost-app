@@ -64,8 +64,8 @@ function ExpandedAssumptionCard({ assumption, index, fontLight }: { assumption: 
     <div
       className={`rounded px-2 py-1.5 text-[10px] ${isRejected ? "opacity-60" : ""}`}
       style={{
-        backgroundColor: fontLight ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.04)",
-        border: `1px solid ${fontLight ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.08)"}`,
+        backgroundColor: fontLight ? "rgba(255,255,255,0.12)" : "var(--ost-canvas)",
+        border: `1px solid ${fontLight ? "rgba(255,255,255,0.18)" : "var(--ost-line)"}`,
       }}
     >
       {/* Status header */}
@@ -73,13 +73,13 @@ function ExpandedAssumptionCard({ assumption, index, fontLight }: { assumption: 
         <span
           className="w-3 h-3 rounded border flex items-center justify-center shrink-0"
           style={{
-            borderColor: fontLight ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.15)",
-            backgroundColor: fontLight ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.6)",
+            borderColor: fontLight ? "rgba(255,255,255,0.3)" : "var(--ost-line)",
+            backgroundColor: fontLight ? "rgba(255,255,255,0.08)" : "var(--ost-paper)",
           }}
         >
           {statusIcon}
         </span>
-        <span className={`uppercase font-semibold text-[9px] ${
+        <span className={`uppercase font-medium font-mono tracking-[0.16em] text-[10px] ${
           fontLight
             ? (isConfirmed ? "text-green-300" : isRejected ? "text-red-300" : "text-white/50")
             : (isConfirmed ? "text-green-600" : isRejected ? "text-red-400" : "text-faint")
@@ -91,7 +91,7 @@ function ExpandedAssumptionCard({ assumption, index, fontLight }: { assumption: 
       <div className="grid grid-cols-2 gap-1.5">
         {(assumption.text || "").trim() ? (
           <div>
-            <div className={`text-[9px] uppercase font-semibold mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Assumption</div>
+            <div className={`text-[10px] uppercase font-medium font-mono tracking-[0.16em] mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Assumption</div>
             <div
               className={`text-[10px] leading-tight rich-text-display ${fontLight ? "text-white/90" : ""}`}
               style={fontLight ? undefined : { color: 'var(--ost-ink)' }}
@@ -103,7 +103,7 @@ function ExpandedAssumptionCard({ assumption, index, fontLight }: { assumption: 
         )}
         {(assumption.evidence || "").trim() ? (
           <div>
-            <div className={`text-[9px] uppercase font-semibold mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Evidence</div>
+            <div className={`text-[10px] uppercase font-medium font-mono tracking-[0.16em] mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Evidence</div>
             <div
               className={`text-[10px] leading-tight rich-text-display ${fontLight ? "text-white/90" : ""}`}
               style={fontLight ? undefined : { color: 'var(--ost-ink)' }}
@@ -161,7 +161,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
 
   // Styling
   const bubbleDefaults = nodeData.bubbleDefaults ?? DEFAULT_BUBBLE_DEFAULTS;
-  const typeDefaults = bubbleDefaults[nodeData.nodeType] ?? DEFAULT_BUBBLE_DEFAULTS[nodeData.nodeType] ?? { border_color: "#94a3b8", border_width: 2 };
+  const typeDefaults = bubbleDefaults[nodeData.nodeType] ?? DEFAULT_BUBBLE_DEFAULTS[nodeData.nodeType] ?? { border_color: "#7a6f5b", border_width: 2 };
   const borderColor = nodeData.overrideBorderColor ?? typeDefaults.border_color;
   const borderWidth = nodeData.overrideBorderWidth ?? typeDefaults.border_width;
   const fillColor = nodeData.overrideFillColor ?? nodeData.tagFillColor ?? null;
@@ -187,7 +187,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
     if (depthHides && !expandedBeyond) {
       return (
         <button
-          className="absolute -bottom-3 left-1/2 -translate-x-1/2 border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)' }}
+          className="absolute -bottom-3 left-1/2 -translate-x-1/2 border border-teal rounded-full w-6 h-6 flex items-center justify-center text-xs text-teal hover:bg-teal-tint shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)' }}
           onClick={(e) => { e.stopPropagation(); toggleExpandBeyondDepth(id); }}
           title="Expand subtree beyond level"
         >
@@ -198,7 +198,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
     if (depthHides && expandedBeyond) {
       return (
         <button
-          className="absolute -bottom-3 left-1/2 -translate-x-1/2 border border-[#0d9488] rounded-full w-6 h-6 flex items-center justify-center text-xs text-[#0d9488] hover:bg-[#e6f4f3] shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)' }}
+          className="absolute -bottom-3 left-1/2 -translate-x-1/2 border border-teal rounded-full w-6 h-6 flex items-center justify-center text-xs text-teal hover:bg-teal-tint shadow-sm z-10" style={{ backgroundColor: 'var(--ost-paper)' }}
           onClick={(e) => { e.stopPropagation(); toggleExpandBeyondDepth(id); }}
           title="Collapse subtree back to level"
         >
@@ -242,7 +242,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           wordWrap: "break-word" as const,
         }}
       >
-        <Handle type="target" position={Position.Top} className="!bg-[#7a6f5b]" />
+        <Handle type="target" position={Position.Top} className="!bg-ost-muted" />
 
         {/* Index badge (top-right, like normal view) */}
         {nodeData.index != null && (
@@ -278,12 +278,12 @@ function OSTNodeComponent({ id, data }: NodeProps) {
                 if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
                 if (e.key === "Escape") { setEditTitle(nodeData.title); setEditingNodeId(null); }
               }}
-              className={`text-[16px] font-semibold leading-snug w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : ""}`}
+              className={`text-[18px] font-semibold leading-snug w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : ""}`}
               style={fontLight ? undefined : { color: 'var(--ost-ink)', borderColor: 'var(--ost-muted)' }}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <div className={`text-[16px] font-semibold leading-snug ${fontLight ? "text-white" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-ink)' }}>
+            <div className={`text-[18px] font-semibold leading-snug ${fontLight ? "text-white" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-ink)' }}>
               {nodeData.title}
             </div>
           )}
@@ -297,7 +297,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         {/* Description (full, no line-clamp) */}
         {descriptionHtml && descriptionHtml.trim() && (
           <div className="px-4 pb-2">
-            <div className={`text-[9px] uppercase font-bold tracking-wider mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Description</div>
+            <div className={`text-[10px] uppercase font-medium font-mono tracking-[0.16em] mb-0.5 ${fontLight ? "text-white/40" : "text-faint"}`}>Description</div>
             <div
               className={`text-[11px] leading-relaxed rich-text-display break-words ${fontLight ? "text-white/80" : ""}`}
               style={fontLight ? undefined : { color: 'var(--ost-ink)' }}
@@ -336,7 +336,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         {filledAssumptions.length > 0 && (
           <div className="px-4 pb-4">
             <div className="flex items-center gap-1.5 mb-1.5">
-              <span className={`text-[9px] uppercase font-bold tracking-wider ${fontLight ? "text-white/40" : "text-faint"}`}>Assumptions</span>
+              <span className={`text-[10px] uppercase font-medium font-mono tracking-[0.16em] ${fontLight ? "text-white/40" : "text-faint"}`}>Assumptions</span>
               {confirmed > 0 && (
                 <span className={`text-[9px] ${fontLight ? "text-green-300" : "text-green-600"}`}>{confirmed} &#10003;</span>
               )}
@@ -355,7 +355,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           </div>
         )}
 
-        <Handle type="source" position={Position.Bottom} className="!bg-[#7a6f5b]" />
+        <Handle type="source" position={Position.Bottom} className="!bg-ost-muted" />
         {collapseButton}
       </div>
     );
@@ -376,7 +376,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
         ...(nodeData.isSelected ? { ringColor: borderColor } : {}),
       }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-[#7a6f5b]" />
+      <Handle type="target" position={Position.Top} className="!bg-ost-muted" />
       {nodeData.index != null && (
         <span className={`absolute top-1.5 right-2 text-[10px] rounded px-1 min-w-[18px] text-center ${fontLight ? "text-white/50 bg-white/10" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-muted)', background: 'var(--ost-chip)' }}>
           #{nodeData.index}
@@ -473,7 +473,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           </span>
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-[#7a6f5b]" />
+      <Handle type="source" position={Position.Bottom} className="!bg-ost-muted" />
       {collapseButton}
     </div>
   );
