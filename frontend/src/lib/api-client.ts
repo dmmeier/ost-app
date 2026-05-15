@@ -153,6 +153,11 @@ export const api = {
   chatHistory: {
     get: (treeId: string, limit: number = 100) =>
       fetchAPI<ChatHistoryMessage[]>(`/trees/${treeId}/chat-history?limit=${limit}`),
+    save: (treeId: string, messages: Record<string, unknown>[], mode: string = "coach") =>
+      fetchAPI<{ saved: number }>(`/trees/${treeId}/chat-history`, {
+        method: "POST",
+        body: JSON.stringify({ messages, mode }),
+      }),
     clear: (treeId: string) =>
       fetchAPI<void>(`/trees/${treeId}/chat-history`, { method: "DELETE" }),
   },

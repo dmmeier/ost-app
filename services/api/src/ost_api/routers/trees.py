@@ -249,6 +249,33 @@ def get_chat_history(
     return repo.get_chat_history(tree_id, limit=limit)
 
 
+class SaveChatMessagesRequest(BaseModel):
+    messages: list[dict]
+    mode: str = "coach"
+
+
+@router.post("/{tree_id}/chat-history", status_code=201)
+def save_chat_messages(
+    tree_id: UUID,
+    request: SaveChatMessagesRequest,
+    repo: TreeRepository = Depends(get_repo),
+    service: TreeService = Depends(get_service),
+    user: User | None = Depends(get_current_user_required),
+):
+    """Save chat messages to history (used by frontend to persist exchanges)."""
+    try:
+        _check_tree_permission(service, user, tree_id, "editor")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    repo.save_chat_messages(
+        tree_id,
+        request.messages,
+        mode=request.mode,
+        user_id=str(user.id) if user else None,
+    )
+    return {"saved": len(request.messages)}
+
+
 @router.delete("/{tree_id}/chat-history", status_code=204)
 def clear_chat_history(
     tree_id: UUID,

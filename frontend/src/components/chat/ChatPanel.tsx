@@ -144,13 +144,22 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
       queryClient.invalidateQueries({ queryKey: ["bubbleDefaults", projectId] });
       queryClient.invalidateQueries({ queryKey: ["projectTags", projectId] });
     } catch (error) {
+      const errorContent = `Error: ${error instanceof Error ? error.message : "Failed to get response"}`;
       setDisplayMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `Error: ${error instanceof Error ? error.message : "Failed to get response"}`,
+          content: errorContent,
         },
       ]);
+      // Persist user message + error to DB so they survive tree switches
+      // (backend only saves on successful AI responses, so errors need frontend save)
+      api.chatHistory.save(treeId, [
+        { role: "user", content: userMessage },
+        { role: "assistant", content: errorContent },
+      ], chatMode).catch(() => {
+        // Silent — best effort persistence
+      });
     } finally {
       setIsLoading(false);
     }
