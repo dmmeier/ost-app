@@ -401,7 +401,7 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
                     throw err;
                   }
                 }}
-                className="text-sm text-ost-muted"
+                className="text-sm text-ink"
                 multiline
                 richText
                 placeholder="Add a description..."

@@ -6,6 +6,24 @@ import { api } from "@/lib/api-client";
 import { TreeWithNodes, ActivityLog } from "@/lib/types";
 import { useTreeStore } from "@/stores/tree-store";
 import { useAuthStore } from "@/stores/auth-store";
+import {
+  Plus, Pencil, Trash2, Move, ArrowUpDown,
+  Tag, Camera, GitBranch, Circle,
+} from "lucide-react";
+
+/* ── Design tokens (matching HistoryPanel style) ──────── */
+const A = {
+  rail: "#e5e3dd",
+  created:     { fg: "#16a34a", bg: "#dcfce7" },
+  updated:     { fg: "#2563eb", bg: "#dbeafe" },
+  deleted:     { fg: "#dc2626", bg: "#fee2e2" },
+  moved:       { fg: "#9333ea", bg: "#f3e8ff" },
+  reordered:   { fg: "#7a6f5b", bg: "#f0ede7" },
+  tag:         { fg: "#0d9488", bg: "#ccfbf1" },
+  snapshot:    { fg: "#d97706", bg: "#fef3c7" },
+  git:         { fg: "#ea580c", bg: "#ffedd5" },
+  fallback:    { fg: "#7a6f5b", bg: "#f0ede7" },
+} as const;
 
 interface ActivityPanelProps {
   tree: TreeWithNodes;
@@ -84,70 +102,47 @@ function absoluteTime(dateStr: string): string {
   });
 }
 
-function ActionIcon({ action }: { action: string }) {
-  const base = "w-4 h-4 shrink-0";
+/* ── 22px circular glyph markers (matching HistoryPanel) ── */
+function actionColors(action: string): { fg: string; bg: string } {
+  if (action === "node_created") return A.created;
+  if (action === "node_updated") return A.updated;
+  if (action === "node_deleted") return A.deleted;
+  if (action === "node_moved") return A.moved;
+  if (action === "node_reordered") return A.reordered;
+  if (action === "tag_added" || action === "tag_removed") return A.tag;
+  if (action === "snapshot_created" || action === "snapshot_restored") return A.snapshot;
+  if (action === "git_committed") return A.git;
+  return A.fallback;
+}
 
-  if (action === "node_created") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
-      </svg>
-    );
-  }
-  if (action === "node_updated") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-      </svg>
-    );
-  }
-  if (action === "node_deleted") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      </svg>
-    );
-  }
-  if (action === "node_moved") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#9333ea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <polyline points="5 9 2 12 5 15" /><polyline points="9 5 12 2 15 5" /><polyline points="15 19 12 22 9 19" /><polyline points="19 9 22 12 19 15" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="12" y1="2" x2="12" y2="22" />
-      </svg>
-    );
-  }
-  if (action === "node_reordered") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7a6f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <polyline points="7 15 12 20 17 15" /><polyline points="17 9 12 4 7 9" />
-      </svg>
-    );
-  }
-  if (action === "tag_added" || action === "tag_removed") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
-      </svg>
-    );
-  }
-  if (action === "snapshot_created" || action === "snapshot_restored") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
-      </svg>
-    );
-  }
-  if (action === "git_committed") {
-    return (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-        <circle cx="12" cy="12" r="4" /><line x1="1.05" y1="12" x2="7" y2="12" /><line x1="17.01" y1="12" x2="22.96" y2="12" />
-      </svg>
-    );
-  }
-  // tree_created, tree_updated, tree_deleted, or unknown
+function ActionGlyph({ action }: { action: string }) {
+  const c = actionColors(action);
+
+  const Icon = (() => {
+    if (action === "node_created") return Plus;
+    if (action === "node_updated") return Pencil;
+    if (action === "node_deleted") return Trash2;
+    if (action === "node_moved") return Move;
+    if (action === "node_reordered") return ArrowUpDown;
+    if (action === "tag_added" || action === "tag_removed") return Tag;
+    if (action === "snapshot_created" || action === "snapshot_restored") return Camera;
+    if (action === "git_committed") return GitBranch;
+    return Circle;
+  })();
+
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#7a6f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={base}>
-      <circle cx="12" cy="12" r="10" />
-    </svg>
+    <span
+      className="inline-flex items-center justify-center shrink-0"
+      style={{
+        width: 22, height: 22, borderRadius: 999,
+        background: c.bg,
+        border: `1.5px solid ${c.fg}`,
+        position: "relative", zIndex: 1,
+        boxSizing: "border-box",
+      }}
+    >
+      <Icon size={11} color={c.fg} strokeWidth={2} />
+    </span>
   );
 }
 
@@ -195,7 +190,7 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between px-3 pt-3 pb-1">
-          <p className="text-xs text-faint">Recent changes in this tree, newest first.</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-faint">Recent Changes</p>
         </div>
         <div className="flex-1 flex items-center justify-center text-faint">
           <div className="text-center px-4">
@@ -210,7 +205,7 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-3 pt-3 pb-1 shrink-0">
-        <p className="text-xs text-faint">Recent changes in this tree, newest first.</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-faint">Recent Changes</p>
         {isAuthenticated && user && (
           <div className="flex items-center gap-0.5 bg-chip rounded-md p-0.5">
             <button
@@ -244,48 +239,56 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
-          {condensed.map((group) => {
-            const entry = group.latest;
-            const clickable = isClickable(entry);
-            const timeTitle =
-              group.count > 1
-                ? `${group.count} changes: ${absoluteTime(entry.created_at)} – ${absoluteTime(group.oldestTimestamp)}`
-                : absoluteTime(entry.created_at);
-            return (
-              <div
-                key={entry.id}
-                onClick={() => handleClick(entry)}
-                className={`flex items-center gap-2 py-1.5 px-2 rounded text-xs transition-colors ${
-                  clickable
-                    ? "cursor-pointer hover:bg-chip"
-                    : ""
-                }`}
-              >
-                <ActionIcon action={entry.action} />
-                <span className="text-ink min-w-0 truncate flex-1" title={entry.summary}>
-                  <span className="font-medium text-ink">
-                    {entry.user_display_name || "Someone"}
-                  </span>{" "}
-                  {entry.summary}
-                </span>
-                {group.count > 1 && (
-                  <span
-                    className="text-[10px] text-faint bg-chip rounded-full px-1.5 py-0.5 shrink-0"
-                    title={`${group.count} identical changes condensed`}
-                  >
-                    ×{group.count}
-                  </span>
-                )}
-                <span
-                  className="text-[10px] text-faint shrink-0 cursor-help"
-                  title={timeTitle}
+        <div className="flex-1 overflow-y-auto px-3 pb-3">
+          <ol style={{ listStyle: "none", margin: 0, padding: 0, position: "relative" }}>
+            {/* Vertical rail behind markers */}
+            <div style={{ position: "absolute", left: 11, top: 14, bottom: 14, width: 1.5, background: A.rail }} />
+
+            {condensed.map((group, idx) => {
+              const entry = group.latest;
+              const clickable = isClickable(entry);
+              const isLast = idx === condensed.length - 1;
+              const timeTitle =
+                group.count > 1
+                  ? `${group.count} changes: ${absoluteTime(entry.created_at)} – ${absoluteTime(group.oldestTimestamp)}`
+                  : absoluteTime(entry.created_at);
+              return (
+                <li
+                  key={entry.id}
+                  onClick={() => handleClick(entry)}
+                  className={`flex items-center gap-3 py-1.5 relative transition-colors rounded ${
+                    isLast ? "" : "border-b border-line"
+                  } ${
+                    clickable ? "cursor-pointer hover:bg-chip" : ""
+                  }`}
                 >
-                  {relativeTime(entry.created_at)}
-                </span>
-              </div>
-            );
-          })}
+                  <span className="relative z-10 bg-paper py-0.5 shrink-0">
+                    <ActionGlyph action={entry.action} />
+                  </span>
+                  <span className="text-ink min-w-0 truncate flex-1 text-xs" title={entry.summary}>
+                    <span className="font-medium text-ink">
+                      {entry.user_display_name || "Someone"}
+                    </span>{" "}
+                    {entry.summary}
+                  </span>
+                  {group.count > 1 && (
+                    <span
+                      className="text-[10px] text-faint bg-chip rounded-full px-1.5 py-0.5 shrink-0"
+                      title={`${group.count} identical changes condensed`}
+                    >
+                      ×{group.count}
+                    </span>
+                  )}
+                  <span
+                    className="text-[10px] text-faint shrink-0 cursor-help"
+                    title={timeTitle}
+                  >
+                    {relativeTime(entry.created_at)}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
       )}
     </div>

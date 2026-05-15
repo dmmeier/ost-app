@@ -133,12 +133,12 @@ function OSTNodeComponent({ id, data }: NodeProps) {
             if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
             if (e.key === "Escape") { setEditTitle(nodeData.title); setEditingNodeId(null); }
           }}
-          className={`text-[15px] font-semibold leading-snug pr-8 w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : ""}`}
+          className={`text-[18px] font-semibold leading-snug pr-8 w-full bg-transparent border-b border-dashed outline-none ${fontLight ? "text-white border-white/40" : ""}`}
           style={fontLight ? undefined : { color: 'var(--ost-ink)', borderColor: 'var(--ost-muted)' }}
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
-        <div className={`text-[15px] font-semibold leading-snug line-clamp-3 pr-8 ${fontLight ? "text-white" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-ink)' }}>{nodeData.title}</div>
+        <div className={`text-[18px] font-semibold leading-snug line-clamp-3 pr-8 ${fontLight ? "text-white" : ""}`} style={fontLight ? undefined : { color: 'var(--ost-ink)' }}>{nodeData.title}</div>
       )}
       {nodeData.status && nodeData.status !== "active" && (
         <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded ${fontLight ? "bg-white/15 text-white/80" : ""}`} style={fontLight ? undefined : { background: 'var(--ost-chip)', color: 'var(--ost-muted)' }}>

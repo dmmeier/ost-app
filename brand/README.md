@@ -73,11 +73,18 @@ A two-surface system. The **canvas** is the page; **paper** is what rests on
 it (cards, fields, drawer tabs). The two are very close in value but
 intentionally different so panels read as discrete objects.
 
+A **two-tier surface system**. The chrome (sidebar, chat panel, header,
+drawer tabs) and the elevated cards both sit on the **paper** value;
+together they form the upper surface. The **canvas** sits one tier below
+— a recessed cream "workspace" framed by the chrome and inhabited by the
+cards. Visually: the cream is the *page being worked on*; everything
+around it is *paper holding the page in place*.
+
 | Token | Value | Role |
 |---|---|---|
-| `--ost-canvas` | `#f8f6f0` | The page itself — tree canvas, drawer background, sidebar empty space |
-| `--ost-paper` | `#fefdf9` | Elevated paper — cards, text fields, focus-view, mini-panels |
-| `--ost-sidebar` | `#fbf9f3` | Sidebar chrome — sits between canvas and paper |
+| `--ost-canvas` | `#f8f6f0` | The recessed working surface — tree canvas, drawer body |
+| `--ost-paper` | `#fefdf9` | Chrome and elevated cards — sidebar, chat, header, drawer tabs, cards on canvas |
+| `--ost-sidebar` | `#fefdf9` | Alias of `--ost-paper`; preserved as a separate name in case the chrome ever needs to diverge |
 | `--ost-dot` | `#dad2b6` | Canvas dot-pattern color — fainter than line on purpose |
 
 **The dot pattern matters.** If you're using `<Background variant="dots">`
@@ -446,7 +453,7 @@ Update `site.webmanifest` to match:
 | Brand teal soft | `#86c5be` |
 | Canvas (page) | `#f8f6f0` |
 | Paper (elevated) | `#fefdf9` |
-| Sidebar | `#fbf9f3` |
+| Sidebar | `#fefdf9` |
 | Dot pattern | `#dad2b6` |
 | Ink | `#2c2620` |
 | Muted | `#7a6f5b` |

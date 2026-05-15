@@ -106,6 +106,20 @@ export default function Home() {
     }
   }, [selectedNodeId, setBottomPanelOpen, setBottomPanel]);
 
+  // Sidebar panel ref for collapsible control
+  const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
+
+  // Sync sidebarOpen store state with the collapsible panel ref
+  useEffect(() => {
+    const panel = sidebarPanelRef.current;
+    if (!panel) return;
+    if (sidebarOpen && panel.isCollapsed()) {
+      panel.expand();
+    } else if (!sidebarOpen && !panel.isCollapsed()) {
+      panel.collapse();
+    }
+  }, [sidebarOpen]);
+
   // Chat panel ref for collapsible control
   const chatPanelRef = useRef<PanelImperativeHandle>(null);
 
@@ -161,7 +175,7 @@ export default function Home() {
       )}
 
       {/* Header */}
-      <header className="h-12 border-b flex items-center justify-between px-4 shrink-0" style={{ background: 'var(--ost-canvas)', borderColor: 'var(--ost-line)', color: 'var(--ost-ink)' }}>
+      <header className="h-12 border-b flex items-center justify-between px-4 shrink-0" style={{ background: 'var(--ost-sidebar)', borderColor: 'var(--ost-line)', color: 'var(--ost-ink)' }}>
         <div className="flex items-center gap-3 min-w-0">
           <Wordmark height={28} className="shrink-0" variant="light" />
           <Breadcrumbs tree={tree ?? null} />
@@ -212,31 +226,8 @@ export default function Home() {
           {/* Top area: sidebar + canvas + chat */}
           <ResizablePanel id="top" defaultSize="70%" minSize="30%">
             <ResizablePanelGroup orientation="horizontal">
-              {/* Left sidebar: Tree selector (collapsible) */}
-              {sidebarOpen ? (
-                <>
-                  <ResizablePanel id="sidebar" defaultSize="18%" minSize="12%" maxSize="28%">
-                    <div className="h-full overflow-y-auto border-r p-3" style={{ background: 'var(--ost-sidebar)', borderColor: 'var(--ost-line)' }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--ost-muted)', fontFamily: 'var(--font-ost-mono)' }}>Projects</span>
-                        <button
-                          onClick={() => setSidebarOpen(false)}
-                          className="p-0.5 transition-colors"
-                          style={{ color: 'var(--ost-muted)' }}
-                          title="Collapse sidebar"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                        </button>
-                      </div>
-                      <TreeSelector
-                        selectedTreeId={selectedTreeId}
-                        onSelectTree={setSelectedTreeId}
-                      />
-                    </div>
-                  </ResizablePanel>
-                  <ResizableHandle withHandle />
-                </>
-              ) : (
+              {/* Left sidebar: Tree selector (collapsible — always mounted) */}
+              {!sidebarOpen && (
                 <div
                   onClick={() => setSidebarOpen(true)}
                   className="w-6 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
@@ -246,6 +237,39 @@ export default function Home() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
               )}
+              <ResizablePanel
+                id="sidebar"
+                panelRef={sidebarPanelRef}
+                defaultSize="18%"
+                minSize="12%"
+                maxSize="28%"
+                collapsible
+                collapsedSize={0}
+                onResize={(size) => {
+                  const collapsed = size.asPercentage === 0;
+                  if (collapsed && sidebarOpen) setSidebarOpen(false);
+                  else if (!collapsed && !sidebarOpen) setSidebarOpen(true);
+                }}
+              >
+                <div className="h-full overflow-y-auto border-r p-3" style={{ background: 'var(--ost-sidebar)', borderColor: 'var(--ost-line)' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--ost-muted)', fontFamily: 'var(--font-ost-mono)' }}>Projects</span>
+                    <button
+                      onClick={() => setSidebarOpen(false)}
+                      className="p-0.5 transition-colors"
+                      style={{ color: 'var(--ost-muted)' }}
+                      title="Collapse sidebar"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                  </div>
+                  <TreeSelector
+                    selectedTreeId={selectedTreeId}
+                    onSelectTree={setSelectedTreeId}
+                  />
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle className={sidebarOpen ? "" : "hidden"} />
 
               {/* Center: Tree canvas */}
               <ResizablePanel id="canvas" defaultSize="52%" minSize="30%">

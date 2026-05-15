@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useUpdateTree, useProject, useUpdateProject, useProjectTags, useCreateTag, useUpdateTag, useDeleteTag, useBubbleDefaults, useUpdateBubbleDefaults } from "@/hooks/use-tree";
 import { TreeWithNodes, BubbleDefaults, BubbleTypeDefault, STANDARD_NODE_TYPES, FillStyle } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -30,43 +30,54 @@ export function ContextPanel({ tree }: ContextPanelProps) {
 
   const [projectContext, setProjectContext] = useState(project?.project_context ?? "");
   const [treeContext, setTreeContext] = useState(tree.tree_context);
-  const [projectDirty, setProjectDirty] = useState(false);
-  const [treeDirty, setTreeDirty] = useState(false);
-
-  const hasProjectChanges = projectContext !== (project?.project_context ?? "");
-  const hasTreeChanges = treeContext !== tree.tree_context;
+  const projectDirtyRef = useRef(false);
+  const treeDirtyRef = useRef(false);
+  const projectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const treeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sync when tree changes (only if not dirty)
   useEffect(() => {
-    if (!treeDirty) {
+    if (!treeDirtyRef.current) {
       setTreeContext(tree.tree_context);
     }
-  }, [tree.id, tree.tree_context, treeDirty]);
+  }, [tree.id, tree.tree_context]);
 
   // Reset dirty on tree switch
   useEffect(() => {
-    setTreeDirty(false);
-    setProjectDirty(false);
+    treeDirtyRef.current = false;
+    projectDirtyRef.current = false;
+    if (treeTimerRef.current) clearTimeout(treeTimerRef.current);
+    if (projectTimerRef.current) clearTimeout(projectTimerRef.current);
   }, [tree.id]);
 
   // Sync when project changes (only if not dirty)
   useEffect(() => {
-    if (project && !projectDirty) {
+    if (project && !projectDirtyRef.current) {
       setProjectContext(project.project_context);
     }
-  }, [project?.id, project?.project_context, projectDirty]);
+  }, [project?.id, project?.project_context]);
 
-  const handleSaveProjectContext = () => {
-    updateProject.mutate({ project_context: projectContext }, {
-      onSuccess: () => setProjectDirty(false),
-    });
-  };
+  const handleProjectContextChange = useCallback((val: string) => {
+    projectDirtyRef.current = true;
+    setProjectContext(val);
+    if (projectTimerRef.current) clearTimeout(projectTimerRef.current);
+    projectTimerRef.current = setTimeout(() => {
+      updateProject.mutate({ project_context: val }, {
+        onSuccess: () => { projectDirtyRef.current = false; },
+      });
+    }, 800);
+  }, [updateProject]);
 
-  const handleSaveTreeContext = () => {
-    updateTree.mutate({ tree_context: treeContext }, {
-      onSuccess: () => setTreeDirty(false),
-    });
-  };
+  const handleTreeContextChange = useCallback((val: string) => {
+    treeDirtyRef.current = true;
+    setTreeContext(val);
+    if (treeTimerRef.current) clearTimeout(treeTimerRef.current);
+    treeTimerRef.current = setTimeout(() => {
+      updateTree.mutate({ tree_context: val }, {
+        onSuccess: () => { treeDirtyRef.current = false; },
+      });
+    }, 800);
+  }, [updateTree]);
 
   const { data: projectTags } = useProjectTags(tree.project_id);
   const createTag = useCreateTag(tree.project_id);
@@ -182,26 +193,12 @@ export function ContextPanel({ tree }: ContextPanelProps) {
             <span className="text-xs font-semibold uppercase tracking-wide text-faint">Project Context</span>
             <Badge variant="outline" className="text-[10px] py-0">shared</Badge>
           </div>
-          <div className="relative">
-            <RichTextEditor
-              value={projectContext}
-              onChange={(val) => { setProjectContext(val); setProjectDirty(true); }}
-              placeholder="Project background: what is it about? Who are the stakeholders? What constraints exist?"
-              minRows={2}
-            />
-            {hasProjectChanges && (
-              <div className="flex justify-end mt-1">
-                <Button
-                  size="sm"
-                  onClick={handleSaveProjectContext}
-                  disabled={updateProject.isPending}
-                  className="h-6 text-[10px] px-2 shadow-sm"
-                >
-                  {updateProject.isPending ? "Saving..." : "Save"}
-                </Button>
-              </div>
-            )}
-          </div>
+          <RichTextEditor
+            value={projectContext}
+            onChange={handleProjectContextChange}
+            placeholder="Project background: what is it about? Who are the stakeholders? What constraints exist?"
+            minRows={2}
+          />
         </div>
 
         {/* Tree Context */}
@@ -210,26 +207,12 @@ export function ContextPanel({ tree }: ContextPanelProps) {
             <span className="text-xs font-semibold uppercase tracking-wide text-faint">Tree Context</span>
             <Badge variant="outline" className="text-[10px] py-0">this tree</Badge>
           </div>
-          <div className="relative">
-            <RichTextEditor
-              value={treeContext}
-              onChange={(val) => { setTreeContext(val); setTreeDirty(true); }}
-              placeholder="Context specific to this OST: what area does it focus on? Any relevant research or findings?"
-              minRows={2}
-            />
-            {hasTreeChanges && (
-              <div className="flex justify-end mt-1">
-                <Button
-                  size="sm"
-                  onClick={handleSaveTreeContext}
-                  disabled={updateTree.isPending}
-                  className="h-6 text-[10px] px-2 shadow-sm"
-                >
-                  {updateTree.isPending ? "Saving..." : "Save"}
-                </Button>
-              </div>
-            )}
-          </div>
+          <RichTextEditor
+            value={treeContext}
+            onChange={handleTreeContextChange}
+            placeholder="Context specific to this OST: what area does it focus on? Any relevant research or findings?"
+            minRows={2}
+          />
         </div>
       </div>
 

@@ -30,7 +30,7 @@
   /* ── Paper (the surface palette) ────────────────── */
   --ost-canvas:    #f8f6f0;  /* page / canvas — Whisper cream */
   --ost-paper:     #fefdf9;  /* elevated paper — cards, fields, panels */
-  --ost-sidebar:   #fbf9f3;  /* sidebar/chrome — sits between canvas & paper */
+  --ost-sidebar:   #fefdf9;  /* sidebar/chrome — elevated to match paper so the canvas reads as a recessed working surface */
   --ost-dot:       #dad2b6;  /* canvas dot-pattern color (fainter than line) */
 
   /* ── Ink & text ─────────────────────────────────── */
