@@ -125,6 +125,10 @@ class TreeService:
                     ProjectUpdate(bubble_defaults=current_defaults),
                 )
 
+        # Auto-create one empty assumption for non-outcome nodes
+        if data.node_type != "outcome":
+            self.repo.add_assumption(node.id, NodeAssumptionCreate())
+
         return node
 
     def get_node(self, node_id: UUID) -> Node:
@@ -369,25 +373,33 @@ class TreeService:
                 id_map[old_id] = new_node.id
                 queue.append(old_id)
 
-                # Restore node assumptions
-                for a_data in node_data.get("assumptions", []):
-                    self.add_assumption(
-                        new_node.id,
-                        NodeAssumptionCreate(
-                            text=a_data.get("text", ""),
-                            evidence=a_data.get("evidence", ""),
-                        ),
-                    )
-                    # Restore status if not untested
-                    a_status = a_data.get("status", "untested")
-                    if a_status != "untested":
-                        assumptions = self.get_assumptions_for_node(new_node.id)
-                        if assumptions:
-                            last = assumptions[-1]
-                            self.update_assumption(
-                                last.id,
-                                NodeAssumptionUpdate(status=a_status),
-                            )
+                # Restore node assumptions.
+                # add_node auto-creates one empty assumption for non-outcome nodes.
+                # If the import data has assumptions, remove the auto-created one first
+                # to avoid duplicates.
+                import_assumptions = node_data.get("assumptions", [])
+                if import_assumptions:
+                    auto_created = self.get_assumptions_for_node(new_node.id)
+                    for ac in auto_created:
+                        self.delete_assumption(ac.id)
+                    for a_data in import_assumptions:
+                        self.add_assumption(
+                            new_node.id,
+                            NodeAssumptionCreate(
+                                text=a_data.get("text", ""),
+                                evidence=a_data.get("evidence", ""),
+                            ),
+                        )
+                        # Restore status if not untested
+                        a_status = a_data.get("status", "untested")
+                        if a_status != "untested":
+                            assumptions = self.get_assumptions_for_node(new_node.id)
+                            if assumptions:
+                                last = assumptions[-1]
+                                self.update_assumption(
+                                    last.id,
+                                    NodeAssumptionUpdate(status=a_status),
+                                )
 
                 # Restore node status if archived
                 node_status = node_data.get("status")

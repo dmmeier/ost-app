@@ -196,7 +196,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
             )}
             {untested > 0 && (
               <span className={`text-[10px] ${fontLight ? "text-blue-200" : "text-blue-500"}`}>
-                {untested} untested
+                {untested}
               </span>
             )}
             {rejected > 0 && (

@@ -303,6 +303,25 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
     }
   };
 
+  // Auto-create one empty assumption for non-outcome nodes that have none
+  const autoCreateRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      selectedNode &&
+      selectedNode.node_type !== "outcome" &&
+      (selectedNode.assumptions || []).length === 0 &&
+      canEdit &&
+      autoCreateRef.current !== selectedNode.id
+    ) {
+      autoCreateRef.current = selectedNode.id;
+      api.assumptions.create(selectedNode.id, {}).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["tree", tree.id] });
+      }).catch((err) => {
+        console.error("Failed to auto-create assumption:", err);
+      });
+    }
+  }, [selectedNode?.id, selectedNode?.node_type, selectedNode?.assumptions?.length, canEdit, queryClient, tree.id]);
+
   // Assumption stats
   const assumptions = selectedNode.assumptions || [];
   const confirmedCount = assumptions.filter((a) => a.status === "confirmed").length;
@@ -421,7 +440,9 @@ export function NodeDetailPanel({ tree }: NodeDetailPanelProps) {
             </div>
             {assumptions.length === 0 ? (
               <p className="text-xs text-gray-400 italic">
-                No assumptions yet.{canEdit ? " Click + Add to create one." : ""}
+                {selectedNode.node_type === "outcome"
+                  ? `No assumptions yet.${canEdit ? " Click + Add to create one." : ""}`
+                  : "Loading..."}
               </p>
             ) : (
               <div className="space-y-2">
