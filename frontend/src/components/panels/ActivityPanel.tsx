@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { TreeWithNodes, ActivityLog } from "@/lib/types";
@@ -9,6 +9,49 @@ import { useAuthStore } from "@/stores/auth-store";
 
 interface ActivityPanelProps {
   tree: TreeWithNodes;
+}
+
+/** A group of consecutive entries with the same summary. */
+interface CondensedEntry {
+  /** The most recent entry in the group (displayed). */
+  latest: ActivityLog;
+  /** Total number of entries collapsed into this group. */
+  count: number;
+  /** The oldest entry's timestamp in the group (for time-range display). */
+  oldestTimestamp: string;
+}
+
+/**
+ * Condense consecutive activity entries that share the same summary text.
+ * Returns groups ordered newest-first (same as input), where each group
+ * contains only the most recent entry and a count of how many were collapsed.
+ */
+function condenseActivities(entries: ActivityLog[]): CondensedEntry[] {
+  if (entries.length === 0) return [];
+
+  const groups: CondensedEntry[] = [];
+  let current: CondensedEntry = {
+    latest: entries[0],
+    count: 1,
+    oldestTimestamp: entries[0].created_at,
+  };
+
+  for (let i = 1; i < entries.length; i++) {
+    const entry = entries[i];
+    if (entry.summary === current.latest.summary) {
+      current.count++;
+      current.oldestTimestamp = entry.created_at; // entries are newest-first, so later = older
+    } else {
+      groups.push(current);
+      current = {
+        latest: entry,
+        count: 1,
+        oldestTimestamp: entry.created_at,
+      };
+    }
+  }
+  groups.push(current);
+  return groups;
 }
 
 /** Ensure a timestamp string is parsed as UTC (backend stores UTC without Z suffix). */
@@ -127,6 +170,11 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
       : entries
     : [];
 
+  const condensed = useMemo(
+    () => condenseActivities(filteredEntries),
+    [filteredEntries],
+  );
+
   const handleClick = (entry: ActivityLog) => {
     if (entry.resource_type === "node" && entry.resource_id && nodeIds.has(entry.resource_id)) {
       setSelectedNodeId(entry.resource_id);
@@ -188,7 +236,7 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
           </div>
         )}
       </div>
-      {filteredEntries.length === 0 ? (
+      {condensed.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">
           <div className="text-center px-4">
             <p className="text-sm">No changes by you yet</p>
@@ -197,8 +245,13 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
-          {filteredEntries.map((entry) => {
+          {condensed.map((group) => {
+            const entry = group.latest;
             const clickable = isClickable(entry);
+            const timeTitle =
+              group.count > 1
+                ? `${group.count} changes: ${absoluteTime(entry.created_at)} – ${absoluteTime(group.oldestTimestamp)}`
+                : absoluteTime(entry.created_at);
             return (
               <div
                 key={entry.id}
@@ -216,9 +269,17 @@ export function ActivityPanel({ tree }: ActivityPanelProps) {
                   </span>{" "}
                   {entry.summary}
                 </span>
+                {group.count > 1 && (
+                  <span
+                    className="text-[10px] text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5 shrink-0"
+                    title={`${group.count} identical changes condensed`}
+                  >
+                    ×{group.count}
+                  </span>
+                )}
                 <span
                   className="text-[10px] text-gray-400 shrink-0 cursor-help"
-                  title={absoluteTime(entry.created_at)}
+                  title={timeTitle}
                 >
                   {relativeTime(entry.created_at)}
                 </span>
