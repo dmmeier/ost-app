@@ -1361,15 +1361,11 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             <div className="flex gap-1 flex-wrap">
               {[
                 { label: "Default", value: "", color: "#94a3b8" },
-                { label: "100", value: "#f3f4f6", color: "#f3f4f6", light: true },
-                { label: "200", value: "#e5e7eb", color: "#e5e7eb", light: true },
-                { label: "300", value: "#d1d5db", color: "#d1d5db" },
-                { label: "400", value: "#9ca3af", color: "#9ca3af" },
-                { label: "500", value: "#6b7280", color: "#6b7280" },
-                { label: "600", value: "#4b5563", color: "#4b5563" },
-                { label: "700", value: "#374151", color: "#374151" },
-                { label: "800", value: "#1f2937", color: "#1f2937" },
-                { label: "900", value: "#111827", color: "#111827" },
+                { label: "Light", value: "#e5e7eb", color: "#e5e7eb", light: true },
+                { label: "Silver", value: "#d1d5db", color: "#d1d5db" },
+                { label: "Stone", value: "#6b7280", color: "#6b7280" },
+                { label: "Dark", value: "#4b5563", color: "#4b5563" },
+                { label: "Charcoal", value: "#1f2937", color: "#1f2937" },
               ].map((swatch) => {
                 const isActive = (edgeContextMenu.currentColor || "") === swatch.value;
                 return (
