@@ -875,6 +875,7 @@ def edit(
     evidence: Optional[str] = typer.Option(None, help="Supporting data, research, or observations"),
     edge_thickness: Optional[float] = typer.Option(None, "--edge-thickness", help="Edge thickness (0.5-10, 0 to clear)"),
     edge_style: Optional[str] = typer.Option(None, "--edge-style", help="Edge line style: solid, dashed, dotted (empty to clear)"),
+    edge_color: Optional[str] = typer.Option(None, "--edge-color", help="Edge color as hex (e.g. #6b7280, empty to clear)"),
     version: Optional[int] = typer.Option(None, help="Expected version for conflict detection"),
 ):
     """Edit a node's title, description, status, assumption, evidence, or edge styling."""
@@ -888,6 +889,7 @@ def edit(
                 title=title, description=description, status=status,
                 assumption=assumption, evidence=evidence,
                 edge_thickness=edge_thickness, edge_style=edge_style,
+                edge_color=edge_color,
                 version=version,
             ),
             user_id=_get_current_user_id(),

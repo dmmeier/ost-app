@@ -77,6 +77,7 @@ class NodeCreate(BaseModel):
     override_font_light: Optional[bool] = None
     edge_thickness: Optional[float] = None  # thickness of the edge to parent
     edge_style: Optional[str] = None
+    edge_color: Optional[str] = None  # hex color for the edge to parent
     assumption: Optional[str] = None
     evidence: Optional[str] = None
 
@@ -100,6 +101,7 @@ class NodeUpdate(BaseModel):
     override_font_light: Optional[bool] = None
     edge_thickness: Optional[float] = None  # 0 to clear
     edge_style: Optional[str] = None  # "" to clear
+    edge_color: Optional[str] = None  # "" to clear
     assumption: Optional[str] = None
     evidence: Optional[str] = None
     version: Optional[int] = None  # For optimistic locking; when set, repo checks version match
@@ -131,6 +133,7 @@ class Node(BaseModel):
     sort_order: int = 0
     edge_thickness: Optional[float] = None
     edge_style: Optional[str] = None
+    edge_color: Optional[str] = None
     assumption: str = ""
     evidence: str = ""
     assumptions: list["NodeAssumption"] = Field(default_factory=list)

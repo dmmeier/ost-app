@@ -76,6 +76,7 @@ export interface Node {
   sort_order: number;
   edge_thickness: number | null;
   edge_style: EdgeStyle | null;
+  edge_color: string | null;
   assumption: string;
   evidence: string;
   assumptions: NodeAssumption[];
@@ -171,6 +172,7 @@ export interface NodeUpdate {
   evidence?: string;
   edge_thickness?: number;
   edge_style?: string;
+  edge_color?: string;
   override_border_color?: string | null;
   override_border_width?: number | null;
   override_fill_color?: string | null;

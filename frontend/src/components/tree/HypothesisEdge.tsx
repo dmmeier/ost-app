@@ -10,6 +10,7 @@ import {
 interface HypothesisEdgeData {
   thickness?: number;
   edgeStyle?: string;
+  edgeColor?: string;
   [key: string]: unknown;
 }
 
@@ -48,7 +49,7 @@ function HypothesisEdgeComponent({
     <BaseEdge
       path={edgePath}
       markerEnd={markerEnd}
-      style={{ stroke: "#94a3b8", strokeWidth, strokeDasharray, strokeLinecap: edgeData.edgeStyle === "dotted" ? "round" : undefined }}
+      style={{ stroke: edgeData.edgeColor || "#94a3b8", strokeWidth, strokeDasharray, strokeLinecap: edgeData.edgeStyle === "dotted" ? "round" : undefined }}
     />
   );
 }

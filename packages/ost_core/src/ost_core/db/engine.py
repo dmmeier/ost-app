@@ -101,6 +101,8 @@ def _migrate_add_columns(engine: Engine) -> None:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN edge_thickness INTEGER"))
             if "edge_style" not in node_columns:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN edge_style VARCHAR(20)"))
+            if "edge_color" not in node_columns:
+                conn.execute(text("ALTER TABLE nodes ADD COLUMN edge_color VARCHAR(20)"))
             if "assumption" not in node_columns:
                 conn.execute(text("ALTER TABLE nodes ADD COLUMN assumption TEXT DEFAULT ''"))
             if "evidence" not in node_columns:

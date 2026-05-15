@@ -94,6 +94,7 @@ class NodeRow(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     edge_thickness: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     edge_style: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
+    edge_color: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     assumption: Mapped[str] = mapped_column(Text, default="")
     evidence: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
