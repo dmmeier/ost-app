@@ -314,10 +314,10 @@ export default function Home() {
                   {tree ? (
                     <ChatPanel treeId={tree.id} projectId={tree.project_id} />
                   ) : (
-                    <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--ost-muted)' }}>
+                    <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
                       <div className="text-center">
                         <BrandMark size={32} className="mx-auto mb-2 opacity-20 text-[#0d9488]" />
-                        <p>Select a tree to start chatting</p>
+                        <p className="text-sm" style={{ fontFamily: 'var(--font-ost-display)' }}>Select a tree to start chatting</p>
                       </div>
                     </div>
                   )}
