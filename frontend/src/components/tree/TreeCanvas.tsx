@@ -941,7 +941,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           <div className="flex items-center gap-1 px-2 py-1">
             <button
               onClick={collapseOneLevel}
-              disabled={visibleDepth !== null && visibleDepth <= 0}
+              disabled={visibleDepth !== null && visibleDepth <= 0 && expandedBeyondDepth.size === 0}
               className="text-sm px-1.5 py-0.5 rounded hover:bg-chip disabled:opacity-30 disabled:cursor-not-allowed"
               title="Collapse one level"
             >
@@ -950,7 +950,9 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
             <span className="text-[11px] text-ost-muted min-w-[56px] text-center font-medium">
               {visibleDepth === null
                 ? `All (${maxTreeDepth})`
-                : `Level ${visibleDepth}/${maxTreeDepth}`}
+                : expandedBeyondDepth.size > 0
+                  ? `Level ${visibleDepth}+/${maxTreeDepth}`
+                  : `Level ${visibleDepth}/${maxTreeDepth}`}
             </span>
             <button
               onClick={expandOneLevel}
