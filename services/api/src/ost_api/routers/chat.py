@@ -4,10 +4,11 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncGenerator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from ost_core.db.repository import TreeRepository
 from ost_core.exceptions import PermissionDeniedError
 from ost_core.llm import LLMProvider, LLMResponse, get_llm_provider
@@ -528,41 +529,50 @@ def _execute_tool(
         return json.dumps({"error": str(e)})
 
 
-@router.post("/", response_model=ChatResponse)
-async def chat(
-    request: ChatRequest,
-    service: TreeService = Depends(get_service),
-    validator: TreeValidator = Depends(get_tree_validator),
-    repo: TreeRepository = Depends(get_repo),
-    user: User | None = Depends(get_current_user_required),
-):
-    """Agentic chat endpoint with tool-use loop.
+def _tool_display_label(name: str, arguments: dict[str, Any]) -> str:
+    """Return a human-friendly label for a tool call."""
+    labels: dict[str, str] = {
+        "get_tree": "Getting tree...",
+        "add_node": "Adding node...",
+        "update_node": "Updating node...",
+        "remove_node": "Deleting node...",
+        "move_node": "Moving node...",
+        "validate_tree": "Validating tree...",
+        "list_skills": "Checking available skills...",
+        "set_edge_hypothesis": "Setting edge hypothesis...",
+        "update_edge": "Updating edge...",
+        "list_project_tags": "Listing tags...",
+        "add_tag_to_node": "Adding tag...",
+        "remove_tag_from_node": "Removing tag...",
+        "update_agent_knowledge": "Updating notes...",
+        "rename_tree": "Renaming tree...",
+        "rename_project": "Renaming project...",
+        "add_assumption": "Adding assumption...",
+        "update_assumption": "Updating assumption...",
+        "reject_assumption": "Rejecting assumption...",
+        "delete_assumption": "Deleting assumption...",
+        "create_project": "Creating project...",
+        "create_tree": "Creating tree...",
+        "get_tree_filtered_by_tag": "Filtering by tag...",
+    }
+    if name == "read_skill":
+        skill_name = arguments.get("skill_name", "")
+        # Make skill name more readable
+        display_name = skill_name.replace("-", " ").replace("_", " ").title()
+        return f"Reading skill: {display_name}..."
+    return labels.get(name, f"Running {name}...")
 
-    The AI can inspect, modify, and validate the tree through tool calls.
-    The loop continues until the AI produces a text response without tool calls.
-    """
+
+def _build_system_prompt(
+    base_prompt: str,
+    tree_id: str,
+    service: TreeService,
+) -> str:
+    """Build the full system prompt with context injection."""
     try:
-        provider: LLMProvider = get_llm_provider(request.provider)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    base_prompt = BUILDER_SYSTEM_PROMPT if request.mode == "builder" else SYSTEM_PROMPT
-
-    # Fetch tree and parent project to inject context and agent knowledge
-    try:
-        tree_data = service.get_tree(UUID(request.tree_id))
+        tree_data = service.get_tree(UUID(tree_id))
     except Exception:
         tree_data = None
-
-    # RBAC: builder mode requires editor, coach mode requires viewer
-    chat_min_role = "editor" if request.mode == "builder" else "viewer"
-    try:
-        if tree_data:
-            service.check_project_permission(
-                str(user.id) if user else None, str(tree_data.project_id), chat_min_role
-            )
-    except PermissionDeniedError as e:
-        raise HTTPException(status_code=403, detail=str(e))
 
     project_data = None
     if tree_data:
@@ -574,7 +584,7 @@ async def chat(
     project_id_str = str(tree_data.project_id) if tree_data else None
     context_parts = [
         f"## Current Context\n"
-        f"You are working on tree ID: `{request.tree_id}`.\n"
+        f"You are working on tree ID: `{tree_id}`.\n"
         + (f"The tree belongs to project ID: `{project_id_str}`.\n" if project_id_str else "")
         + f"ALWAYS use this tree_id when calling get_tree, add_node, validate_tree, "
         f"and any other tool that requires a tree_id. "
@@ -609,7 +619,166 @@ async def chat(
             knowledge += " [truncated]"
         context_parts.append(f"## Agent Knowledge (from previous sessions)\n{knowledge}")
 
-    system_prompt = f"{base_prompt}\n\n{SKILLS_NOTE}\n\n" + "\n\n".join(context_parts)
+    return f"{base_prompt}\n\n{SKILLS_NOTE}\n\n" + "\n\n".join(context_parts)
+
+
+def _check_chat_permission(
+    service: TreeService,
+    tree_id: str,
+    user: Any,
+    mode: str | None,
+) -> None:
+    """Check RBAC permission for chat. Raises HTTPException on failure."""
+    try:
+        tree_data = service.get_tree(UUID(tree_id))
+    except Exception:
+        tree_data = None
+
+    chat_min_role = "editor" if mode == "builder" else "viewer"
+    try:
+        if tree_data:
+            service.check_project_permission(
+                str(user.id) if user else None, str(tree_data.project_id), chat_min_role
+            )
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+
+@router.post("/stream")
+async def chat_stream(
+    request: ChatRequest,
+    service: TreeService = Depends(get_service),
+    validator: TreeValidator = Depends(get_tree_validator),
+    repo: TreeRepository = Depends(get_repo),
+    user: User | None = Depends(get_current_user_required),
+):
+    """Streaming chat endpoint that sends SSE events for tool activity.
+
+    Events:
+      - tool_start: {type, name, label} when a tool call begins
+      - tool_end: {type, name} when a tool call completes
+      - done: {type, final_text, messages} final response
+      - error: {type, message} on failure
+    """
+    try:
+        provider: LLMProvider = get_llm_provider(request.provider)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _check_chat_permission(service, request.tree_id, user, request.mode)
+
+    base_prompt = BUILDER_SYSTEM_PROMPT if request.mode == "builder" else SYSTEM_PROMPT
+    system_prompt = _build_system_prompt(base_prompt, request.tree_id, service)
+
+    messages = list(request.messages)
+    all_messages = list(messages)
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        nonlocal messages, all_messages
+
+        max_iterations = 10
+        final_text = ""
+
+        try:
+            for _ in range(max_iterations):
+                response: LLMResponse = await provider.chat_with_tools(
+                    messages=messages,
+                    tools=CHAT_TOOLS,
+                    system_prompt=system_prompt,
+                )
+
+                if response.tool_calls:
+                    assistant_msg: dict[str, Any] = {
+                        "role": "assistant",
+                        "tool_calls": [
+                            {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+                            for tc in response.tool_calls
+                        ],
+                    }
+                    if response.text:
+                        assistant_msg["text"] = response.text
+                    messages.append(assistant_msg)
+                    all_messages.append(assistant_msg)
+
+                    for tc in response.tool_calls:
+                        label = _tool_display_label(tc.name, tc.arguments)
+                        yield f"data: {json.dumps({'type': 'tool_start', 'name': tc.name, 'label': label})}\n\n"
+
+                        result = _execute_tool(tc.name, tc.arguments, service, validator, user_id=str(user.id) if user else None)
+                        tool_result_msg = {
+                            "role": "tool_result",
+                            "tool_use_id": tc.id,
+                            "tool_name": tc.name,
+                            "content": result,
+                        }
+                        messages.append(tool_result_msg)
+                        all_messages.append(tool_result_msg)
+
+                        yield f"data: {json.dumps({'type': 'tool_end', 'name': tc.name})}\n\n"
+                else:
+                    final_text = response.text or ""
+                    all_messages.append({"role": "assistant", "content": final_text})
+                    break
+            else:
+                final_text = "I've reached the maximum number of tool calls. Here's what I've done so far."
+                all_messages.append({"role": "assistant", "content": final_text})
+
+            # Persist chat history
+            try:
+                new_msgs_to_save = []
+                if request.messages:
+                    new_msgs_to_save.append(request.messages[-1])
+                for msg in all_messages[len(request.messages):]:
+                    new_msgs_to_save.append(msg)
+                if new_msgs_to_save:
+                    repo.save_chat_messages(
+                        UUID(request.tree_id),
+                        new_msgs_to_save,
+                        mode=request.mode or "coach",
+                        user_id=str(user.id) if user else None,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to save chat history: {e}")
+
+            yield f"data: {json.dumps({'type': 'done', 'final_text': final_text, 'messages': all_messages, 'system_prompt': system_prompt}, default=str)}\n\n"
+
+        except Exception as e:
+            logger.exception("Error in streaming chat")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/", response_model=ChatResponse)
+async def chat(
+    request: ChatRequest,
+    service: TreeService = Depends(get_service),
+    validator: TreeValidator = Depends(get_tree_validator),
+    repo: TreeRepository = Depends(get_repo),
+    user: User | None = Depends(get_current_user_required),
+):
+    """Agentic chat endpoint with tool-use loop.
+
+    The AI can inspect, modify, and validate the tree through tool calls.
+    The loop continues until the AI produces a text response without tool calls.
+    """
+    try:
+        provider: LLMProvider = get_llm_provider(request.provider)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    _check_chat_permission(service, request.tree_id, user, request.mode)
+
+    base_prompt = BUILDER_SYSTEM_PROMPT if request.mode == "builder" else SYSTEM_PROMPT
+    system_prompt = _build_system_prompt(base_prompt, request.tree_id, service)
 
     messages = list(request.messages)
     all_messages = list(messages)  # Track full conversation for response
@@ -660,13 +829,9 @@ async def chat(
 
     # Persist the new messages (user message + AI response) to chat history
     try:
-        # Save just the user's new message and the AI's response messages
-        # (not the full history which was already saved in previous turns)
         new_msgs_to_save = []
-        # The user's latest message is always the last in the original request
         if request.messages:
             new_msgs_to_save.append(request.messages[-1])
-        # Save all new messages generated in this exchange
         for msg in all_messages[len(request.messages):]:
             new_msgs_to_save.append(msg)
         if new_msgs_to_save:

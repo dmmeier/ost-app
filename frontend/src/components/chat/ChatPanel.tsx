@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ChatMessage } from "@/lib/api-client";
 import { useTreeStore } from "@/stores/tree-store";
@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { ToolActivityIndicator } from "./ToolActivityIndicator";
+
+interface ActiveTool {
+  name: string;
+  label: string;
+}
 
 interface ChatPanelProps {
   treeId: string;
@@ -25,13 +31,28 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
   const [displayMessages, setDisplayMessages] = useState<DisplayMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTools, setActiveTools] = useState<ActiveTool[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
   // The last system prompt returned by the API (shown in expanded view)
   const [lastSystemPrompt, setLastSystemPrompt] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const streamAbortRef = useRef<{ abort: () => void } | null>(null);
+  const toolEndTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const queryClient = useQueryClient();
   const { chatMode, setChatMode, chatInitialMessage, setChatInitialMessage, setChatPanelOpen } = useTreeStore();
+
+  // Cleanup: abort stream and clear timers on unmount
+  useEffect(() => {
+    return () => {
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
+      for (const timer of toolEndTimersRef.current) {
+        clearTimeout(timer);
+      }
+      toolEndTimersRef.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -90,12 +111,36 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
     });
   }, [treeId]);
 
+  const handleStreamResponse = useCallback((
+    finalText: string,
+    messages: ChatMessage[],
+    collectedToolNames: string[],
+  ) => {
+    const assistantDisplay: DisplayMessage = {
+      role: "assistant",
+      content: finalText,
+    };
+    if (collectedToolNames.length > 0) {
+      assistantDisplay.toolCalls = collectedToolNames.map((name, i) => ({ name, id: String(i) }));
+    }
+    setDisplayMessages((prev) => [...prev, assistantDisplay]);
+    setConversationHistory(messages);
+
+    // Refresh the tree visualization, sidebar, and project-level data
+    queryClient.invalidateQueries({ queryKey: ["tree", treeId] });
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
+    queryClient.invalidateQueries({ queryKey: ["project"] });
+    queryClient.invalidateQueries({ queryKey: ["bubbleDefaults", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["projectTags", projectId] });
+  }, [queryClient, treeId, projectId]);
+
   const handleSend = async (overrideMessage?: string) => {
     const userMessage = overrideMessage ?? input.trim();
     if (!userMessage || isLoading) return;
 
     if (!overrideMessage) setInput("");
     setIsLoading(true);
+    setActiveTools([]);
 
     // Add user message to display
     setDisplayMessages((prev) => [...prev, { role: "user", content: userMessage }]);
@@ -106,62 +151,99 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
       { role: "user", content: userMessage },
     ];
 
+    // Collect tool names during streaming for the final badge display
+    const collectedToolNames: string[] = [];
+    let toolCallCounter = 0;
+
+    // Clear any pending tool-end timers from a previous send
+    for (const timer of toolEndTimersRef.current) {
+      clearTimeout(timer);
+    }
+    toolEndTimersRef.current.clear();
+
     try {
-      const response = await api.chat.send(treeId, newMessages, undefined, chatMode);
+      // Try streaming endpoint first
+      const handle = api.chat.sendStream(
+        treeId,
+        newMessages,
+        {
+          onToolStart: (name: string, label: string) => {
+            collectedToolNames.push(name);
+            const instanceId = `${name}_${toolCallCounter++}`;
+            setActiveTools((prev) => [...prev, { name: instanceId, label }]);
+          },
+          onToolEnd: (name: string) => {
+            // Remove the oldest instance of this tool after a short delay
+            const timer = setTimeout(() => {
+              setActiveTools((prev) => {
+                const idx = prev.findIndex((t) => t.name.startsWith(`${name}_`));
+                if (idx === -1) return prev;
+                return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+              });
+              toolEndTimersRef.current.delete(timer);
+            }, 800);
+            toolEndTimersRef.current.add(timer);
+          },
+          onDone: (finalText: string, messages: ChatMessage[], systemPrompt?: string) => {
+            setActiveTools([]);
+            if (systemPrompt) setLastSystemPrompt(systemPrompt);
+            handleStreamResponse(finalText, messages, collectedToolNames);
+            setIsLoading(false);
+            streamAbortRef.current = null;
+          },
+          onError: (message: string) => {
+            setActiveTools([]);
+            setIsLoading(false);
+            streamAbortRef.current = null;
 
-      // Store system prompt for expanded view
-      if (response.system_prompt) {
-        setLastSystemPrompt(response.system_prompt);
-      }
+            const errorContent = `Error: ${message}`;
+            setDisplayMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: errorContent },
+            ]);
+            api.chatHistory.save(treeId, [
+              { role: "user", content: userMessage },
+              { role: "assistant", content: errorContent },
+            ], chatMode).catch(() => {});
+          },
+        },
+        undefined,
+        chatMode,
+      );
 
-      // Extract tool calls for display
-      const toolNames: string[] = [];
-      for (const msg of response.messages) {
-        if (msg.tool_calls) {
-          for (const tc of msg.tool_calls) {
-            toolNames.push(tc.name);
+      streamAbortRef.current = handle;
+    } catch {
+      // Fallback to non-streaming endpoint
+      try {
+        const response = await api.chat.send(treeId, newMessages, undefined, chatMode);
+
+        if (response.system_prompt) {
+          setLastSystemPrompt(response.system_prompt);
+        }
+
+        const toolNames: string[] = [];
+        for (const msg of response.messages) {
+          if (msg.tool_calls) {
+            for (const tc of msg.tool_calls) {
+              toolNames.push(tc.name);
+            }
           }
         }
+
+        handleStreamResponse(response.final_text, response.messages, toolNames);
+      } catch (error) {
+        const errorContent = `Error: ${error instanceof Error ? error.message : "Failed to get response"}`;
+        setDisplayMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: errorContent },
+        ]);
+        api.chatHistory.save(treeId, [
+          { role: "user", content: userMessage },
+          { role: "assistant", content: errorContent },
+        ], chatMode).catch(() => {});
+      } finally {
+        setIsLoading(false);
       }
-
-      // Add assistant response to display
-      const assistantDisplay: DisplayMessage = {
-        role: "assistant",
-        content: response.final_text,
-      };
-      if (toolNames.length > 0) {
-        assistantDisplay.toolCalls = toolNames.map((name, i) => ({ name, id: String(i) }));
-      }
-      setDisplayMessages((prev) => [...prev, assistantDisplay]);
-
-      // Update conversation history with the full message trail
-      setConversationHistory(response.messages);
-
-      // Refresh the tree visualization, sidebar, and project-level data
-      queryClient.invalidateQueries({ queryKey: ["tree", treeId] });
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["project"] });
-      queryClient.invalidateQueries({ queryKey: ["bubbleDefaults", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["projectTags", projectId] });
-    } catch (error) {
-      const errorContent = `Error: ${error instanceof Error ? error.message : "Failed to get response"}`;
-      setDisplayMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: errorContent,
-        },
-      ]);
-      // Persist user message + error to DB so they survive tree switches
-      // (backend only saves on successful AI responses, so errors need frontend save)
-      api.chatHistory.save(treeId, [
-        { role: "user", content: userMessage },
-        { role: "assistant", content: errorContent },
-      ], chatMode).catch(() => {
-        // Silent — best effort persistence
-      });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -420,13 +502,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
             </div>
           )}
 
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--ost-chip)', color: 'var(--ost-muted)' }}>
-                Thinking...
-              </div>
-            </div>
-          )}
+          <ToolActivityIndicator activeTools={activeTools} isLoading={isLoading} />
 
           <div ref={scrollRef} />
         </div>

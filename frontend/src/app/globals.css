@@ -230,3 +230,24 @@
 .rich-text-display p {
   margin: 0;
 }
+
+/* Tool activity indicator dot animation */
+@keyframes tool-dot-pulse {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+.animate-tool-dot-1 {
+  animation: tool-dot-pulse 1.4s ease-in-out infinite;
+  animation-delay: 0s;
+}
+
+.animate-tool-dot-2 {
+  animation: tool-dot-pulse 1.4s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+
+.animate-tool-dot-3 {
+  animation: tool-dot-pulse 1.4s ease-in-out infinite;
+  animation-delay: 0.4s;
+}

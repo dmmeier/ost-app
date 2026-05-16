@@ -172,6 +172,96 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ tree_id: treeId, messages, provider, mode }),
       }),
+    sendStream: (
+      treeId: string,
+      messages: ChatMessage[],
+      callbacks: {
+        onToolStart: (name: string, label: string) => void;
+        onToolEnd: (name: string) => void;
+        onDone: (finalText: string, messages: ChatMessage[], systemPrompt?: string) => void;
+        onError: (message: string) => void;
+      },
+      provider?: string,
+      mode?: string,
+    ) => {
+      const controller = new AbortController();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const token = getAuthToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const run = async () => {
+        const res = await fetch(`${API_BASE}/chat/stream`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ tree_id: treeId, messages, provider, mode }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          if (res.status === 401 && typeof window !== "undefined") {
+            localStorage.removeItem("ost_token");
+            localStorage.removeItem("ost_user");
+            if (!window.location.pathname.includes("/login")) {
+              window.location.href = "/login";
+            }
+          }
+          const error = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new ApiError(error.detail || `API error: ${res.status}`, res.status);
+        }
+
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            const jsonStr = trimmed.slice(6);
+            if (!jsonStr) continue;
+
+            try {
+              const event = JSON.parse(jsonStr);
+              switch (event.type) {
+                case "tool_start":
+                  callbacks.onToolStart(event.name, event.label);
+                  break;
+                case "tool_end":
+                  callbacks.onToolEnd(event.name);
+                  break;
+                case "done":
+                  callbacks.onDone(event.final_text, event.messages, event.system_prompt);
+                  break;
+                case "error":
+                  callbacks.onError(event.message);
+                  break;
+              }
+            } catch {
+              // Skip malformed SSE lines
+            }
+          }
+        }
+      };
+
+      run().catch((err) => {
+        if (err.name !== "AbortError") {
+          callbacks.onError(err.message || "Streaming failed");
+        }
+      });
+
+      return { abort: () => controller.abort() };
+    },
   },
   git: {
     status: (projectId: string) => fetchAPI<GitStatusResponse>(`/git/status/${projectId}`),
