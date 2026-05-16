@@ -181,7 +181,7 @@ export function ChatPanel({ treeId, projectId }: ChatPanelProps) {
                 return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
               });
               toolEndTimersRef.current.delete(timer);
-            }, 800);
+            }, 1500);
             toolEndTimersRef.current.add(timer);
           },
           onDone: (finalText: string, messages: ChatMessage[], systemPrompt?: string) => {

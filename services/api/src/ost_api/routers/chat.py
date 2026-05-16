@@ -532,35 +532,34 @@ def _execute_tool(
 def _tool_display_label(name: str, arguments: dict[str, Any]) -> str:
     """Return a human-friendly label for a tool call."""
     labels: dict[str, str] = {
-        "get_tree": "Getting tree...",
-        "add_node": "Adding node...",
-        "update_node": "Updating node...",
-        "remove_node": "Deleting node...",
-        "move_node": "Moving node...",
-        "validate_tree": "Validating tree...",
-        "list_skills": "Checking available skills...",
-        "set_edge_hypothesis": "Setting edge hypothesis...",
-        "update_edge": "Updating edge...",
-        "list_project_tags": "Listing tags...",
-        "add_tag_to_node": "Adding tag...",
-        "remove_tag_from_node": "Removing tag...",
-        "update_agent_knowledge": "Updating notes...",
-        "rename_tree": "Renaming tree...",
-        "rename_project": "Renaming project...",
-        "add_assumption": "Adding assumption...",
-        "update_assumption": "Updating assumption...",
-        "reject_assumption": "Rejecting assumption...",
-        "delete_assumption": "Deleting assumption...",
-        "create_project": "Creating project...",
-        "create_tree": "Creating tree...",
-        "get_tree_filtered_by_tag": "Filtering by tag...",
+        "get_tree": "Getting tree",
+        "add_node": "Adding node",
+        "update_node": "Updating node",
+        "remove_node": "Deleting node",
+        "move_node": "Moving node",
+        "validate_tree": "Validating tree",
+        "list_skills": "Checking available skills",
+        "set_edge_hypothesis": "Setting edge hypothesis",
+        "update_edge": "Updating edge",
+        "list_project_tags": "Listing tags",
+        "add_tag_to_node": "Adding tag",
+        "remove_tag_from_node": "Removing tag",
+        "update_agent_knowledge": "Updating notes",
+        "rename_tree": "Renaming tree",
+        "rename_project": "Renaming project",
+        "add_assumption": "Adding assumption",
+        "update_assumption": "Updating assumption",
+        "reject_assumption": "Rejecting assumption",
+        "delete_assumption": "Deleting assumption",
+        "create_project": "Creating project",
+        "create_tree": "Creating tree",
+        "get_tree_filtered_by_tag": "Filtering by tag",
     }
     if name == "read_skill":
         skill_name = arguments.get("skill_name", "")
-        # Make skill name more readable
         display_name = skill_name.replace("-", " ").replace("_", " ").title()
-        return f"Reading skill: {display_name}..."
-    return labels.get(name, f"Running {name}...")
+        return f"Reading skill: {display_name}"
+    return labels.get(name, f"Running {name}")
 
 
 def _build_system_prompt(

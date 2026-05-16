@@ -13,14 +13,14 @@ interface ToolActivityIndicatorProps {
 }
 
 export function ToolActivityIndicator({ activeTools, isLoading }: ToolActivityIndicatorProps) {
-  const [displayLabel, setDisplayLabel] = useState("Thinking...");
+  const [displayLabel, setDisplayLabel] = useState("Thinking");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const prevLoadingRef = useRef(false);
 
-  // Reset label to "Thinking..." when loading starts fresh
+  // Reset label to "Thinking" when loading starts fresh
   useEffect(() => {
     if (isLoading && !prevLoadingRef.current) {
-      setDisplayLabel("Thinking...");
+      setDisplayLabel("Thinking");
       setIsTransitioning(false);
     }
     prevLoadingRef.current = isLoading;
@@ -38,7 +38,7 @@ export function ToolActivityIndicator({ activeTools, isLoading }: ToolActivityIn
     } else if (isLoading) {
       setIsTransitioning(true);
       const timer = setTimeout(() => {
-        setDisplayLabel("Thinking...");
+        setDisplayLabel("Thinking");
         setIsTransitioning(false);
       }, 150);
       return () => clearTimeout(timer);
