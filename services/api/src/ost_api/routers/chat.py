@@ -2,6 +2,8 @@
 
 import json
 import logging
+import re
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -116,45 +118,15 @@ information. Keep notes in concise bullet points. Update when:
 - You learn constraints that would affect future sessions
 Do NOT update for routine tree modifications — only for durable project context."""
 
-SKILLS_REFERENCE = """
-## Expert Skills Available
+SKILLS_NOTE = """
+## PM Methodology Skills
 
-You have deep expertise in these three product management frameworks. Apply them when relevant \
-to the user's questions or tree structure:
-
-### 1. OKR (Objectives & Key Results)
-You can help teams define, refine, check-in on, score, and align OKRs.
-- **Define**: Brainstorm 3-5 qualitative objectives, write 2-5 measurable KRs per objective \
-(metric + baseline + target + owner). Sanity-check coverage, balance, feasibility, alignment.
-- **Refine**: Critique existing OKRs — flag vague KRs, output-disguised-as-outcome, missing \
-baselines, sandbagging, too many objectives.
-- **Check-in**: Mid-quarter status (on track / at risk / off track), recommended actions.
-- **Score**: End-of-quarter grading (Classic 0-1.0 where 0.7 = target met, Binary, Traffic Light, or Percentage).
-- **Align**: Map OKRs across company → team → individual. Flag orphans and coverage gaps.
-- **Quality criteria**: Objectives should be qualitative, inspirational, time-bound, clearly owned. \
-KRs should be measurable with specific metrics, outcome-oriented, include baseline/target.
-
-### 2. Opportunity Solution Tree (OST)
-You are already coaching OST methodology — this deepens your expertise:
-- **Phase 1**: Extract measurable desired outcome from stakeholder request (revenue, retention, acquisition, efficiency).
-- **Phase 2**: Identify 3 customer problems/needs (opportunities) tied to that outcome. \
-Opportunities are PROBLEMS, not solutions ("Users forget passwords" not "Add SSO").
-- **Phase 3**: Map 3 potential solutions per opportunity, evaluate on feasibility/impact/market fit.
-- **POC Selection**: Score solutions (1-5 each on feasibility, impact, market fit), recommend experiment.
-- **Anti-patterns**: Solution-first thinking, vague outcomes, skipping divergence, no experiments.
-
-### 3. Discovery Process
-Guide teams through structured discovery (2-4 weeks):
-- **Phase 1 — Frame**: Problem framing canvas → formal problem statement + "How Might We" question.
-- **Phase 2 — Research Planning**: Design interview guide (Mom Test methodology), recruit 5-10 participants.
-- **Phase 3 — Conduct Research**: Execute discovery interviews focused on past behavior (not hypotheticals). \
-Reach saturation (same pain points across 3+ interviews, typically 5-7 interviews).
-- **Phase 4 — Synthesize**: Affinity mapping, prioritize pain points by frequency × intensity × strategic fit.
-- **Phase 5 — Generate & Validate**: Build OST from top pain points, design experiments \
-(concierge test, prototype, A/B test), run validation.
-- **Phase 6 — Decide**: GO (write epics/PRD) / PIVOT (try next solution) / KILL (deprioritize).
-- **Interview principles**: Focus on past behavior not hypotheticals, avoid leading questions, \
-gather specific stories, interview 5-10 people minimum, watch for confirmation bias.
+You have access to detailed product management skill guides via the `list_skills` and `read_skill` \
+tools. These cover OKR management, Opportunity Solution Trees, Discovery processes, and more. \
+When the user asks about methodology, frameworks, or best practices related to these topics, \
+call `list_skills` to see what's available, then `read_skill` to load the full guide. \
+Apply the framework content to your coaching. New skills may be added at any time — always \
+check `list_skills` for the current set.
 """
 
 BUILDER_SYSTEM_PROMPT = """You are a guided OST Builder — an interactive coach that helps users \
@@ -275,6 +247,62 @@ class ChatResponse(BaseModel):
     final_text: str
     mode: str | None = None
     system_prompt: str | None = None
+
+
+def _get_skills_dir() -> Path:
+    """Resolve the skills directory (docs/skills/ relative to project root)."""
+    # Walk up from this file to find the project root (where docs/ lives)
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / "docs" / "skills"
+        if candidate.is_dir():
+            return candidate
+    # Fallback: relative to cwd
+    return Path("docs/skills")
+
+
+def _list_skills() -> list[dict[str, str]]:
+    """List available skills with name and description from frontmatter."""
+    skills_dir = _get_skills_dir()
+    if not skills_dir.exists():
+        return []
+    results = []
+    for f in sorted(skills_dir.glob("*.md")):
+        if f.name == "ATTRIBUTION.md":
+            continue
+        content = f.read_text(encoding="utf-8")
+        # Extract description from YAML frontmatter
+        description = ""
+        if content.startswith("---"):
+            match = re.search(r"^description:\s*(.+?)(?:\n\w|\n---)", content, re.MULTILINE | re.DOTALL)
+            if match:
+                description = match.group(1).strip().replace("\n", " ")
+                # Clean up YAML multi-line
+                description = re.sub(r"\s+", " ", description)
+        if not description:
+            # Fallback: first non-empty, non-heading line
+            for line in content.splitlines()[1:20]:
+                stripped = line.strip()
+                if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
+                    description = stripped[:200]
+                    break
+        results.append({"name": f.stem, "file": f.name, "description": description[:300]})
+    return results
+
+
+def _read_skill(skill_name: str) -> str:
+    """Read the full content of a skill file."""
+    skills_dir = _get_skills_dir()
+    # Try exact match first, then with .md extension
+    candidates = [
+        skills_dir / skill_name,
+        skills_dir / f"{skill_name}.md",
+    ]
+    for path in candidates:
+        if path.exists() and path.is_file():
+            return path.read_text(encoding="utf-8")
+    available = [f.name for f in skills_dir.glob("*.md") if f.name != "ATTRIBUTION.md"]
+    return f"Skill '{skill_name}' not found. Available skills: {', '.join(available)}"
 
 
 def _execute_tool(
@@ -485,6 +513,14 @@ def _execute_tool(
             )
             return json.dumps(tree.model_dump(mode="json"))
 
+        elif tool_name == "list_skills":
+            skills = _list_skills()
+            return json.dumps(skills, indent=2)
+
+        elif tool_name == "read_skill":
+            content = _read_skill(arguments["skill_name"])
+            return content
+
         else:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
@@ -573,7 +609,7 @@ async def chat(
             knowledge += " [truncated]"
         context_parts.append(f"## Agent Knowledge (from previous sessions)\n{knowledge}")
 
-    system_prompt = f"{base_prompt}\n\n{SKILLS_REFERENCE}\n\n" + "\n\n".join(context_parts)
+    system_prompt = f"{base_prompt}\n\n{SKILLS_NOTE}\n\n" + "\n\n".join(context_parts)
 
     messages = list(request.messages)
     all_messages = list(messages)  # Track full conversation for response

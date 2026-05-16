@@ -26,4 +26,4 @@
 
 13. [COMPLETED] Add delete_assumption tool to chat — Added `delete_assumption` tool definition in `llm/tools.py` and handler in `chat.py` so the AI can permanently remove assumptions when users ask. Calls existing `service.delete_assumption()`. All 347 tests pass, TypeScript clean.
 
-14. 
+14. [COMPLETED] Dynamic Skills Loading for Chat Agent — Replaced the static 40-line SKILLS_REFERENCE in the system prompt with tool-based on-demand loading. Added `list_skills` tool (scans docs/skills/, returns names + descriptions from YAML frontmatter) and `read_skill` tool (returns full file content). System prompt now just has a short note saying skills are available via tools. Agent reads full skill content only when methodology questions arise. Fully dynamic — drop a new .md file in docs/skills/ and it's immediately discoverable. Skills directory contains: OKR (MIT, marfoerst), OST + Discovery Process + Discovery Interview Prep (CC BY-NC-SA 4.0, Dean Peters). ATTRIBUTION.md included. All 347 tests pass, TypeScript clean.

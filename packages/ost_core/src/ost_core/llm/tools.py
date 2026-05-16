@@ -319,4 +319,35 @@ CHAT_TOOLS: list[ToolDefinition] = [
             "required": ["tree_id", "tag_name"],
         },
     ),
+    ToolDefinition(
+        name="list_skills",
+        description=(
+            "List available PM methodology skill guides. Returns skill names and descriptions. "
+            "Use this when the user asks about frameworks, methodologies, or best practices "
+            "(OKR, discovery, OST methodology, interview techniques, etc.) to see what guides are available."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="read_skill",
+        description=(
+            "Read the full content of a PM methodology skill guide. "
+            "Call list_skills first to see available skills, then read the one that's relevant. "
+            "Use the skill content to provide expert-level coaching grounded in established frameworks."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "skill_name": {
+                    "type": "string",
+                    "description": "The skill name (file stem from list_skills, e.g. 'okr', 'discovery-process')",
+                },
+            },
+            "required": ["skill_name"],
+        },
+    ),
 ]
