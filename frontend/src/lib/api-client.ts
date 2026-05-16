@@ -243,7 +243,6 @@ export interface SettingsResponse {
   has_openai_key: boolean;
   has_google_key: boolean;
   available_providers: string[];
-  provider_models: Record<string, string[]>;
 }
 
 export interface SettingsUpdate {

@@ -55,6 +55,40 @@ def get_runtime_overrides() -> dict[str, str]:
     return dict(_runtime_overrides)
 
 
+def persist_to_env(key: str, value: str) -> None:
+    """Write/update a key in the .env file and set as runtime override.
+
+    Key is uppercased and prefixed with OST_ (e.g., 'llm_model' -> 'OST_LLM_MODEL').
+    If the key already exists in .env, the line is replaced; otherwise it's appended.
+    """
+    env_key = f"OST_{key.upper()}"
+    env_path = Path(".env")
+
+    # Also set runtime override for immediate effect
+    set_runtime_override(key, value)
+
+    # Also set in os.environ so Settings() picks it up
+    os.environ[env_key] = value
+
+    if env_path.exists():
+        lines = env_path.read_text().splitlines()
+        found = False
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith(f"{env_key}=") or stripped.startswith(f"{env_key} ="):
+                lines[i] = f"{env_key}={value}"
+                found = True
+                break
+        if found:
+            env_path.write_text("\n".join(lines) + "\n")
+        else:
+            with open(env_path, "a") as f:
+                f.write(f"{env_key}={value}\n")
+    else:
+        with open(env_path, "w") as f:
+            f.write(f"{env_key}={value}\n")
+
+
 _jwt_secret_ensured = False
 
 

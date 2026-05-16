@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api, SettingsResponse } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,12 +36,15 @@ export function SettingsDialog() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [modelInput, setModelInput] = useState("");
+  const modelSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchSettings = async () => {
     setLoading(true);
     try {
       const s = await api.settings.get();
       setSettings(s);
+      setModelInput(s.llm_model);
     } catch (err) {
       console.error("Failed to fetch settings:", err);
     } finally {
@@ -65,15 +68,32 @@ export function SettingsDialog() {
     }
   };
 
-  const handleModelChange = async (model: string) => {
+  const saveModel = async (model: string) => {
+    const trimmed = model.trim();
+    if (!trimmed || trimmed === settings?.llm_model) return;
     setSaving(true);
     try {
-      const updated = await api.settings.update({ llm_model: model });
+      const updated = await api.settings.update({ llm_model: trimmed });
       setSettings(updated);
+      setModelInput(updated.llm_model);
     } catch (err) {
       console.error("Failed to update model:", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleModelBlur = () => {
+    if (modelSaveTimeoutRef.current) {
+      clearTimeout(modelSaveTimeoutRef.current);
+      modelSaveTimeoutRef.current = null;
+    }
+    saveModel(modelInput);
+  };
+
+  const handleModelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
     }
   };
 
@@ -97,8 +117,6 @@ export function SettingsDialog() {
       setSaving(false);
     }
   };
-
-  const models = settings?.provider_models[settings.llm_provider] ?? [];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -150,28 +168,29 @@ export function SettingsDialog() {
               </div>
             </div>
 
-            {/* Model selection */}
+            {/* Model input */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Model</label>
-              <select
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                value={settings.llm_model}
-                onChange={(e) => handleModelChange(e.target.value)}
+              <Input
+                type="text"
+                value={modelInput}
+                onChange={(e) => setModelInput(e.target.value)}
+                onBlur={handleModelBlur}
+                onKeyDown={handleModelKeyDown}
                 disabled={saving}
-              >
-                {models.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+                placeholder="e.g. claude-sonnet-4-20250514"
+                className="text-sm"
+              />
+              <p className="text-xs text-ost-muted">
+                Type any model name supported by your provider. Saved on blur or Enter.
+              </p>
             </div>
 
             {/* API Keys */}
             <div className="space-y-3">
               <label className="text-sm font-medium">API Keys</label>
               <p className="text-xs text-ost-muted">
-                Keys are stored in server memory only (not persisted to disk).
+                Settings are saved to the <code className="bg-gray-100 px-1 rounded">.env</code> file on the server and persist across restarts.
               </p>
 
               {settings.available_providers.map((p) => {
