@@ -935,7 +935,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
   return (
     <div className="w-full h-full relative">
       {/* Unified viewing controls */}
-      {tree.nodes.length > 1 && (
+      {tree.nodes.length > 0 && (
         <div className="absolute top-3 left-3 z-40 rounded-lg shadow-sm flex flex-col" style={{ background: 'var(--ost-paper)', border: '1px solid var(--ost-line)' }}>
           {/* Row 1: Level collapse/expand */}
           <div className="flex items-center gap-1 px-2 py-1">
@@ -1122,6 +1122,7 @@ function TreeCanvasInner({ tree }: TreeCanvasProps) {
           }}
           zoomable
           pannable
+          style={{ width: 130, height: 100 }}
         />
       </ReactFlow>
 

@@ -272,8 +272,7 @@ export default function Home() {
                     <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
                       <div className="text-center max-w-md">
                         <BrandMark size={48} className="mx-auto mb-4 opacity-25 text-[#0d9488]" />
-                        <p className="text-lg mb-2">Select or create a tree to get started</p>
-                        <p className="text-sm">Create a project first, then add trees within it using the sidebar</p>
+                        <p className="text-lg">Start with your Outcome</p>
                       </div>
                     </div>
                   ) : isLoading ? (
