@@ -12,6 +12,11 @@ Guide product managers through creating an Opportunity Solution Tree (OST) by ex
 
 This is not a roadmap generator—it's a structured discovery process that outputs validated opportunities with testable solution hypotheses.
 
+> **Note:** The app enforces structural rules (node hierarchy, fan-out, assumption semantics)
+> defined in [`docs/ost_recipe.md`](../ost_recipe.md). This file is the coaching/facilitation
+> guide for the chat agent — it teaches *how* to build a good tree, while `ost_recipe.md`
+> defines what the software considers valid.
+
 ## Key Concepts
 
 ### What is an Opportunity Solution Tree (OST)?

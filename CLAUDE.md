@@ -54,7 +54,7 @@ uv run ruff check .
 - **Test directories**: Don't put `__init__.py` in test dirs — causes import collisions across packages
 - **API base URL**: Default is `http://localhost:8000/api/v1` (not 8001)
 - **react-resizable-panels v3**: Uses `orientation` prop, exports `Group/Panel/Separator`
-- **Node validation rules**: See `docs/ost_recipe.md` for OST theory, node types, structural rules
+- **Node validation rules**: See `docs/ost_recipe.md` for data model & structural rules the code enforces; see `docs/skills/opportunity-solution-tree.md` for the chat agent's coaching guide
 
 ## Project Structure
 

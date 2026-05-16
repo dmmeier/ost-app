@@ -18,7 +18,7 @@ The central concept is the **Opportunity Solution Tree (OST)**, a hierarchical t
 - The tree must **fan out** — avoid linearity. Each level should branch into multiple children.
 - **No duplicate leaves** — the same leaf must not appear in multiple places. If it does, the tree needs restructuring.
 
-**Reference:** Full OST recipe and theory in `docs/ost_recipe.md`.
+**Reference:** Structural rules & data model in `docs/ost_recipe.md`. Interactive coaching guide in `docs/skills/opportunity-solution-tree.md`.
 
 ---
 

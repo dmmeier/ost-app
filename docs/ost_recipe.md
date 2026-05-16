@@ -1,4 +1,11 @@
-# Opportunity Solution Tree (OST) Construction Recipe
+# OST Data Model & Validation Rules
+
+> **Purpose:** This file defines the structural rules that the application code enforces —
+> node hierarchy, allowed edge types, fan-out constraints, and assumption semantics.
+> It is the source of truth for `packages/ost_core/services/validation.py`.
+>
+> For the interactive coaching guide used by the chat agent, see
+> [`docs/skills/opportunity-solution-tree.md`](skills/opportunity-solution-tree.md).
 
 ## Overview
 
