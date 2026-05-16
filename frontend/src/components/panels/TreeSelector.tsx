@@ -30,12 +30,12 @@ interface TreeSelectorProps {
 }
 
 function roleCanEdit(role?: ProjectRole | null): boolean {
-  if (role === undefined || role === null) return true; // open mode
+  if (role === undefined || role === null) return true; // single-user: implicit owner
   return role === "owner" || role === "editor";
 }
 
 function roleIsOwner(role?: ProjectRole | null): boolean {
-  if (role === undefined || role === null) return true; // open mode
+  if (role === undefined || role === null) return true; // single-user: implicit owner
   return role === "owner";
 }
 

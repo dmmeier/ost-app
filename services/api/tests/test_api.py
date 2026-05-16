@@ -1,5 +1,6 @@
 """Tests for the FastAPI REST API."""
 
+import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,6 +18,10 @@ from ost_core.validation.validator import TreeValidator
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+
+
+# Ensure JWT secret is set for tests
+os.environ.setdefault("OST_JWT_SECRET", "test-secret-key-for-api-tests")
 
 
 @pytest.fixture
@@ -62,48 +67,91 @@ def client(test_service):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture
+def client_authed(client):
+    """An authenticated test client. Registers a user and injects Bearer tokens."""
+    reg = client.post("/api/v1/auth/register", json={
+        "email": "testuser@example.com",
+        "display_name": "Test User",
+        "password": "password123",
+    })
+    assert reg.status_code == 201
+    token = reg.json()["token"]
+
+    class AuthedClient:
+        """Wraps TestClient to auto-inject Authorization header."""
+        def __init__(self, raw_client, auth_token):
+            self._client = raw_client
+            self._headers = {"Authorization": f"Bearer {auth_token}"}
+            self.token = auth_token
+
+        def _merge_headers(self, kwargs):
+            headers = dict(self._headers)
+            if "headers" in kwargs:
+                headers.update(kwargs.pop("headers"))
+            kwargs["headers"] = headers
+            return kwargs
+
+        def get(self, url, **kwargs):
+            return self._client.get(url, **self._merge_headers(kwargs))
+
+        def post(self, url, **kwargs):
+            return self._client.post(url, **self._merge_headers(kwargs))
+
+        def patch(self, url, **kwargs):
+            return self._client.patch(url, **self._merge_headers(kwargs))
+
+        def put(self, url, **kwargs):
+            return self._client.put(url, **self._merge_headers(kwargs))
+
+        def delete(self, url, **kwargs):
+            return self._client.delete(url, **self._merge_headers(kwargs))
+
+    return AuthedClient(client, token)
+
+
 def _create_project(client, name="Test Project"):
     """Helper to create a project and return its data."""
     r = client.post("/api/v1/projects/", json={"name": name})
-    assert r.status_code == 201
+    assert r.status_code == 201, f"Expected 201, got {r.status_code}: {r.text}"
     return r.json()
 
 
 def _create_tree(client, project_id, name="Test"):
     """Helper to create a tree within a project."""
     r = client.post("/api/v1/trees/", json={"name": name, "project_id": project_id})
-    assert r.status_code == 201
+    assert r.status_code == 201, f"Expected 201, got {r.status_code}: {r.text}"
     return r.json()
 
 
 class TestProjectEndpoints:
-    def test_create_project(self, client):
-        r = client.post("/api/v1/projects/", json={"name": "My Project", "description": "Desc"})
+    def test_create_project(self, client_authed):
+        r = client_authed.post("/api/v1/projects/", json={"name": "My Project", "description": "Desc"})
         assert r.status_code == 201
         data = r.json()
         assert data["name"] == "My Project"
         assert "id" in data
 
-    def test_list_projects(self, client):
-        _create_project(client, "P1")
-        _create_project(client, "P2")
-        r = client.get("/api/v1/projects/")
+    def test_list_projects(self, client_authed):
+        _create_project(client_authed, "P1")
+        _create_project(client_authed, "P2")
+        r = client_authed.get("/api/v1/projects/")
         assert r.status_code == 200
         assert len(r.json()) == 2
 
-    def test_get_project_with_trees(self, client):
-        project = _create_project(client)
-        _create_tree(client, project["id"], "Tree 1")
-        _create_tree(client, project["id"], "Tree 2")
-        r = client.get(f"/api/v1/projects/{project['id']}")
+    def test_get_project_with_trees(self, client_authed):
+        project = _create_project(client_authed)
+        _create_tree(client_authed, project["id"], "Tree 1")
+        _create_tree(client_authed, project["id"], "Tree 2")
+        r = client_authed.get(f"/api/v1/projects/{project['id']}")
         assert r.status_code == 200
         data = r.json()
         assert data["name"] == "Test Project"
         assert len(data["trees"]) == 2
 
-    def test_update_project(self, client):
-        project = _create_project(client)
-        r = client.patch(
+    def test_update_project(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.patch(
             f"/api/v1/projects/{project['id']}",
             json={"name": "Updated", "project_context": "Some context"},
         )
@@ -112,25 +160,25 @@ class TestProjectEndpoints:
         assert data["name"] == "Updated"
         assert data["project_context"] == "Some context"
 
-    def test_delete_project(self, client):
-        project = _create_project(client)
-        r = client.delete(f"/api/v1/projects/{project['id']}")
+    def test_delete_project(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.delete(f"/api/v1/projects/{project['id']}")
         assert r.status_code == 204
 
-    def test_delete_project_cascades_trees(self, client):
-        project = _create_project(client)
-        _create_tree(client, project["id"])
-        client.delete(f"/api/v1/projects/{project['id']}")
-        r = client.get("/api/v1/trees/")
+    def test_delete_project_cascades_trees(self, client_authed):
+        project = _create_project(client_authed)
+        _create_tree(client_authed, project["id"])
+        client_authed.delete(f"/api/v1/projects/{project['id']}")
+        r = client_authed.get("/api/v1/trees/")
         assert len(r.json()) == 0
 
-    def test_get_project_not_found(self, client):
-        r = client.get("/api/v1/projects/00000000-0000-0000-0000-000000000000")
+    def test_get_project_not_found(self, client_authed):
+        r = client_authed.get("/api/v1/projects/00000000-0000-0000-0000-000000000000")
         assert r.status_code == 404
 
-    def test_update_project_bubble_defaults_via_patch(self, client):
-        project = _create_project(client)
-        r = client.patch(
+    def test_update_project_bubble_defaults_via_patch(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.patch(
             f"/api/v1/projects/{project['id']}",
             json={
                 "bubble_defaults": {
@@ -144,9 +192,9 @@ class TestProjectEndpoints:
         assert data["bubble_defaults"]["outcome"]["border_color"] == "#ff0000"
         assert data["bubble_defaults"]["opportunity"]["border_width"] == 1.5
 
-    def test_get_bubble_defaults_returns_system_defaults_when_unset(self, client):
-        project = _create_project(client)
-        r = client.get(f"/api/v1/projects/{project['id']}/bubble-defaults")
+    def test_get_bubble_defaults_returns_system_defaults_when_unset(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.get(f"/api/v1/projects/{project['id']}/bubble-defaults")
         assert r.status_code == 200
         data = r.json()
         # Should return system defaults for all 5 node types
@@ -157,9 +205,9 @@ class TestProjectEndpoints:
         assert "experiment" in data
         assert data["outcome"]["border_color"] == "#93c5fd"
 
-    def test_get_bubble_defaults_returns_custom_values(self, client):
-        project = _create_project(client)
-        client.patch(
+    def test_get_bubble_defaults_returns_custom_values(self, client_authed):
+        project = _create_project(client_authed)
+        client_authed.patch(
             f"/api/v1/projects/{project['id']}",
             json={
                 "bubble_defaults": {
@@ -167,15 +215,15 @@ class TestProjectEndpoints:
                 }
             },
         )
-        r = client.get(f"/api/v1/projects/{project['id']}/bubble-defaults")
+        r = client_authed.get(f"/api/v1/projects/{project['id']}/bubble-defaults")
         assert r.status_code == 200
         data = r.json()
         assert data["outcome"]["border_color"] == "#ff0000"
         assert data["outcome"]["border_width"] == 4.0
 
-    def test_put_bubble_defaults(self, client):
-        project = _create_project(client)
-        r = client.put(
+    def test_put_bubble_defaults(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.put(
             f"/api/v1/projects/{project['id']}/bubble-defaults",
             json={
                 "outcome": {"border_color": "#aabbcc", "border_width": 2.5},
@@ -187,8 +235,8 @@ class TestProjectEndpoints:
         assert data["bubble_defaults"]["outcome"]["border_color"] == "#aabbcc"
         assert data["bubble_defaults"]["solution"]["border_width"] == 3.0
 
-    def test_bubble_defaults_not_found_project(self, client):
-        r = client.get("/api/v1/projects/00000000-0000-0000-0000-000000000000/bubble-defaults")
+    def test_bubble_defaults_not_found_project(self, client_authed):
+        r = client_authed.get("/api/v1/projects/00000000-0000-0000-0000-000000000000/bubble-defaults")
         assert r.status_code == 404
 
 
@@ -198,9 +246,9 @@ class TestTreeEndpoints:
         assert r.status_code == 200
         assert r.json() == {"status": "ok"}
 
-    def test_create_tree(self, client):
-        project = _create_project(client)
-        r = client.post(
+    def test_create_tree(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.post(
             "/api/v1/trees/",
             json={"name": "Test", "description": "A test", "project_id": project["id"]},
         )
@@ -210,62 +258,62 @@ class TestTreeEndpoints:
         assert data["project_id"] == project["id"]
         assert "id" in data
 
-    def test_list_trees(self, client):
-        project = _create_project(client)
-        _create_tree(client, project["id"], "Tree 1")
-        _create_tree(client, project["id"], "Tree 2")
-        r = client.get("/api/v1/trees/")
+    def test_list_trees(self, client_authed):
+        project = _create_project(client_authed)
+        _create_tree(client_authed, project["id"], "Tree 1")
+        _create_tree(client_authed, project["id"], "Tree 2")
+        r = client_authed.get("/api/v1/trees/")
         assert r.status_code == 200
         assert len(r.json()) == 2
 
-    def test_list_trees_by_project(self, client):
-        p1 = _create_project(client, "P1")
-        p2 = _create_project(client, "P2")
-        _create_tree(client, p1["id"], "T1")
-        _create_tree(client, p1["id"], "T2")
-        _create_tree(client, p2["id"], "T3")
-        r = client.get(f"/api/v1/trees/?project_id={p1['id']}")
+    def test_list_trees_by_project(self, client_authed):
+        p1 = _create_project(client_authed, "P1")
+        p2 = _create_project(client_authed, "P2")
+        _create_tree(client_authed, p1["id"], "T1")
+        _create_tree(client_authed, p1["id"], "T2")
+        _create_tree(client_authed, p2["id"], "T3")
+        r = client_authed.get(f"/api/v1/trees/?project_id={p1['id']}")
         assert len(r.json()) == 2
-        r = client.get(f"/api/v1/trees/?project_id={p2['id']}")
+        r = client_authed.get(f"/api/v1/trees/?project_id={p2['id']}")
         assert len(r.json()) == 1
 
-    def test_get_tree(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.get(f"/api/v1/trees/{tree['id']}")
+    def test_get_tree(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.get(f"/api/v1/trees/{tree['id']}")
         assert r.status_code == 200
         assert r.json()["name"] == "Test"
 
-    def test_get_tree_not_found(self, client):
-        r = client.get("/api/v1/trees/00000000-0000-0000-0000-000000000000")
+    def test_get_tree_not_found(self, client_authed):
+        r = client_authed.get("/api/v1/trees/00000000-0000-0000-0000-000000000000")
         assert r.status_code == 404
 
-    def test_delete_tree(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"], "To delete")
-        r = client.delete(f"/api/v1/trees/{tree['id']}")
+    def test_delete_tree(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"], "To delete")
+        r = client_authed.delete(f"/api/v1/trees/{tree['id']}")
         assert r.status_code == 204
 
 
 class TestNodeEndpoints:
-    def test_add_root_node(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.post(
+    def test_add_root_node(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         )
         assert r.status_code == 201
         assert r.json()["title"] == "Root"
 
-    def test_add_child_node(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root = client.post(
+    def test_add_child_node(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        r = client.post(
+        r = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={
                 "title": "Opp",
@@ -276,15 +324,15 @@ class TestNodeEndpoints:
         assert r.status_code == 201
         assert r.json()["parent_id"] == root["id"]
 
-    def test_any_type_under_any_parent(self, client):
+    def test_any_type_under_any_parent(self, client_authed):
         """Type constraints removed — any type can be added under any parent."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        r = client.post(
+        r = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={
                 "title": "Sol",
@@ -295,68 +343,68 @@ class TestNodeEndpoints:
         assert r.status_code == 201
         assert r.json()["node_type"] == "solution"
 
-    def test_get_node(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+    def test_get_node(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        r = client.get(f"/api/v1/nodes/{node['id']}")
+        r = client_authed.get(f"/api/v1/nodes/{node['id']}")
         assert r.status_code == 200
         assert r.json()["title"] == "Root"
 
-    def test_delete_node(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+    def test_delete_node(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        r = client.delete(f"/api/v1/nodes/{node['id']}")
+        r = client_authed.delete(f"/api/v1/nodes/{node['id']}")
         assert r.status_code == 204
 
-    def test_move_root_to_descendant_returns_400(self, client):
+    def test_move_root_to_descendant_returns_400(self, client_authed):
         """Moving a root to its own descendant should return 400 (cycle detection)."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        opp = client.post(
+        opp = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp", "node_type": "opportunity", "parent_id": root["id"]},
         ).json()
-        r = client.post(
+        r = client_authed.post(
             f"/api/v1/nodes/{root['id']}/move",
             json={"new_parent_id": opp["id"]},
         )
         assert r.status_code == 400
         assert "descendants" in r.json()["detail"]
 
-    def test_move_cross_tree_returns_400(self, client):
+    def test_move_cross_tree_returns_400(self, client_authed):
         """Moving a node to a different tree should return 400 with cross-tree error."""
-        project = _create_project(client)
-        tree1 = _create_tree(client, project["id"], "Tree 1")
-        tree2 = _create_tree(client, project["id"], "Tree 2")
-        root1 = client.post(
+        project = _create_project(client_authed)
+        tree1 = _create_tree(client_authed, project["id"], "Tree 1")
+        tree2 = _create_tree(client_authed, project["id"], "Tree 2")
+        root1 = client_authed.post(
             f"/api/v1/nodes?tree_id={tree1['id']}",
             json={"title": "Root1", "node_type": "outcome"},
         ).json()
-        opp1 = client.post(
+        opp1 = client_authed.post(
             f"/api/v1/nodes?tree_id={tree1['id']}",
             json={"title": "Opp1", "node_type": "opportunity", "parent_id": root1["id"]},
         ).json()
-        root2 = client.post(
+        root2 = client_authed.post(
             f"/api/v1/nodes?tree_id={tree2['id']}",
             json={"title": "Root2", "node_type": "outcome"},
         ).json()
-        opp2 = client.post(
+        opp2 = client_authed.post(
             f"/api/v1/nodes?tree_id={tree2['id']}",
             json={"title": "Opp2", "node_type": "opportunity", "parent_id": root2["id"]},
         ).json()
-        r = client.post(
+        r = client_authed.post(
             f"/api/v1/nodes/{opp1['id']}/move",
             json={"new_parent_id": opp2["id"]},
         )
@@ -367,19 +415,19 @@ class TestNodeEndpoints:
 class TestEdgeDeleteAndMultiple:
     """Test edge deletion and multiple assumptions per parent-child pair."""
 
-    def test_delete_edge(self, client):
+    def test_delete_edge(self, client_authed):
         """DELETE /edges/{edge_id} removes the assumption."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        opp = client.post(
+        opp = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp", "node_type": "opportunity", "parent_id": root["id"]},
         ).json()
-        edge = client.post(
+        edge = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -388,31 +436,31 @@ class TestEdgeDeleteAndMultiple:
                 "hypothesis_type": "problem",
             },
         ).json()
-        r = client.delete(f"/api/v1/edges/{edge['id']}")
+        r = client_authed.delete(f"/api/v1/edges/{edge['id']}")
         assert r.status_code == 204
         # Verify it's gone
-        r2 = client.get(f"/api/v1/edges/{root['id']}/{opp['id']}")
+        r2 = client_authed.get(f"/api/v1/edges/{root['id']}/{opp['id']}")
         assert r2.json() is None
 
-    def test_delete_edge_not_found(self, client):
+    def test_delete_edge_not_found(self, client_authed):
         """DELETE /edges/{edge_id} returns 404 for unknown edge."""
         import uuid
-        r = client.delete(f"/api/v1/edges/{uuid.uuid4()}")
+        r = client_authed.delete(f"/api/v1/edges/{uuid.uuid4()}")
         assert r.status_code == 404
 
-    def test_multiple_assumptions_per_edge(self, client):
+    def test_multiple_assumptions_per_edge(self, client_authed):
         """POST /edges/ allows multiple assumptions for the same parent-child pair."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        opp = client.post(
+        opp = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp", "node_type": "opportunity", "parent_id": root["id"]},
         ).json()
-        e1 = client.post(
+        e1 = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -422,7 +470,7 @@ class TestEdgeDeleteAndMultiple:
             },
         )
         assert e1.status_code == 201
-        e2 = client.post(
+        e2 = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -436,36 +484,36 @@ class TestEdgeDeleteAndMultiple:
 
 
 class TestValidationEndpoints:
-    def test_validate_tree(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root = client.post(
+    def test_validate_tree(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        client.post(
+        client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp 1", "node_type": "opportunity", "parent_id": root["id"]},
         )
-        client.post(
+        client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp 2", "node_type": "opportunity", "parent_id": root["id"]},
         )
 
-        r = client.post(f"/api/v1/validation/{tree['id']}/validate")
+        r = client_authed.post(f"/api/v1/validation/{tree['id']}/validate")
         assert r.status_code == 200
         data = r.json()
         assert "is_valid" in data
         assert "issues" in data
 
 
-def _add_root_and_opp(client, tree_id):
+def _add_root_and_opp(client_authed, tree_id):
     """Helper to add a root outcome + opportunity and return both."""
-    root = client.post(
+    root = client_authed.post(
         f"/api/v1/nodes?tree_id={tree_id}",
         json={"title": "Root", "node_type": "outcome"},
     ).json()
-    opp = client.post(
+    opp = client_authed.post(
         f"/api/v1/nodes?tree_id={tree_id}",
         json={"title": "Opp", "node_type": "opportunity", "parent_id": root["id"]},
     ).json()
@@ -475,9 +523,9 @@ def _add_root_and_opp(client, tree_id):
 class TestTagEndpoints:
     """Tests for tag CRUD API endpoints."""
 
-    def test_create_tag(self, client):
-        project = _create_project(client)
-        r = client.post(
+    def test_create_tag(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "UX"},
         )
@@ -486,68 +534,68 @@ class TestTagEndpoints:
         assert data["name"] == "UX"
         assert data["project_id"] == project["id"]
 
-    def test_create_tag_with_color(self, client):
-        project = _create_project(client)
-        r = client.post(
+    def test_create_tag_with_color(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "P0", "color": "#ef4444"},
         )
         assert r.status_code == 200
         assert r.json()["color"] == "#ef4444"
 
-    def test_list_tags(self, client):
-        project = _create_project(client)
-        client.post(
+    def test_list_tags(self, client_authed):
+        project = _create_project(client_authed)
+        client_authed.post(
             f"/api/v1/tags/project/{project['id']}", json={"name": "Alpha"}
         )
-        client.post(
+        client_authed.post(
             f"/api/v1/tags/project/{project['id']}", json={"name": "Beta"}
         )
-        r = client.get(f"/api/v1/tags/project/{project['id']}")
+        r = client_authed.get(f"/api/v1/tags/project/{project['id']}")
         assert r.status_code == 200
         tags = r.json()
         assert len(tags) == 2
         assert tags[0]["name"] == "Alpha"
 
-    def test_list_tags_empty(self, client):
-        project = _create_project(client)
-        r = client.get(f"/api/v1/tags/project/{project['id']}")
+    def test_list_tags_empty(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.get(f"/api/v1/tags/project/{project['id']}")
         assert r.status_code == 200
         assert r.json() == []
 
-    def test_delete_tag(self, client):
-        project = _create_project(client)
-        tag = client.post(
+    def test_delete_tag(self, client_authed):
+        project = _create_project(client_authed)
+        tag = client_authed.post(
             f"/api/v1/tags/project/{project['id']}", json={"name": "Del"}
         ).json()
-        r = client.delete(f"/api/v1/tags/{tag['id']}")
+        r = client_authed.delete(f"/api/v1/tags/{tag['id']}")
         assert r.status_code == 200
         data = r.json()
         assert data["status"] == "deleted"
         # Should be gone
-        tags = client.get(f"/api/v1/tags/project/{project['id']}").json()
+        tags = client_authed.get(f"/api/v1/tags/project/{project['id']}").json()
         assert len(tags) == 0
 
-    def test_delete_tag_returns_usage_count(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        tag = client.post(
+    def test_delete_tag_returns_usage_count(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        tag = client_authed.post(
             f"/api/v1/tags/project/{project['id']}", json={"name": "Used"}
         ).json()
         # Assign tag to a node
-        client.post(
+        client_authed.post(
             f"/api/v1/tags/node/{opp['id']}?project_id={project['id']}",
             json={"tag_name": "Used"},
         )
-        r = client.delete(f"/api/v1/tags/{tag['id']}")
+        r = client_authed.delete(f"/api/v1/tags/{tag['id']}")
         assert r.json()["was_used_on"] == 1
 
-    def test_add_tag_to_node(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        r = client.post(
+    def test_add_tag_to_node(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        r = client_authed.post(
             f"/api/v1/tags/node/{opp['id']}?project_id={project['id']}",
             json={"tag_name": "Critical"},
         )
@@ -555,59 +603,59 @@ class TestTagEndpoints:
         data = r.json()
         assert data["name"] == "Critical"
 
-    def test_add_tag_to_node_creates_tag_if_missing(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
+    def test_add_tag_to_node_creates_tag_if_missing(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
         # No tags exist yet
-        r = client.post(
+        r = client_authed.post(
             f"/api/v1/tags/node/{opp['id']}?project_id={project['id']}",
             json={"tag_name": "AutoCreated"},
         )
         assert r.status_code == 200
         # Tag should now exist
-        tags = client.get(f"/api/v1/tags/project/{project['id']}").json()
+        tags = client_authed.get(f"/api/v1/tags/project/{project['id']}").json()
         assert any(t["name"] == "AutoCreated" for t in tags)
 
-    def test_add_tag_to_node_resolves_project_id(self, client):
+    def test_add_tag_to_node_resolves_project_id(self, client_authed):
         """When project_id is omitted, it resolves from node->tree->project."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        r = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        r = client_authed.post(
             f"/api/v1/tags/node/{opp['id']}",
             json={"tag_name": "Resolved"},
         )
         assert r.status_code == 200
         assert r.json()["name"] == "Resolved"
 
-    def test_remove_tag_from_node(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        tag = client.post(
+    def test_remove_tag_from_node(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        tag = client_authed.post(
             f"/api/v1/tags/node/{opp['id']}?project_id={project['id']}",
             json={"tag_name": "Temp"},
         ).json()
-        r = client.delete(f"/api/v1/tags/node/{opp['id']}/{tag['id']}")
+        r = client_authed.delete(f"/api/v1/tags/node/{opp['id']}/{tag['id']}")
         assert r.status_code == 200
         assert r.json()["status"] == "removed"
 
-    def test_filter_tree_by_tag(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
+    def test_filter_tree_by_tag(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
         # Add a second unrelated opp
-        opp2 = client.post(
+        opp2 = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp2", "node_type": "opportunity", "parent_id": root["id"]},
         ).json()
         # Tag only opp (not opp2)
-        client.post(
+        client_authed.post(
             f"/api/v1/tags/node/{opp['id']}?project_id={project['id']}",
             json={"tag_name": "Filter"},
         )
-        r = client.get(f"/api/v1/tags/filter/{tree['id']}?tag=Filter")
+        r = client_authed.get(f"/api/v1/tags/filter/{tree['id']}?tag=Filter")
         assert r.status_code == 200
         data = r.json()
         node_ids = {n["id"] for n in data["nodes"]}
@@ -617,47 +665,47 @@ class TestTagEndpoints:
         # opp2 should NOT be present
         assert opp2["id"] not in node_ids
 
-    def test_filter_tree_by_tag_no_matches(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.get(f"/api/v1/tags/filter/{tree['id']}?tag=NoMatch")
+    def test_filter_tree_by_tag_no_matches(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.get(f"/api/v1/tags/filter/{tree['id']}?tag=NoMatch")
         assert r.status_code == 200
         assert r.json()["nodes"] == []
 
-    def test_update_tag_color(self, client):
-        project = _create_project(client)
-        tag = client.post(
+    def test_update_tag_color(self, client_authed):
+        project = _create_project(client_authed)
+        tag = client_authed.post(
             f"/api/v1/tags/project/{project['id']}", json={"name": "PatchMe"}
         ).json()
-        r = client.patch(f"/api/v1/tags/{tag['id']}", json={"color": "#ef4444"})
+        r = client_authed.patch(f"/api/v1/tags/{tag['id']}", json={"color": "#ef4444"})
         assert r.status_code == 200
         data = r.json()
         assert data["color"] == "#ef4444"
         assert data["name"] == "PatchMe"
 
-    def test_update_tag_fill_style(self, client):
-        project = _create_project(client)
-        tag = client.post(
+    def test_update_tag_fill_style(self, client_authed):
+        project = _create_project(client_authed)
+        tag = client_authed.post(
             f"/api/v1/tags/project/{project['id']}", json={"name": "FillTag"}
         ).json()
-        r = client.patch(f"/api/v1/tags/{tag['id']}", json={"fill_style": "solid"})
+        r = client_authed.patch(f"/api/v1/tags/{tag['id']}", json={"fill_style": "solid"})
         assert r.status_code == 200
         assert r.json()["fill_style"] == "solid"
 
-    def test_update_tag_clear_fill_style(self, client):
-        project = _create_project(client)
-        tag = client.post(
+    def test_update_tag_clear_fill_style(self, client_authed):
+        project = _create_project(client_authed)
+        tag = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "ClearFill", "fill_style": "solid"},
         ).json()
         assert tag["fill_style"] == "solid"
-        r = client.patch(f"/api/v1/tags/{tag['id']}", json={"fill_style": "none"})
+        r = client_authed.patch(f"/api/v1/tags/{tag['id']}", json={"fill_style": "none"})
         assert r.status_code == 200
         assert r.json()["fill_style"] is None
 
-    def test_create_tag_with_fill_style(self, client):
-        project = _create_project(client)
-        r = client.post(
+    def test_create_tag_with_fill_style(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "FillCreate", "fill_style": "solid"},
         )
@@ -668,11 +716,11 @@ class TestTagEndpoints:
 class TestEdgeEvidenceEndpoints:
     """Tests for evidence field on edges via the API."""
 
-    def test_create_edge_with_evidence(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        r = client.post(
+    def test_create_edge_with_evidence(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        r = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -685,11 +733,11 @@ class TestEdgeEvidenceEndpoints:
         assert r.status_code == 201
         assert r.json()["evidence"] == "5 user interviews"
 
-    def test_create_edge_default_empty_evidence(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        r = client.post(
+    def test_create_edge_default_empty_evidence(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        r = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -701,11 +749,11 @@ class TestEdgeEvidenceEndpoints:
         assert r.status_code == 201
         assert r.json()["evidence"] == ""
 
-    def test_update_edge_evidence(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        edge = client.post(
+    def test_update_edge_evidence(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        edge = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -714,18 +762,18 @@ class TestEdgeEvidenceEndpoints:
                 "hypothesis_type": "problem",
             },
         ).json()
-        r = client.patch(
+        r = client_authed.patch(
             f"/api/v1/edges/{edge['id']}",
             json={"evidence": "Survey data from 200 users"},
         )
         assert r.status_code == 200
         assert r.json()["evidence"] == "Survey data from 200 users"
 
-    def test_evidence_in_full_tree(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        root, opp = _add_root_and_opp(client, tree["id"])
-        client.post(
+    def test_evidence_in_full_tree(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        root, opp = _add_root_and_opp(client_authed, tree["id"])
+        client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -735,7 +783,7 @@ class TestEdgeEvidenceEndpoints:
                 "evidence": "Data point",
             },
         )
-        r = client.get(f"/api/v1/trees/{tree['id']}")
+        r = client_authed.get(f"/api/v1/trees/{tree['id']}")
         data = r.json()
         edges = data.get("edges", [])
         assert any(e.get("evidence") == "Data point" for e in edges)
@@ -743,7 +791,7 @@ class TestEdgeEvidenceEndpoints:
 
 class TestChatEndpoint:
     @patch("ost_api.routers.chat.get_llm_provider")
-    def test_default_mode_uses_coach_prompt(self, mock_get_provider, client):
+    def test_default_mode_uses_coach_prompt(self, mock_get_provider, client_authed):
         """Default mode (no mode specified) should use the coach system prompt."""
         mock_provider = AsyncMock()
         mock_provider.chat_with_tools.return_value = LLMResponse(
@@ -751,9 +799,9 @@ class TestChatEndpoint:
         )
         mock_get_provider.return_value = mock_provider
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"], "Chat Test")
-        r = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"], "Chat Test")
+        r = client_authed.post(
             "/api/v1/chat",
             json={"tree_id": tree["id"], "messages": [{"role": "user", "content": "hi"}]},
         )
@@ -767,7 +815,7 @@ class TestChatEndpoint:
         assert "Opportunity Solution Tree (OST) coach" in call_kwargs.kwargs["system_prompt"]
 
     @patch("ost_api.routers.chat.get_llm_provider")
-    def test_builder_mode_uses_builder_prompt(self, mock_get_provider, client):
+    def test_builder_mode_uses_builder_prompt(self, mock_get_provider, client_authed):
         """Builder mode should use the builder system prompt."""
         mock_provider = AsyncMock()
         mock_provider.chat_with_tools.return_value = LLMResponse(
@@ -775,9 +823,9 @@ class TestChatEndpoint:
         )
         mock_get_provider.return_value = mock_provider
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"], "Builder Test")
-        r = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"], "Builder Test")
+        r = client_authed.post(
             "/api/v1/chat",
             json={
                 "tree_id": tree["id"],
@@ -795,7 +843,7 @@ class TestChatEndpoint:
         assert "guided OST Builder" in call_kwargs.kwargs["system_prompt"]
 
     @patch("ost_api.routers.chat.get_llm_provider")
-    def test_mode_echoed_in_response(self, mock_get_provider, client):
+    def test_mode_echoed_in_response(self, mock_get_provider, client_authed):
         """Mode should be echoed back in the response."""
         mock_provider = AsyncMock()
         mock_provider.chat_with_tools.return_value = LLMResponse(
@@ -803,11 +851,11 @@ class TestChatEndpoint:
         )
         mock_get_provider.return_value = mock_provider
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"], "Echo Test")
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"], "Echo Test")
 
         # Test coach mode
-        r = client.post(
+        r = client_authed.post(
             "/api/v1/chat",
             json={
                 "tree_id": tree["id"],
@@ -818,7 +866,7 @@ class TestChatEndpoint:
         assert r.json()["mode"] == "coach"
 
         # Test builder mode
-        r = client.post(
+        r = client_authed.post(
             "/api/v1/chat",
             json={
                 "tree_id": tree["id"],
@@ -829,21 +877,21 @@ class TestChatEndpoint:
         assert r.json()["mode"] == "builder"
 
     @patch("ost_api.routers.chat.get_llm_provider")
-    def test_update_edge_tool_in_chat(self, mock_get_provider, client):
+    def test_update_edge_tool_in_chat(self, mock_get_provider, client_authed):
         """The update_edge tool should be available and executable in chat."""
         from ost_core.llm.base import ToolCall
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"], "Edge Test")
-        root = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"], "Edge Test")
+        root = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        opp = client.post(
+        opp = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Opp", "node_type": "opportunity", "parent_id": root["id"]},
         ).json()
-        edge = client.post(
+        edge = client_authed.post(
             "/api/v1/edges/",
             json={
                 "parent_node_id": root["id"],
@@ -871,7 +919,7 @@ class TestChatEndpoint:
         mock_provider.chat_with_tools.side_effect = [tool_call_response, final_response]
         mock_get_provider.return_value = mock_provider
 
-        r = client.post(
+        r = client_authed.post(
             "/api/v1/chat",
             json={
                 "tree_id": tree["id"],
@@ -885,7 +933,7 @@ class TestChatEndpoint:
         assert mock_provider.chat_with_tools.call_count == 2
 
     @patch("ost_api.routers.chat.get_llm_provider")
-    def test_update_edge_in_chat_tools_list(self, mock_get_provider, client):
+    def test_update_edge_in_chat_tools_list(self, mock_get_provider, client_authed):
         """Verify update_edge is in the tools list passed to the LLM."""
         mock_provider = AsyncMock()
         mock_provider.chat_with_tools.return_value = LLMResponse(
@@ -893,9 +941,9 @@ class TestChatEndpoint:
         )
         mock_get_provider.return_value = mock_provider
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        client.post("/api/v1/chat", json={
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        client_authed.post("/api/v1/chat", json={
             "tree_id": tree["id"],
             "messages": [{"role": "user", "content": "test"}],
         })
@@ -904,7 +952,7 @@ class TestChatEndpoint:
         assert "update_edge" in tool_names
 
     @patch("ost_api.routers.chat.get_llm_provider")
-    def test_project_context_in_system_prompt(self, mock_get_provider, client):
+    def test_project_context_in_system_prompt(self, mock_get_provider, client_authed):
         """Project context should be injected into the chat system prompt."""
         mock_provider = AsyncMock()
         mock_provider.chat_with_tools.return_value = LLMResponse(
@@ -912,20 +960,20 @@ class TestChatEndpoint:
         )
         mock_get_provider.return_value = mock_provider
 
-        project = _create_project(client)
+        project = _create_project(client_authed)
         # Set project context
-        client.patch(
+        client_authed.patch(
             f"/api/v1/projects/{project['id']}",
             json={"project_context": "We are building a B2B SaaS product"},
         )
-        tree = _create_tree(client, project["id"], "Context Test")
+        tree = _create_tree(client_authed, project["id"], "Context Test")
         # Set tree context
-        client.patch(
+        client_authed.patch(
             f"/api/v1/trees/{tree['id']}",
             json={"tree_context": "This tree focuses on onboarding"},
         )
 
-        r = client.post(
+        r = client_authed.post(
             "/api/v1/chat",
             json={
                 "tree_id": tree["id"],
@@ -946,10 +994,10 @@ class TestGitEndpoints:
     """Tests for git export API endpoints."""
 
     @patch("ost_api.routers.git.get_settings")
-    def test_git_status_not_configured(self, mock_settings, client):
+    def test_git_status_not_configured(self, mock_settings, client_authed):
         mock_settings.return_value = Settings(git_remote_url="", git_branch="main", user_name="", user_email="")
-        project = _create_project(client)
-        r = client.get(f"/api/v1/git/status/{project['id']}")
+        project = _create_project(client_authed)
+        r = client_authed.get(f"/api/v1/git/status/{project['id']}")
         assert r.status_code == 200
         data = r.json()
         assert data["configured"] is False
@@ -957,15 +1005,15 @@ class TestGitEndpoints:
         assert "token_configured" in data
 
     @patch("ost_api.routers.git.get_settings")
-    def test_git_status_configured(self, mock_settings, client):
+    def test_git_status_configured(self, mock_settings, client_authed):
         mock_settings.return_value = Settings(
             git_remote_url="https://github.com/org/repo.git",
             git_branch="main",
             user_name="Test User",
             user_email="test@example.com",
         )
-        project = _create_project(client)
-        r = client.get(f"/api/v1/git/status/{project['id']}")
+        project = _create_project(client_authed)
+        r = client_authed.get(f"/api/v1/git/status/{project['id']}")
         assert r.status_code == 200
         data = r.json()
         assert data["configured"] is True
@@ -973,7 +1021,7 @@ class TestGitEndpoints:
 
     @patch("ost_api.routers.git.commit_tree_to_git")
     @patch("ost_api.routers.git.get_settings")
-    def test_git_commit_success(self, mock_settings, mock_commit, client):
+    def test_git_commit_success(self, mock_settings, mock_commit, client_authed):
         from ost_core.services.git_service import GitCommitResult
 
         mock_settings.return_value = Settings(
@@ -988,10 +1036,10 @@ class TestGitEndpoints:
             pushed=True,
         )
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
 
-        r = client.post("/api/v1/git/commit", json={
+        r = client_authed.post("/api/v1/git/commit", json={
             "tree_id": tree["id"],
             "commit_message": "test commit",
             "author_name": "Test",
@@ -1004,14 +1052,14 @@ class TestGitEndpoints:
 
     @patch("ost_api.routers.git.commit_tree_to_git")
     @patch("ost_api.routers.git.get_settings")
-    def test_git_commit_not_configured(self, mock_settings, mock_commit, client):
+    def test_git_commit_not_configured(self, mock_settings, mock_commit, client_authed):
         mock_settings.return_value = Settings(git_remote_url="")
         mock_commit.side_effect = GitNotConfiguredError()
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
 
-        r = client.post("/api/v1/git/commit", json={
+        r = client_authed.post("/api/v1/git/commit", json={
             "tree_id": tree["id"],
             "commit_message": "test",
         })
@@ -1019,16 +1067,16 @@ class TestGitEndpoints:
 
     @patch("ost_api.routers.git.commit_tree_to_git")
     @patch("ost_api.routers.git.get_settings")
-    def test_git_commit_push_conflict(self, mock_settings, mock_commit, client):
+    def test_git_commit_push_conflict(self, mock_settings, mock_commit, client_authed):
         mock_settings.return_value = Settings(
             git_remote_url="https://github.com/org/repo.git",
         )
         mock_commit.side_effect = GitPushConflictError()
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
 
-        r = client.post("/api/v1/git/commit", json={
+        r = client_authed.post("/api/v1/git/commit", json={
             "tree_id": tree["id"],
             "commit_message": "test",
         })
@@ -1036,7 +1084,7 @@ class TestGitEndpoints:
 
     @patch("ost_api.routers.git.commit_tree_to_git")
     @patch("ost_api.routers.git.get_settings")
-    def test_git_commit_auth_error(self, mock_settings, mock_commit, client):
+    def test_git_commit_auth_error(self, mock_settings, mock_commit, client_authed):
         """Authentication error returns 401."""
         from ost_core.exceptions import GitAuthenticationError
         mock_settings.return_value = Settings(
@@ -1044,26 +1092,26 @@ class TestGitEndpoints:
         )
         mock_commit.side_effect = GitAuthenticationError()
 
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
 
-        r = client.post("/api/v1/git/commit", json={
+        r = client_authed.post("/api/v1/git/commit", json={
             "tree_id": tree["id"],
             "commit_message": "test",
         })
         assert r.status_code == 401
 
-    def test_git_commit_tree_not_found(self, client):
-        r = client.post("/api/v1/git/commit", json={
+    def test_git_commit_tree_not_found(self, client_authed):
+        r = client_authed.post("/api/v1/git/commit", json={
             "tree_id": "00000000-0000-0000-0000-000000000000",
             "commit_message": "test",
         })
         assert r.status_code == 404
 
-    def test_git_config_update(self, client):
+    def test_git_config_update(self, client_authed):
         """PATCH /git/config/{project_id} saves remote_url and branch."""
-        project = _create_project(client)
-        r = client.patch(f"/api/v1/git/config/{project['id']}", json={
+        project = _create_project(client_authed)
+        r = client_authed.patch(f"/api/v1/git/config/{project['id']}", json={
             "remote_url": "https://github.com/org/new-repo.git",
             "branch": "develop",
         })
@@ -1072,17 +1120,17 @@ class TestGitEndpoints:
         assert data["configured"] is True
         assert data["branch"] == "develop"
 
-    def test_git_authors_empty(self, client):
+    def test_git_authors_empty(self, client_authed):
         """GET /git/authors/{project_id} returns empty list initially."""
-        project = _create_project(client)
-        r = client.get(f"/api/v1/git/authors/{project['id']}")
+        project = _create_project(client_authed)
+        r = client_authed.get(f"/api/v1/git/authors/{project['id']}")
         assert r.status_code == 200
         assert r.json() == []
 
-    def test_git_history_empty(self, client):
+    def test_git_history_empty(self, client_authed):
         """GET /git/history/{project_id} returns empty list initially."""
-        project = _create_project(client)
-        r = client.get(f"/api/v1/git/history/{project['id']}")
+        project = _create_project(client_authed)
+        r = client_authed.get(f"/api/v1/git/history/{project['id']}")
         assert r.status_code == 200
         assert r.json() == []
 
@@ -1090,69 +1138,69 @@ class TestGitEndpoints:
 class TestFontLightAPI:
     """Tests for font_light field on tags and nodes."""
 
-    def test_create_tag_with_font_light(self, client):
-        project = _create_project(client)
-        r = client.post(
+    def test_create_tag_with_font_light(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "Dark BG", "color": "#1e293b", "font_light": True},
         )
         assert r.status_code == 200
         assert r.json()["font_light"] is True
 
-    def test_create_tag_default_font_light(self, client):
-        project = _create_project(client)
-        r = client.post(
+    def test_create_tag_default_font_light(self, client_authed):
+        project = _create_project(client_authed)
+        r = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "Plain"},
         )
         assert r.status_code == 200
         assert r.json()["font_light"] is False
 
-    def test_update_tag_font_light(self, client):
-        project = _create_project(client)
-        tag = client.post(
+    def test_update_tag_font_light(self, client_authed):
+        project = _create_project(client_authed)
+        tag = client_authed.post(
             f"/api/v1/tags/project/{project['id']}",
             json={"name": "Test"},
         ).json()
-        r = client.patch(
+        r = client_authed.patch(
             f"/api/v1/tags/{tag['id']}",
             json={"font_light": True},
         )
         assert r.status_code == 200
         assert r.json()["font_light"] is True
 
-    def test_create_node_with_override_font_light(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.post(
+    def test_create_node_with_override_font_light(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome", "override_font_light": True},
         )
         assert r.status_code == 201
         assert r.json()["override_font_light"] is True
 
-    def test_update_node_override_font_light(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+    def test_update_node_override_font_light(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
-        r = client.patch(
+        r = client_authed.patch(
             f"/api/v1/nodes/{node['id']}",
             json={"override_font_light": True},
         )
         assert r.status_code == 200
         assert r.json()["override_font_light"] is True
 
-    def test_clear_node_override_font_light(self, client):
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+    def test_clear_node_override_font_light(self, client_authed):
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome", "override_font_light": True},
         ).json()
-        r = client.patch(
+        r = client_authed.patch(
             f"/api/v1/nodes/{node['id']}",
             json={"override_font_light": None},
         )
@@ -1163,61 +1211,61 @@ class TestFontLightAPI:
 class TestOptimisticLockingAPI:
     """Tests for optimistic locking (version fields) via the API."""
 
-    def test_get_tree_includes_version(self, client):
+    def test_get_tree_includes_version(self, client_authed):
         """GET /trees/{id} response includes a version field."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.get(f"/api/v1/trees/{tree['id']}")
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.get(f"/api/v1/trees/{tree['id']}")
         assert r.status_code == 200
         data = r.json()
         assert "version" in data
         assert isinstance(data["version"], int)
         assert data["version"] >= 1
 
-    def test_node_response_includes_version(self, client):
+    def test_node_response_includes_version(self, client_authed):
         """Node in tree response includes a version field."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
         assert "version" in node
         assert node["version"] == 1
 
-    def test_update_node_conflict_409(self, client):
+    def test_update_node_conflict_409(self, client_authed):
         """PATCH /nodes/{id} with stale version returns 409."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
         assert node["version"] == 1
         # First update with correct version succeeds
-        r = client.patch(
+        r = client_authed.patch(
             f"/api/v1/nodes/{node['id']}",
             json={"title": "Updated", "version": 1},
         )
         assert r.status_code == 200
         assert r.json()["version"] == 2
         # Second update with stale version=1 should return 409
-        r2 = client.patch(
+        r2 = client_authed.patch(
             f"/api/v1/nodes/{node['id']}",
             json={"title": "Conflict", "version": 1},
         )
         assert r2.status_code == 409
 
-    def test_update_node_no_version_succeeds(self, client):
+    def test_update_node_no_version_succeeds(self, client_authed):
         """PATCH /nodes/{id} without version field succeeds (backwards compat)."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        node = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        node = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         ).json()
         # Update without version field should succeed
-        r = client.patch(
+        r = client_authed.patch(
             f"/api/v1/nodes/{node['id']}",
             json={"title": "No Version Check"},
         )
@@ -1225,38 +1273,38 @@ class TestOptimisticLockingAPI:
         assert r.json()["title"] == "No Version Check"
         assert r.json()["version"] == 2
 
-    def test_get_tree_version_endpoint(self, client):
+    def test_get_tree_version_endpoint(self, client_authed):
         """GET /trees/{id}/version returns {"version": N}."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.get(f"/api/v1/trees/{tree['id']}/version")
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.get(f"/api/v1/trees/{tree['id']}/version")
         assert r.status_code == 200
         data = r.json()
         assert "version" in data
         assert data["version"] == 1
 
-    def test_add_node_increments_tree_version(self, client):
+    def test_add_node_increments_tree_version(self, client_authed):
         """POST /nodes increments the tree's version."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        v1 = client.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
-        client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        v1 = client_authed.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
+        client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Root", "node_type": "outcome"},
         )
-        v2 = client.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
+        v2 = client_authed.get(f"/api/v1/trees/{tree['id']}/version").json()["version"]
         assert v2 == v1 + 1
 
 
 class TestAuthEndpoints:
     """Tests for authentication endpoints."""
 
-    def test_auth_status_open_mode(self, client):
-        """GET /auth/status returns auth_required=false when no users exist."""
+    def test_auth_status_fresh_db(self, client):
+        """GET /auth/status returns auth_required=true and user_count=0 when no users exist."""
         r = client.get("/api/v1/auth/status")
         assert r.status_code == 200
         data = r.json()
-        assert data["auth_required"] is False
+        assert data["auth_required"] is True
         assert data["user_count"] == 0
 
     def test_register_user(self, client):
@@ -1316,14 +1364,13 @@ class TestAuthEndpoints:
         assert r.status_code == 200
         assert r.json()["email"] == "me@example.com"
 
-    def test_open_mode_mutations_allowed(self, client):
-        """When no users exist, mutations should work without auth."""
-        # No users exist, so create project should work without token
-        r = client.post("/api/v1/projects/", json={"name": "Open Mode Project"})
-        assert r.status_code == 201
+    def test_unauthenticated_mutations_rejected(self, client):
+        """Creating a project without auth returns 401."""
+        r = client.post("/api/v1/projects/", json={"name": "Unauthorized Project"})
+        assert r.status_code == 401
 
     def test_auth_required_after_registration(self, client):
-        """After a user registers, auth status should show auth_required=true."""
+        """After a user registers, auth status should still show auth_required=true."""
         client.post("/api/v1/auth/register", json={
             "email": "first@example.com",
             "display_name": "First",
@@ -1358,15 +1405,15 @@ class TestAuthEndpoints:
 class TestActivityEndpoints:
     """Tests for the activity feed API endpoints."""
 
-    def test_activity_endpoint_returns_entries(self, client):
+    def test_activity_endpoint_returns_entries(self, client_authed):
         """Tree activity endpoint returns entries after node creation."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Test Node", "node_type": "outcome"},
         )
-        r = client.get(f"/api/v1/trees/{tree['id']}/activity?limit=50")
+        r = client_authed.get(f"/api/v1/trees/{tree['id']}/activity?limit=50")
         assert r.status_code == 200
         data = r.json()
         assert isinstance(data, list)
@@ -1374,25 +1421,25 @@ class TestActivityEndpoints:
         actions = [entry["action"] for entry in data]
         assert "node_created" in actions
 
-    def test_project_activity_endpoint(self, client):
+    def test_project_activity_endpoint(self, client_authed):
         """Project activity endpoint returns entries after mutations."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Test Node", "node_type": "outcome"},
         )
-        r = client.get(f"/api/v1/projects/{project['id']}/activity?limit=50")
+        r = client_authed.get(f"/api/v1/projects/{project['id']}/activity?limit=50")
         assert r.status_code == 200
         data = r.json()
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_activity_endpoint_empty_tree(self, client):
+    def test_activity_endpoint_empty_tree(self, client_authed):
         """Tree activity endpoint returns 200 for a tree with no nodes."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.get(f"/api/v1/trees/{tree['id']}/activity?limit=50")
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.get(f"/api/v1/trees/{tree['id']}/activity?limit=50")
         assert r.status_code == 200
         data = r.json()
         assert isinstance(data, list)
@@ -1401,23 +1448,22 @@ class TestActivityEndpoints:
 class TestNodeMutationAttribution:
     """Tests for last_modified_by attribution on node mutations."""
 
-    def test_node_mutation_returns_last_modified_by(self, client):
-        """Node creation response includes last_modified_by field (null in open mode).
+    def test_node_mutation_returns_last_modified_by(self, client_authed):
+        """Node creation response includes last_modified_by field.
         Full tree GET also includes last_modified_by_name on nodes."""
-        project = _create_project(client)
-        tree = _create_tree(client, project["id"])
-        r = client.post(
+        project = _create_project(client_authed)
+        tree = _create_tree(client_authed, project["id"])
+        r = client_authed.post(
             f"/api/v1/nodes?tree_id={tree['id']}",
             json={"title": "Test", "node_type": "outcome"},
         )
         assert r.status_code == 201
         node_data = r.json()
-        # Field should exist in the response (null in open mode)
+        # Field should exist in the response
         assert "last_modified_by" in node_data
-        assert node_data["last_modified_by"] is None
 
         # Fetch the full tree and verify last_modified_by_name is present on nodes
-        r2 = client.get(f"/api/v1/trees/{tree['id']}")
+        r2 = client_authed.get(f"/api/v1/trees/{tree['id']}")
         assert r2.status_code == 200
         tree_data = r2.json()
         nodes = tree_data["nodes"]

@@ -1,6 +1,8 @@
 """Configuration settings for OST core."""
 
 import os
+import secrets
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
@@ -53,5 +55,39 @@ def get_runtime_overrides() -> dict[str, str]:
     return dict(_runtime_overrides)
 
 
+_jwt_secret_ensured = False
+
+
+def _ensure_jwt_secret() -> None:
+    """Auto-generate OST_JWT_SECRET if not configured.
+
+    Generates a random secret via secrets.token_hex(32) and appends it to .env
+    so that registration/login works out of the box on fresh installs.
+    """
+    global _jwt_secret_ensured
+    if _jwt_secret_ensured:
+        return
+    _jwt_secret_ensured = True
+
+    if os.environ.get("OST_JWT_SECRET"):
+        return
+
+    # Check if .env already has the key
+    env_path = Path(".env")
+    if env_path.exists():
+        content = env_path.read_text()
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("OST_JWT_SECRET=") and len(stripped) > len("OST_JWT_SECRET="):
+                return
+
+    # Generate and persist
+    secret = secrets.token_hex(32)
+    os.environ["OST_JWT_SECRET"] = secret
+    with open(env_path, "a") as f:
+        f.write(f"\nOST_JWT_SECRET={secret}\n")
+
+
 def get_settings() -> Settings:
+    _ensure_jwt_secret()
     return Settings()

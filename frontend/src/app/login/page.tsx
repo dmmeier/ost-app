@@ -10,9 +10,9 @@ type Mode = "login" | "register";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuth, hydrate, isAuthenticated, authRequired } = useAuthStore();
+  const { setAuth, hydrate, isAuthenticated } = useAuthStore();
 
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,21 +20,23 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Hydrate auth state on mount
+  // Hydrate auth state and fetch user_count to pick default tab
   useEffect(() => {
     hydrate();
+    api.auth.status().then((status) => {
+      // Default to "Create Account" on fresh DB, "Sign In" when users exist
+      setMode(status.user_count === 0 ? "register" : "login");
+    }).catch(() => {
+      setMode("login");
+    });
   }, [hydrate]);
 
-  // Redirect if already authenticated or auth not required
+  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       router.push("/");
-      return;
     }
-    if (authRequired === false) {
-      router.push("/");
-    }
-  }, [isAuthenticated, authRequired, router]);
+  }, [isAuthenticated, router]);
 
   const handleLogin = async () => {
     setError("");
@@ -80,6 +82,15 @@ export default function LoginPage() {
       handleRegister();
     }
   };
+
+  // Wait until we know which tab to show
+  if (!mode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ost-canvas)' }}>
+        <div className="text-sm" style={{ color: 'var(--ost-muted)' }}>Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--ost-canvas)' }}>

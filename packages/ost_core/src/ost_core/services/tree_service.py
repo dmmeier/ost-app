@@ -633,12 +633,11 @@ class TreeService:
     ) -> None:
         """Check that user_id has at least min_role on project_id.
 
-        Skips checks if:
-        - user_id is None (open mode / no auth)
-        - Only one user exists (single-user = implicit owner of everything)
+        Raises PermissionDeniedError if user_id is None (authentication required).
+        Skips role checks if only one user exists (single-user = implicit owner).
         """
         if user_id is None:
-            return  # open mode
+            raise PermissionDeniedError("Authentication required")
         if self.repo.user_count() <= 1:
             return  # single user = implicit owner
         role = self.repo.get_user_role(user_id, str(project_id))

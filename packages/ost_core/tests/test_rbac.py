@@ -1,4 +1,4 @@
-"""Tests for Role-Based Access Control (RBAC): membership, permissions, open mode."""
+"""Tests for Role-Based Access Control (RBAC): membership, permissions, auth-required mode."""
 
 import os
 
@@ -204,19 +204,21 @@ class TestProjectFiltering:
 
 
 class TestOpenMode:
-    def test_open_mode_no_permission_checks(self, service):
-        """When user_id is None, all permission checks should pass (open mode)."""
-        # Register users so we have a project to test against
+    def test_null_user_id_raises_permission_error(self, service):
+        """When user_id is None, permission checks should raise PermissionDeniedError."""
         owner, _ = _register(service, "owner@example.com", "Owner")
         project = service.create_project(
             ProjectCreate(name="Open Project", description="desc"),
             user_id=str(owner.id),
         )
 
-        # None user_id should bypass all permission levels
-        service.check_project_permission(None, str(project.id), "viewer")
-        service.check_project_permission(None, str(project.id), "editor")
-        service.check_project_permission(None, str(project.id), "owner")
+        # None user_id should always raise — authentication is required
+        with pytest.raises(PermissionDeniedError, match="Authentication required"):
+            service.check_project_permission(None, str(project.id), "viewer")
+        with pytest.raises(PermissionDeniedError, match="Authentication required"):
+            service.check_project_permission(None, str(project.id), "editor")
+        with pytest.raises(PermissionDeniedError, match="Authentication required"):
+            service.check_project_permission(None, str(project.id), "owner")
 
 
 class TestSingleUserMode:

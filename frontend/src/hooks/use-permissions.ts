@@ -5,20 +5,20 @@ import { useProject } from "@/hooks/use-tree";
 
 /**
  * Returns true if the current user can edit (role is owner or editor).
- * In open mode (no auth / no my_role), editing is always allowed.
+ * Single-user mode: no role means full access (implicit owner).
  */
 export function useCanEdit(): boolean {
   const currentTree = useTreeStore((s) => s.currentTree);
   const { data: project } = useProject(currentTree?.project_id ?? null);
   const myRole = project?.my_role;
-  // Open mode or single user: no role means full access
+  // Single user: no role means full access (implicit owner)
   if (myRole === undefined || myRole === null) return true;
   return myRole === "owner" || myRole === "editor";
 }
 
 /**
  * Returns true if the current user is an owner.
- * In open mode (no auth / no my_role), owner is assumed.
+ * Single-user mode: no role means implicit owner.
  */
 export function useIsOwner(): boolean {
   const currentTree = useTreeStore((s) => s.currentTree);

@@ -12,7 +12,6 @@ import { useTree, useAutoValidate, useProjectList } from "@/hooks/use-tree";
 import { useTreePolling } from "@/hooks/use-tree-polling";
 import { useTreeStore } from "@/stores/tree-store";
 import { useAuthStore } from "@/stores/auth-store";
-import { api } from "@/lib/api-client";
 import { TreeCanvas } from "@/components/tree/TreeCanvas";
 import { TreeSelector } from "@/components/panels/TreeSelector";
 import { Wordmark } from "@/components/brand/Wordmark";
@@ -37,27 +36,22 @@ const BOTTOM_TABS = [
 
 export default function Home() {
   const router = useRouter();
-  const { user, isAuthenticated, authRequired, hydrate, setAuthRequired, clearAuth } = useAuthStore();
+  const { user, isAuthenticated, hydrate, clearAuth } = useAuthStore();
   const canEdit = useCanEdit();
   const [authChecked, setAuthChecked] = useState(false);
 
-  // Hydrate auth state and check auth status on mount
+  // Hydrate auth state on mount
   useEffect(() => {
     hydrate();
-    api.auth.status().then((status) => {
-      setAuthRequired(status.auth_required);
-      setAuthChecked(true);
-    }).catch(() => {
-      setAuthChecked(true);
-    });
-  }, [hydrate, setAuthRequired]);
+    setAuthChecked(true);
+  }, [hydrate]);
 
-  // Redirect to login if auth is required and user is not authenticated
+  // Redirect to login if user is not authenticated
   useEffect(() => {
-    if (authChecked && authRequired && !isAuthenticated) {
+    if (authChecked && !isAuthenticated) {
       router.push("/login");
     }
-  }, [authChecked, authRequired, isAuthenticated, router]);
+  }, [authChecked, isAuthenticated, router]);
 
   const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null);
   const { data: tree, isLoading, error } = useTree(selectedTreeId);
@@ -159,8 +153,8 @@ export default function Home() {
     );
   }
 
-  // Don't render the main app if auth is required and user is not authenticated
-  if (authRequired && !isAuthenticated) {
+  // Don't render the main app if user is not authenticated
+  if (!isAuthenticated) {
     return null;
   }
 

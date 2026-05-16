@@ -52,16 +52,8 @@ def get_current_user(
 def get_current_user_required(
     authorization: Optional[str] = Header(None),
     service: TreeService = Depends(get_service),
-) -> User | None:
-    """Require authentication if users exist. Open mode if no users.
-
-    - If user_count() == 0: returns None (open mode, no auth needed)
-    - If users exist: requires valid Bearer token, raises 401 otherwise
-    """
-    count = service.user_count()
-    if count == 0:
-        return None
-
+) -> User:
+    """Always require a valid Bearer token. Raises 401 otherwise."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Authentication required")
 
@@ -71,7 +63,10 @@ def get_current_user_required(
         user_id = payload.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return service.get_user(user_id)
+        user = service.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
     except HTTPException:
         raise
     except Exception:

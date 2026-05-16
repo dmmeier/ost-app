@@ -50,7 +50,7 @@ def get_project(project_id: UUID, service: TreeService = Depends(get_service), u
             role = service.repo.get_user_role(str(user.id), str(project_id))
             result["my_role"] = role
         else:
-            result["my_role"] = None  # open mode or single-user
+            result["my_role"] = None  # single-user: implicit owner
         return result
     except PermissionDeniedError as e:
         raise HTTPException(status_code=403, detail=str(e))

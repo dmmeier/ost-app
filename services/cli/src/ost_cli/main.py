@@ -201,7 +201,7 @@ def project_members(
     pid = _resolve_project_id(project_id)
     members = service.list_members(str(pid))
     if not members:
-        console.print("[dim]No members found (open mode or single-user).[/dim]")
+        console.print("[dim]No members found (single-user mode).[/dim]")
         return
 
     table = Table(title="Project Members")

@@ -40,9 +40,8 @@ def me(user: User = Depends(get_current_user_required)):
 
 @router.get("/status")
 def auth_status(service: TreeService = Depends(get_service)):
-    """Check if authentication is required (always open, used by frontend).
-
-    If no users exist in the DB, auth is not required (open mode).
+    """Return auth status. Auth is always required; user_count helps the
+    frontend decide whether to default to the Sign In or Create Account tab.
     """
     count = service.user_count()
-    return {"auth_required": count > 0, "user_count": count}
+    return {"auth_required": True, "user_count": count}

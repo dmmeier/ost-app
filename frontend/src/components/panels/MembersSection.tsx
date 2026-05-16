@@ -70,7 +70,7 @@ export default function MembersSection({ projectId }: MembersSectionProps) {
         <p className="text-xs text-ost-muted">Loading...</p>
       ) : members.length === 0 ? (
         <p className="text-xs text-ost-muted italic">
-          No members (open mode or single-user)
+          No members yet (single-user mode)
         </p>
       ) : (
         <div className="space-y-1.5">

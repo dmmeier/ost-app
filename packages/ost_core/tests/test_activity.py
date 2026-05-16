@@ -260,15 +260,15 @@ class TestActivityLogging:
         limited = repo.list_activity(tree_id=tree.id, limit=2)
         assert len(limited) == 2
 
-    # ── 10. open mode: null user_id ──────────────────────────
+    # ── 10. null user_id (no auth context) ─────────────────────
 
-    def test_open_mode_null_user_id(self, repo: TreeRepository):
+    def test_null_user_id(self, repo: TreeRepository):
         _project, tree = _make_project_and_tree(repo)
 
         node = repo.add_node(
             tree.id,
             NodeCreate(title="Anonymous Node", node_type="outcome"),
-            # No user_id -- open mode
+            # No user_id
         )
 
         assert node.last_modified_by is None
