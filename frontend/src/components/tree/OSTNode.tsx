@@ -238,7 +238,7 @@ function OSTNodeComponent({ id, data }: NodeProps) {
           ...fillStyles,
           ...(nodeData.isSelected ? { ringColor: borderColor } : {}),
           width: 460,
-          overflow: "hidden",
+          overflow: "visible",
           wordWrap: "break-word" as const,
         }}
       >
