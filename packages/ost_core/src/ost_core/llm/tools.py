@@ -297,6 +297,17 @@ CHAT_TOOLS: list[ToolDefinition] = [
         },
     ),
     ToolDefinition(
+        name="delete_assumption",
+        description="Permanently delete an assumption from a node. Use this when an assumption is no longer relevant or was created in error.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "assumption_id": {"type": "string", "description": "The assumption ID to delete"},
+            },
+            "required": ["assumption_id"],
+        },
+    ),
+    ToolDefinition(
         name="get_tree_filtered_by_tag",
         description="Get a tree filtered to only show nodes with the specified tag and their ancestors. Useful for focusing on a specific theme.",
         parameters={

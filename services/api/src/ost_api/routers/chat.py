@@ -419,6 +419,10 @@ def _execute_tool(
             )
             return json.dumps(assumption.model_dump(mode="json"))
 
+        elif tool_name == "delete_assumption":
+            service.delete_assumption(UUID(arguments["assumption_id"]))
+            return json.dumps({"status": "deleted", "assumption_id": arguments["assumption_id"]})
+
         elif tool_name == "create_project":
             project = service.create_project(
                 ProjectCreate(
