@@ -84,6 +84,32 @@ frontend/src/
   hooks/use-tree.ts      # TanStack Query hooks
 ```
 
+## Playwright / QA Testing
+
+**Test user**: `playwright@test.com` / `testtest123` (registered in ost.db)
+
+The login form doesn't work reliably with Playwright's `fill()`/`click()` due to React state management. Use this in-page fetch approach instead:
+
+```js
+// Login via in-page fetch + localStorage (use with browser_run_code_unsafe)
+async (page) => {
+  await page.evaluate(async () => {
+    const r = await fetch('http://localhost:8000/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'playwright@test.com', password: 'testtest123' })
+    });
+    const data = await r.json();
+    localStorage.setItem('ost_token', data.token);
+    localStorage.setItem('ost_user', JSON.stringify(data.user));
+  });
+  await page.reload();
+  await page.waitForTimeout(2000);
+}
+```
+
+Auth store uses `ost_token` and `ost_user` keys in localStorage (not Zustand persist).
+
 ## Building instructions
 -- Work through tickets in "tickets" in order
 -- Make sure you do careful planning before starting implementation. 

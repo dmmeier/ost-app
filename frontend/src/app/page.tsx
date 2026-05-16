@@ -272,7 +272,8 @@ export default function Home() {
                     <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
                       <div className="text-center max-w-md">
                         <BrandMark size={48} className="mx-auto mb-4 opacity-25 text-[#0d9488]" />
-                        <p className="text-lg">Start with your Outcome</p>
+                        <p className="text-lg font-medium mb-2" style={{ fontFamily: 'var(--font-ost-display)' }}>Select or create a tree to get started</p>
+                        <p className="text-sm" style={{ fontFamily: 'var(--font-ost-display)' }}>Create a project first, then add trees within it using the sidebar</p>
                       </div>
                     </div>
                   ) : isLoading ? (
@@ -407,14 +408,7 @@ function EmptyTreePrompt({ treeId }: { treeId: string }) {
     <div className="h-full flex items-center justify-center" style={{ color: 'var(--ost-muted)' }}>
       <div className="text-center max-w-lg">
         <BrandMark size={48} className="mx-auto mb-4 opacity-30 text-[#0d9488]" />
-        <p className="text-lg font-medium mb-2" style={{ color: 'var(--ost-ink)', fontFamily: 'var(--font-ost-display)' }}>Start with your Outcome</p>
-        <p className="text-sm mb-1" style={{ color: 'var(--ost-ink)' }}>
-          An <strong>Outcome</strong> is the measurable business result you want to achieve.
-        </p>
-        <p className="text-sm mb-5" style={{ color: 'var(--ost-muted)' }}>
-          Good outcomes include a metric and target, e.g. &quot;Increase mobile app DAU to 500K&quot;
-          or &quot;Reduce churn rate to below 5%&quot;.
-        </p>
+        <p className="text-lg font-medium mb-5" style={{ color: 'var(--ost-ink)', fontFamily: 'var(--font-ost-display)' }}>Start with your Outcome</p>
         <AddRootNodeButton treeId={treeId} />
       </div>
     </div>
